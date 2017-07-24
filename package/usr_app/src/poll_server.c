@@ -1,4 +1,5 @@
 #include "poll_socket.h"
+#include "thread.h"
 
 
 #define SERVER_DEBUG  1
@@ -10,12 +11,17 @@
 #define OPEN_MAX   1000
 #define INFTIM     -1
 
+extern pthread_mutex_t mut;
+
 static int socket_bind(const char* ip, int port);
 static void do_poll(int listenfd);
 static void handle_connection(struct pollfd * connfds, int num);
 
-int server_init(void)
+void* server_init(void* argc)
 {
+	printf("into thread server init!\n");
+    pthread_mutex_lock(&mut);
+
 	int listenfd, connfd,sockfd;
 	struct sockaddr_in cliaddr;
 	socklen_t cliaddrlen;
@@ -24,7 +30,9 @@ int server_init(void)
 	listen(listenfd, LISTENQ);
 	do_poll(listenfd);
 
-	return 0; 
+	pthread_mutex_unlock(&mut);
+    pthread_exit(NULL);
+
 }
 
 static int socket_bind(const char* ip, int port)

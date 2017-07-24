@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-int server_init(void);
+void* server_init(void* argc);
 
 #endif //_POLL_SOCKET_H_
 

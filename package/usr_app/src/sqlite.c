@@ -1,4 +1,7 @@
 #include "sqlite.h"
+#include "thread.h"
+
+extern pthread_mutex_t mut;
 
 sqlite3* sqlite_open(sqlite3* db, char* db_name)
 {
@@ -45,8 +48,11 @@ void sqlite_operate(sqlite3* db, char* sql)
 }
 
 
-void sqlite_test(void)
+void* sqlite_test(void* argc)
 {
+	printf("into thread sqlite test!\n");
+    pthread_mutex_lock(&mut);
+
 	sqlite3* db = NULL;
 	
 	char* sql_table = "CREATE TABLE COMPANY("               \
@@ -89,6 +95,9 @@ void sqlite_test(void)
 	/*delete segement*/
 	db = sqlite_open(db, "test.db");
 	sqlite_operate(db, sql_seg_del);
+
+	pthread_mutex_unlock(&mut);
+    pthread_exit(NULL);
 }
 
 
