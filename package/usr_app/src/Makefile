@@ -13,6 +13,7 @@ sqlite.o : sqlite.c sqlite.h
 m1_protocol.o : m1_protocol.c m1_protocol.h
 	$(CC) $(CFLAGS) -c m1_protocol.c	
 
+
 thread.o : thread.c thread.h
 	$(CC) $(CFLAGS) -c thread.c	
 

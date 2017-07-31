@@ -1,5 +1,5 @@
 #include "poll_socket.h"
-#include "thread.h"
+#include "m1_protocol.h"
 
 
 #define SERVER_DEBUG  1
@@ -11,7 +11,6 @@
 #define OPEN_MAX   1000
 #define INFTIM     -1
 
-extern pthread_mutex_t mut;
 
 static int socket_bind(const char* ip, int port);
 static void do_poll(int listenfd);
@@ -19,8 +18,7 @@ static void handle_connection(struct pollfd * connfds, int num);
 
 void* server_init(void* argc)
 {
-	printf("into thread server init!\n");
-    pthread_mutex_lock(&mut);
+	printf("into server init!\n");
 
 	int listenfd, connfd,sockfd;
 	struct sockaddr_in cliaddr;
@@ -29,9 +27,6 @@ void* server_init(void* argc)
 	listenfd = socket_bind(IPADDRESS, PORT);
 	listen(listenfd, LISTENQ);
 	do_poll(listenfd);
-
-	pthread_mutex_unlock(&mut);
-    pthread_exit(NULL);
 
 }
 
@@ -132,10 +127,11 @@ static void do_poll(int listenfd)
 	
 }
 
-
+extern uint8_t data_buf[200];
 static void handle_connection(struct pollfd* connfds, int num)
 {
 	int i,n;
+	int j;
 	char buf[MAXLINE];
 	
 	memset(buf, 0, MAXLINE);
@@ -152,7 +148,10 @@ static void handle_connection(struct pollfd* connfds, int num)
 				connfds[i].fd = -1;
 				continue;
 			}
-			write(STDOUT_FILENO,buf,n);
+			//write(STDOUT_FILENO,buf,n);
+	
+			data_handle(buf, n);
+
 			write(connfds[i].fd,buf,n);
 		}
 	}

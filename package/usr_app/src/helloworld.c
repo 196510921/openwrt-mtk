@@ -6,8 +6,6 @@
 
 extern void* sqlite_test(void* argc);
 extern void* server_init(void* argc);
-extern void* test_data(void* argc);
-extern void* test_data_1(void* argc);
 
 int main(int argc, char* argv[])
 {
@@ -16,14 +14,15 @@ int main(int argc, char* argv[])
 	printf("Hello world\n");
 	thread_init();
 
-	thread_create(sqlite_test);
+	//sqlite_test(NULL);
+	//thread_create(sqlite_test);
 	
-	thread_create(test_data);
-    thread_create(test_data_1);
-    
-    thread_create(server_init);
+	//thread_create(test_data);
+    //thread_create(test_data_1);
+
+    //thread_create(server_init);
 	
-	thread_wait();
+	server_init(NULL);	
     printf("wait thread end!\n");
 	return 0;
 }

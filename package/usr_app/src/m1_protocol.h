@@ -5,44 +5,66 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
+#include <stdbool.h>
 #include <errno.h>
+
+void data_handle(uint8_t* _data, uint16_t len);
+int _test_data(void);
+
+
+typedef struct _pdu1{
+ uint16_t p_type;                              //payload type
+ uint16_t p_len;                               //payload length
+ uint8_t p_data[];                             //payload data
+}pdu_t;
 
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*/
+#define TYPE_PDU1                              0x1001
+
 typedef struct _unit1_data{
  uint16_t param_id;                            //parameter id(reference to selfdefine device paramenter table)
  uint8_t  v_len;                               //parameter length
- uint8_t* val;							       //parameter value
- struct _unit1_data* next;
+ uint8_t val[];							       //parameter value
 }unit1_data_t;
 
 typedef struct _pdu1_data{
- uint16_t d_type;                               //device type
- uint8_t d_len;                                 //device data length
- unit1_data_t* u_data;                          //device data
- struct _pdu1_data* next; 
+ //uint16_t port;                                //port number
+ uint16_t d_type;                              //device type
+ uint8_t d_id[8];
+ uint8_t d_len;                                //device data length
+ uint8_t u_data[];                             //device data
 }pdu1_data_t;
 
-typedef struct _pdu1{
- uint16_t port;                               //port number
- uint16_t p_type;                             //payload type
- uint8_t p_len;                               //payload length
- pdu1_data_t* p_data;                           //payload data
-}pdu1_t;
-
+/*Download*********************************************************************/
 /*APP request AP/device information */
-typedef struct _pdu2{
- uint16_t p_type;                             //payload type
- uint8_t p_len;                               //payload length
- uint8_t p_data;                              //payload data
-}pdu2_t;
-
+#define TYPE_PDU2                              0x0003
 /*APP enable/disable device access into net*/
-typedef struct _pdu3{
- uint16_t p_type;                             //payload type
- uint8_t p_len;                               //payload length
- uint8_t p_data;                              //payload data
-}pdu3_t;
+#define TYPE_PDU3                             0x0004
+/*device write*/
+#define TYPE_PDU4                             0x0005
+typedef struct _unit4_data{
+ uint16_t param_id;                            //parameter id(reference to selfdefine device paramenter table)
+ uint8_t  v_len;                               //parameter length
+ uint8_t val[];							       //parameter value
+}unit4_data_t;
+
+typedef struct _pdu4_data{
+ uint8_t d_id[8];                               //device type
+ uint8_t d_len;                                 //device data length
+ uint8_t u_data[];                              //device data 
+}pdu4_data_t;
+
+/*device read*/
+#define TYPE_PDU5                               0x0006
+typedef struct _pdu5_data{
+ uint8_t d_id[8];                               //device type
+ uint8_t d_len;                                 //device data length
+ uint8_t u_data[];                            //device data 
+}pdu5_data_t;
+
 
 #endif //_M1_PROTOCOL_H_
+
+

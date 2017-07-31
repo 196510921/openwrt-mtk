@@ -1,9 +1,9 @@
 #include "sqlite.h"
-#include "thread.h"
 
-extern pthread_mutex_t mut;
+void (* test_func)(int argc, char** argv, char** az_col_name);
 
-sqlite3* sqlite_open(sqlite3* db, char* db_name)
+
+static sqlite3* sqlite_open(sqlite3* db, char* db_name)
 {
 	char* err_msg = NULL;
 	int rc;
@@ -21,22 +21,33 @@ sqlite3* sqlite_open(sqlite3* db, char* db_name)
 	
 }
 
-static int callback(void* not_used, int argc, char** argv, char** az_col_name)
+static void handle_test_1 (int argc, char** argv, char** az_col_name)
 {
 	int i;
 	for(i = 0; i < argc; i++){
 		printf("%s = %s\n", az_col_name[i], argv[i] ? argv[i] : "NULL");
 	}
 	printf("\n");
-	return 0;
-	
+	printf("handle_test_1\n");	
 }
 
-void sqlite_operate(sqlite3* db, char* sql)
+
+static int callback(void* not_used, int argc, char** argv, char** az_col_name)
 {
+	test_func = not_used;
+	(*test_func)(argc,argv,az_col_name);
+
+	return 0;	
+}
+
+int sqlite_exec(char* sql)
+{
+	sqlite3* db = NULL;
 	char* err_msg = NULL;
 	int rc;
-	
+
+	db = sqlite_open(db, "dev_info.db");
+
 	rc = sqlite3_exec(db, sql, callback, 0, &err_msg);
 	if(rc != SQLITE_OK){
 		fprintf(stderr, "SQL error:%s\n",err_msg);
@@ -45,13 +56,33 @@ void sqlite_operate(sqlite3* db, char* sql)
 		fprintf(stdout, "Table operation successfully\n");
 	}
 	sqlite3_close(db);
+
+	return rc;
 }
 
+int sqlite_like(char* sql, void* callback_hd)
+{
+	sqlite3* db = NULL;
+	char* err_msg = NULL;
+	int rc, tmp;
+
+	db = sqlite_open(db, "dev_info.db");
+
+	rc = sqlite3_exec(db, sql, callback, callback_hd, &err_msg);
+	if(rc != SQLITE_OK){
+		fprintf(stderr, "SQL error:%s\n",err_msg);
+		sqlite3_free(err_msg);
+	}else{
+		fprintf(stdout, "Table operation successfully\n");
+	}
+	sqlite3_close(db);
+
+	return rc;
+}
 
 void* sqlite_test(void* argc)
 {
-	printf("into thread sqlite test!\n");
-    pthread_mutex_lock(&mut);
+	printf("into sqlite test!\n");
 
 	sqlite3* db = NULL;
 	
@@ -76,28 +107,24 @@ void* sqlite_test(void* argc)
 						  "SELECT * FROM COMPANY";
 						  
 	char* sql_del = "DROP TABLE COMPANY";
-	
-	/*delete table*/
-	db = sqlite_open(db, "test.db");
-	sqlite_operate(db, sql_del);
-	/*create table*/
-	db = sqlite_open(db, "test.db");
-	sqlite_operate(db, sql_table);
-	/*insert*/
-	db = sqlite_open(db, "test.db");
-	sqlite_operate(db, sql_insert);
-	/*select*/
-	db = sqlite_open(db, "test.db");
-	sqlite_operate(db, sql_select);
-	/*update*/
-	db = sqlite_open(db, "test.db");
-	sqlite_operate(db, sql_update);
-	/*delete segement*/
-	db = sqlite_open(db, "test.db");
-	sqlite_operate(db, sql_seg_del);
 
-	pthread_mutex_unlock(&mut);
-    pthread_exit(NULL);
+	static char sql_test[200];
+	uint16_t d_type = 0x0001;
+	uint16_t port = 0x6688;
+	uint8_t id_buf[8] = {0x30,0x31,0x32,0x33,0x34,0x35,0x36,0x37};
+	
+	//sprintf(sql_test,"INSERT INTO dev_sum(ID, TYPE, NAME, PORT, AP, TIME, LINK, SCEN, DISTRIC) VALUES(%s, %x, %s, %x, %s, %s, %s, %s, %s);","'1234567B'",d_type,"'FF'",port,"'FF'","'FF'","'FF'","'FF'","'FF'");
+	sprintf(sql_test,"INSERT INTO dev_sum(ID, TYPE, NAME, PORT, AP, TIME, LINK, SCEN, DISTRIC) VALUES('%s', %x, '%s', %x, '%s', '%s', '%s', '%s', '%s');",id_buf ,d_type,"FF",port,"FF","FF","FF","FF","FF");
+	//printf("%s\n",sql_test);
+	sqlite_exec(sql_test);
+	/*int rc;
+	sprintf(sql_test,"SELECT TYPE FROM dev_sum WHERE ID LIKE %s;","'FF'");
+	rc = sqlite_like(sql_test, handle_test_1);
+	if(rc == SQLITE_OK)
+		printf("match ok\n");
+	else
+		printf("no match\n");
+*/
 }
 
 

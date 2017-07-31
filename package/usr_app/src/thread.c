@@ -6,15 +6,15 @@ pthread_t thread[THREAD_NUM];
 pthread_mutex_t mut;
 static int thread_count;
 
-void thread_create(void* func)
+void thread_create(void* func, void* argc)
 {
 	int tmp;
     
     if(thread_count >= THREAD_NUM){
-        printf("no thread resource!");;
+        printf("no thread resource!");
     }else{
 
-    	if(tmp = pthread_create(&thread[thread_count], NULL, func, NULL) != 0)
+    	if(tmp = pthread_create(&thread[thread_count], NULL, func, argc) != 0)
     		printf("thread%x create failed!\n", thread_count);
     	else
     		printf("thread%x create success!\n", thread_count);
