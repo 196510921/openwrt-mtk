@@ -30,13 +30,23 @@ typedef struct _unit1_data{
 }unit1_data_t;
 
 typedef struct _pdu1_data{
- //uint16_t port;                                //port number
  uint16_t d_type;                              //device type
  uint8_t d_id[8];
- uint8_t d_len;                                //device data length
- uint8_t u_data[];                             //device data
+ uint8_t d_len;
+ uint8_t u_data[];
 }pdu1_data_t;
 
+/*AP report device information to M1*/
+#define TYPE_PDU6                              0x1003
+
+typedef struct _pdu6_data{
+ uint16_t port;
+ uint16_t d_type;                              //device type
+ uint8_t ap_id[8];
+ uint8_t d_id[8];
+ uint8_t n_len;
+ char name[];
+}pdu6_data_t;
 /*Download*********************************************************************/
 /*APP request AP/device information */
 #define TYPE_PDU2                              0x0003

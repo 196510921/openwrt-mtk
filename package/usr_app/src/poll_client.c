@@ -25,6 +25,7 @@ static int test_data_pdu2(void);
 static int test_data_pdu3(void);
 static int test_data_pdu4(void);
 static int test_data_pdu5(void);
+static int test_data_pdu6(void);
 
 int main(int argc,char *argv[])
 {
@@ -92,6 +93,7 @@ static void handle_connection(int sockfd)
 					case '3': len = test_data_pdu3(); break;
 					case '4': len = test_data_pdu4(); break;
 					case '5': len = test_data_pdu5(); break;
+                    case '6': len = test_data_pdu6(); break;
 					default: fprintf(stderr,"no type match/n");
 			}
 			write(sockfd,test_buf,len);
@@ -356,6 +358,59 @@ static int test_data_pdu5(void)
     data->p_len = p_data->d_len + 9 + p_data_1->d_len + 9;
    
 	
+    return (data->p_len + 4);
+}
+
+static int test_data_pdu6(void)
+{
+
+    typedef struct _pdu4{
+     uint16_t p_type;                              //payload type
+     uint16_t p_len;                                //payload length
+    }pdu_t;
+
+    typedef struct _pdu6_data{
+     uint16_t port;
+     uint16_t d_type;                              //device type
+     uint8_t ap_id[8];
+     uint8_t d_id[8];
+     uint8_t n_len;
+     char name[];
+    }pdu6_data_t;
+
+    uint8_t buf[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
+    uint8_t buf_1[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x09};
+
+
+    uint8_t* p_write = test_buf;
+
+    memset(test_buf, 200, 0);
+    /*pdu*/
+    pdu_t* data = (pdu_t*)p_write;
+    data->p_type = 0x1003;
+    p_write += 4;
+
+    pdu6_data_t* p_data = (pdu6_data_t*)p_write;
+    p_data->port = 0x6688;
+    p_data->d_type = 0xaaaa;
+    memcpy(p_data->ap_id, buf, 8);
+    memcpy(p_data->d_id, buf_1, 8);
+    p_data->n_len = sizeof("device1");
+    memcpy(p_data->name, "device1", p_data->n_len);
+    p_write += (p_data->n_len + 21);
+
+    pdu6_data_t* p_data_1 = (pdu6_data_t*)p_write;
+    p_data_1->port = 0x6688;
+    p_data_1->d_type = 0xaaaa;
+    memcpy(p_data_1->ap_id, buf, 8);
+    memcpy(p_data_1->d_id, buf_1, 8);
+    p_data_1->n_len = sizeof("device1");
+    memcpy(p_data_1->name, "device1", p_data_1->n_len);
+    p_write += (p_data_1->n_len + 21);
+
+
+    data->p_len = p_data->n_len + 21 + p_data_1->n_len + 21;
+    
     return (data->p_len + 4);
 }
 
