@@ -108,7 +108,32 @@ void* sqlite_test(void* argc)
 						  
 	char* sql_del = "DROP TABLE COMPANY";
 
-	static char sql_test[200];
+	sqlite3_stmt* stmt = NULL;
+
+	int rc;
+	const char* data = NULL;
+	/*1*/
+	db = sqlite_open(db, "dev_info.db");
+
+	rc = sqlite3_prepare_v2(db, "CREATE TABLE tb1 (str TEXT)", -1, &stmt, NULL);
+	if(rc != SQLITE_OK)
+		exit(-1);
+	rc = sqlite3_step(stmt);
+	if(rc != SQLITE_DONE)
+		exit(-1);
+	sqlite3_finalize(stmt);
+	/*2*/
+	rc = sqlite3_prepare_v2(db, "SELECT str FROM tb1 ORDER BY 1", -1, &stmt, NULL);
+	if(rc != SQLITE_OK)
+		exit(-1);
+	while(sqlite3_step(stmt) == SQLITE_ROW){
+		data = (const char*)sqlite3_column_text(stmt, 0);
+		printf("%s\n", data ? data:"[NULL]");
+	}
+	
+	sqlite3_finalize(stmt);
+
+	/*static char sql_test[200];
 	uint16_t d_type = 0x0001;
 	uint16_t port = 0x6688;
 	uint8_t id_buf[8] = {0x30,0x31,0x32,0x33,0x34,0x35,0x36,0x37};
@@ -116,7 +141,7 @@ void* sqlite_test(void* argc)
 	//sprintf(sql_test,"INSERT INTO dev_sum(ID, TYPE, NAME, PORT, AP, TIME, LINK, SCEN, DISTRIC) VALUES(%s, %x, %s, %x, %s, %s, %s, %s, %s);","'1234567B'",d_type,"'FF'",port,"'FF'","'FF'","'FF'","'FF'","'FF'");
 	sprintf(sql_test,"INSERT INTO dev_sum(ID, TYPE, NAME, PORT, AP, TIME, LINK, SCEN, DISTRIC) VALUES('%s', %x, '%s', %x, '%s', '%s', '%s', '%s', '%s');",id_buf ,d_type,"FF",port,"FF","FF","FF","FF","FF");
 	//printf("%s\n",sql_test);
-	sqlite_exec(sql_test);
+	sqlite_exec(sql_test);*/
 	/*int rc;
 	sprintf(sql_test,"SELECT TYPE FROM dev_sum WHERE ID LIKE %s;","'FF'");
 	rc = sqlite_like(sql_test, handle_test_1);
@@ -125,6 +150,8 @@ void* sqlite_test(void* argc)
 	else
 		printf("no match\n");
 */
+
+
 }
 
 

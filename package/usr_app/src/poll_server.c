@@ -150,7 +150,7 @@ static void handle_connection(struct pollfd* connfds, int num)
 			}
 			//write(STDOUT_FILENO,buf,n);
 	
-			data_handle(buf, n);
+			data_handle(buf);
 
 			write(connfds[i].fd,buf,n);
 		}
