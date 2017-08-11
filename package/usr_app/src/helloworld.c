@@ -11,14 +11,14 @@ extern char * makeJson(void);
 char* test_buf[TEXT_NUMBER] = {"read","write","echo", "net","reportAP","reportDev","added","apReportData","apReportDev","apReportAp"};
 
 char* readParam = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":6,\"devData\":[{\"devId\":\"12345678\",\"paramType\":[16391,16390,16404]},{\"devId\":\"12345679\",\"paramType\":[8222,8223,16404]}]}}";
-char* writeParam = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":5,\"devData\":[{\"devId\":\"12345679\",\"param\":[{\"type\":8223,\"value\":10},{\"type\":8222,\"value\":20}]},{\"devId\":\"1234567a\",\"param\":[{\"type\":8223,\"value\":20},{\"type\":8222,\"value\":30}]}]}}";
-char* echoParam = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":16389,\"devData\":{\"APId\":\"11111111\",\"devId\":[\"12345678\",\"12345679\"]}}}";
+char* writeParam = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":5,\"devData\":[{\"devId\":\"12345679\",\"param\":[{\"type\":8223,\"value\":10},{\"type\":8222,\"value\":20}]},{\"devId\":\"12345678\",\"param\":[{\"type\":16390,\"value\":20},{\"type\":16391,\"value\":30}]}]}}";
+char* echoParam = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":16389,\"devData\":{\"APId\":\"11111111\",\"devId\":[\"11111111\",\"12345678\",\"12345679\"]}}}";
 char* netControl = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":4,\"devData\": 1}}";
 char* reportApInfo = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":3,\"devData\": 1}}";
 char* reportDevInfo = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":14,\"devData\": \"11111111\"}}";
 char* reqaddedInfo = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":2,\"pdu\":{\"pduType\":16390}}";
-char* apReportData = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":4098,\"devData\":[{\"devName\":\"s11\",\"devId\":\"12345678a\",\"param\":[{\"type\":8223,\"value\":10},{\"type\":8222,\"value\":20}]},{\"devName\":\"s4\",\"devId\":\"12345678b\",\"param\":[{\"type\":16390,\"value\":20},{\"type\":16391,\"value\":80}]}]}}";
-char* apReportDev =  "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":4103,\"devData\":{\"port\":26248,\"APId\":\"11111111\",\"APName\":\"AP1\",\"dev\":[{\"devId\":\"12345679\",\"devName\":\"s11\"},{\"devId\":\"1234567a\",\"devName\":\"s11\"}]}}}";
+char* apReportData = "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":4098,\"devData\":[{\"devName\":\"s11\",\"devId\":\"12345678\",\"param\":[{\"type\":8223,\"value\":10},{\"type\":8222,\"value\":20}]},{\"devName\":\"s4\",\"devId\":\"12345679\",\"param\":[{\"type\":16390,\"value\":20},{\"type\":16391,\"value\":80}]}]}}";
+char* apReportDev =  "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":4103,\"devData\":{\"port\":26248,\"APId\":\"11111111\",\"APName\":\"AP1\",\"dev\":[{\"devId\":\"12345678\",\"devName\":\"s11\"},{\"devId\":\"12345679\",\"devName\":\"s4\"}]}}}";
 char* apReportAp =  "{\"sn\":1,\"version\":\"1.0\",\"netFlag\":1,\"cmdType\":1,\"pdu\":{\"pduType\":4102,\"devData\":{\"port\":26248,\"APId\":\"11111111\",\"APName\":\"AP1\"}}}";
 
 int main(int argc, char* argv[])
