@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
 
     //thread_create(server_init);
 	
-	//server_init(NULL);	
+	server_init(NULL);	
     printf("wait thread end!\n");
 	return 0;
 }

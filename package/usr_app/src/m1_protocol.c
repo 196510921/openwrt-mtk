@@ -72,9 +72,7 @@ void data_handle(char* data)
 
         default: printf("pdu type not match\n");break;
     }
-    /*thread_create(pdu1_handle, pduDataJson); break;*/
     cJSON_Delete(rootJson);
-    //thread_wait();
 }
 
 /*AP report device data to M1*/
@@ -922,29 +920,4 @@ static int get_table_id(sqlite3* db, char* sql)
     return id;
 }
 
-static void ByteToHexStr(const unsigned char* source, char* dest, int sourceLen)  
-{  
-    short i;  
-    unsigned char highByte, lowByte;  
-  
-    for (i = 0; i < sourceLen; i++)  
-    {  
-        highByte = source[i] >> 4;  
-        lowByte = source[i] & 0x0f ;  
-  
-        highByte += 0x30;  
-  
-        if (highByte > 0x39)  
-                dest[i * 2] = highByte + 0x07;  
-        else  
-                dest[i * 2] = highByte;  
-  
-        lowByte += 0x30;  
-        if (lowByte > 0x39)  
-            dest[i * 2 + 1] = lowByte + 0x07;  
-        else  
-            dest[i * 2 + 1] = lowByte;  
-    }  
-    return ;  
-}
 
