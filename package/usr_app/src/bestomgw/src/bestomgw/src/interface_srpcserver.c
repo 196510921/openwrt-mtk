@@ -373,30 +373,34 @@ static void srpcSendAll(uint8_t* srpcMsg)
 
 void SRPC_ProcessIncoming(uint8_t *pBuf, unsigned int nlen, uint32_t clientFd)
 {
-	srpcProcessMsg_t func;
+	
+	printf("SRPC_ProcessIncoming:%s",pBuf);
+	data_handle((char*)pBuf);
 
-  printf("SRPC_ProcessIncoming++[%x]\n", pBuf[SRPC_FUNC_ID]);
+	//srpcProcessMsg_t func;
+
+  	//printf("SRPC_ProcessIncoming++[%x]\n", pBuf[SRPC_FUNC_ID]);
 	/* look up and call processing function */
 	
 	//?? json
 	//char * pMsg;
-	int ipos=0;
-	int i;
+	//int ipos=0;
+	//int i;
 	//char cjsonbuf[4096]={0};
-	char cjsonbuf[1024]={0};
-	char scmd[20]={0};
+	//char cjsonbuf[1024]={0};
+	//char scmd[20]={0};
 	//int nlen= pBuf[1]*256 + pBuf[2];
 	
-	for (i=0;i<nlen;i++ )
-	{
-    	printf("%s,%d,pBuf[%d]=%u \n",__FUNCTION__,__LINE__,i,pBuf[i]);
-	   if (pBuf[i]==0x3B) 
-	   {
-	     ipos = i; 
-	     break;
-	   }
-	}
-	gw_debug("SRPC_ProcessIncoming step 1", &pBuf[0], nlen);
+	// for (i=0;i<nlen;i++ )
+	// {
+ //    	printf("%s,%d,pBuf[%d]=%u \n",__FUNCTION__,__LINE__,i,pBuf[i]);
+	//    if (pBuf[i]==0x3B) 
+	//    {
+	//      ipos = i; 
+	//      break;
+	//    }
+	// }
+	// gw_debug("SRPC_ProcessIncoming step 1", &pBuf[0], nlen);
 #if 0	
 //	printf("%s,%d,ipos=%d \n",__FUNCTION__,__LINE__,ipos);	
 		#if 1
@@ -1770,16 +1774,17 @@ void SRPC_RxCB(int clientFd)
 	}
 	printf("byteToRead:%d\n",byteToRead);
 	//while (byteToRead)
-	if (byteToRead)
+	while(byteToRead)
 	{
 #if 1	 
-	unsigned char buffer[2048*2] = {0};//
-	unsigned char read_buf[2048], data[1024];
-	int i, head = 0, tail = 0; //
-	int nready, nread, dlen;
+		unsigned char buffer[2048*2] = {0};//
+		unsigned char read_buf[2048], data[1024];
+		int i, head = 0, tail = 0; //
+		int nready, nread, dlen;
 
 		byteRead = 0;
 		byteRead += read(clientFd, read_buf, sizeof(read_buf));
+		byteToRead -= byteRead;
 		printf("byteRead:%d\n",byteRead);
 		if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail))
 		{

@@ -54,6 +54,7 @@
 #include <errno.h>
 
 #include "socket_server.h"
+#include "m1_protocol.h"
 
 #define MAX_CLIENTS 50
 
