@@ -5,12 +5,24 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
-//#include <stdbool.h>
 #include <errno.h>
 #include <time.h>
 
-void data_handle(char* data);
-int _test_data(void);
+#include "cJSON.h"
+#include "sqlite3.h"
+
+typedef struct _socket_package{
+ 	int fdClient;
+ 	char* data;
+}m1_package_t;
+
+typedef struct _payload{
+  	int fdClient;
+  	cJSON* pdu;
+}payload_t;
+
+//void data_handle(char* data);
+void data_handle(m1_package_t package);
 
 /*Download*********************************************************************/
 /*APP request AP information*/

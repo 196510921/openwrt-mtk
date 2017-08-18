@@ -59,6 +59,7 @@
 
 #include "zbSocCmd.h"
 #include "utils.h"
+#include "m1_protocol.h"
 
 
 void SRPC_RxCB(int clientFd);
@@ -373,9 +374,14 @@ static void srpcSendAll(uint8_t* srpcMsg)
 
 void SRPC_ProcessIncoming(uint8_t *pBuf, unsigned int nlen, uint32_t clientFd)
 {
+
+	m1_package_t package;
+
+	package.fdClient = clientFd;
+	package.data = pBuf;
 	
 	printf("SRPC_ProcessIncoming:%s",pBuf);
-	data_handle((char*)pBuf);
+	data_handle(package);
 
 	//srpcProcessMsg_t func;
 

@@ -3,8 +3,6 @@
 #include <time.h>
 
 #include "m1_protocol.h"
-#include "cJSON.h"
-#include "sqlite3.h"
 #include "socket_server.h"
 
 #define M1_PROTOCOL_DEBUG    1
@@ -13,30 +11,31 @@
 
 extern pthread_mutex_t mut;
 
-static void* AP_report_data_handle(cJSON* data);
-static void* APP_read_handle(cJSON* data);
-static void* APP_write_handle(cJSON*data);
-static void* APP_echo_dev_info_handle(cJSON*data);
-static void* APP_req_added_dev_info_handle(void);
-static void* APP_net_control(cJSON* data);
-static void* M1_report_dev_info(cJSON*data);
-static void* M1_report_ap_info(void);
-static void* AP_report_dev_handle(cJSON* data);
-static void* AP_report_ap_handle(cJSON* data);
+static void* AP_report_data_handle(payload_t data);
+static void* APP_read_handle(payload_t data);
+static void* APP_write_handle(payload_t data);
+static void* APP_echo_dev_info_handle(payload_t data);
+static void* APP_req_added_dev_info_handle(int fdClient);
+static void* APP_net_control(payload_t data);
+static void* M1_report_dev_info(payload_t data);
+static void* M1_report_ap_info(int fdClient);
+static void* AP_report_dev_handle(payload_t data);
+static void* AP_report_ap_handle(payload_t data);
 static void getNowTime(char* time);
 static int get_table_id(sqlite3* db, char* sql);
 
 char* db_path = "./db/dev_info.db";
 
-void data_handle(char* data)
+void data_handle(m1_package_t package)
 {
+    payload_t pdu;
     cJSON* rootJson = NULL;
     cJSON* pduJson = NULL;
     cJSON* pduTypeJson = NULL;
     cJSON* pduDataJson = NULL;
     int pduType;
 
-    rootJson = cJSON_Parse(data);
+    rootJson = cJSON_Parse(package.data);
     if(NULL == rootJson){
         printf("rootJson null\n");
 
@@ -58,19 +57,22 @@ void data_handle(char* data)
         printf("devData null”\n");
 
     }
-            
+     
+    pdu.fdClient = package.fdClient;
+    pdu.pdu = pduDataJson;
+
     printf("pduType:%x\n",pduType);
     switch(pduType){
-                    case TYPE_REPORT_DATA: AP_report_data_handle(pduDataJson);      break;
-                    case TYPE_DEV_READ: APP_read_handle(pduDataJson);               break;
-                    case TYPE_DEV_WRITE: APP_write_handle(pduDataJson);             break;
-                    case TYPE_ECHO_DEV_INFO: APP_echo_dev_info_handle(pduDataJson); break;
-                    case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle();      break;
-                    case TYPE_DEV_NET_CONTROL: APP_net_control(pduDataJson);        break;
-                    case TYPE_REQ_AP_INFO: M1_report_ap_info();                     break;
-                    case TYPE_REQ_DEV_INFO: M1_report_dev_info(pduDataJson);        break;
-                    case TYPE_AP_REPORT_DEV_INFO: AP_report_dev_handle(pduDataJson);break;
-                    case TYPE_AP_REPORT_AP_INFO: AP_report_ap_handle(pduDataJson);  break;
+                    case TYPE_REPORT_DATA: AP_report_data_handle(pdu);      break;
+                    case TYPE_DEV_READ: APP_read_handle(pdu);               break;
+                    case TYPE_DEV_WRITE: APP_write_handle(pdu);             break;
+                    case TYPE_ECHO_DEV_INFO: APP_echo_dev_info_handle(pdu); break;
+                    case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle( package.fdClient);      break;
+                    case TYPE_DEV_NET_CONTROL: APP_net_control(pdu);        break;
+                    case TYPE_REQ_AP_INFO: M1_report_ap_info( package.fdClient);                     break;
+                    case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu);        break;
+                    case TYPE_AP_REPORT_DEV_INFO: AP_report_dev_handle(pdu);break;
+                    case TYPE_AP_REPORT_AP_INFO: AP_report_ap_handle(pdu);  break;
 
         default: printf("pdu type not match\n");break;
     }
@@ -78,7 +80,7 @@ void data_handle(char* data)
 }
 
 /*AP report device data to M1*/
-static void* AP_report_data_handle(cJSON* data)
+static void* AP_report_data_handle(payload_t data)
 {
 
     int i,j, number1, number2, rc;
@@ -113,10 +115,10 @@ static void* AP_report_data_handle(cJSON* data)
     sql = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 
-    number1 = cJSON_GetArraySize(data);
+    number1 = cJSON_GetArraySize(data.pdu);
     printf("number1:%d\n",number1);
     for(i = 0; i < number1; i++){
-        devDataJson = cJSON_GetArrayItem(data, i);
+        devDataJson = cJSON_GetArrayItem(data.pdu, i);
         devNameJson = cJSON_GetObjectItem(devDataJson, "devName");
         printf("devName:%s\n",devNameJson->valuestring);
         devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
@@ -151,7 +153,7 @@ static void* AP_report_data_handle(cJSON* data)
 }
 
 /*AP report device information to M1*/
-static void* AP_report_dev_handle(cJSON* data)
+static void* AP_report_dev_handle(payload_t data)
 {
     int i, number, rc;
     char time[30];
@@ -180,13 +182,13 @@ static void* AP_report_dev_handle(cJSON* data)
         fprintf(stderr, "Opened database successfully\n");  
     }
     
-    portJson = cJSON_GetObjectItem(data,"port");
+    portJson = cJSON_GetObjectItem(data.pdu,"port");
     printf("port:%d\n",portJson->valueint);
-    apIdJson = cJSON_GetObjectItem(data,"APId");
+    apIdJson = cJSON_GetObjectItem(data.pdu,"APId");
     printf("APId:%s\n",apIdJson->valuestring);
-    apNameJson = cJSON_GetObjectItem(data,"APName");
+    apNameJson = cJSON_GetObjectItem(data.pdu,"APName");
     printf("APName:%s\n",apNameJson->valuestring);
-    devJson = cJSON_GetObjectItem(data,"dev");
+    devJson = cJSON_GetObjectItem(data.pdu,"dev");
     number = cJSON_GetArraySize(devJson); 
 
     id = get_table_id(db, sql);
@@ -218,7 +220,7 @@ static void* AP_report_dev_handle(cJSON* data)
 }
 
 /*AP report information to M1*/
-static void* AP_report_ap_handle(cJSON* data)
+static void* AP_report_ap_handle(payload_t data)
 {
     int rc;
     char time[30];
@@ -242,11 +244,11 @@ static void* AP_report_ap_handle(cJSON* data)
         fprintf(stderr, "Opened database successfully\n");  
     }
 
-    portJson = cJSON_GetObjectItem(data,"port");
+    portJson = cJSON_GetObjectItem(data.pdu,"port");
     printf("port:%d\n",portJson->valueint);
-    apIdJson = cJSON_GetObjectItem(data,"APId");
+    apIdJson = cJSON_GetObjectItem(data.pdu,"APId");
     printf("APId:%s\n",apIdJson->valuestring);
-    apNameJson = cJSON_GetObjectItem(data,"APName");
+    apNameJson = cJSON_GetObjectItem(data.pdu,"APName");
     printf("APName:%s\n",apNameJson->valuestring);
     
     id = get_table_id(db, sql);
@@ -267,7 +269,7 @@ static void* AP_report_ap_handle(cJSON* data)
     sqlite3_close(db);    
 }
 
-static void* APP_read_handle(cJSON* data)
+static void* APP_read_handle(payload_t data)
 {   
     /*read json*/
     cJSON* devDataJson = NULL;
@@ -335,11 +337,11 @@ static void* APP_read_handle(cJSON* data)
     int i,j, number1,number2,total_column;
     char* dev_id = NULL;
 
-    number1 = cJSON_GetArraySize(data);
+    number1 = cJSON_GetArraySize(data.pdu);
     printf("number1:%d\n",number1);
     for(i = 0; i < number1; i++){
         /*read json*/
-        devDataJson = cJSON_GetArrayItem(data, i);
+        devDataJson = cJSON_GetArrayItem(data.pdu, i);
         devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
         printf("devId:%s\n",devIdJson->valuestring);
         dev_id = devIdJson->valuestring;
@@ -417,10 +419,11 @@ static void* APP_read_handle(cJSON* data)
     }
 
     printf("string:%s\n",p);
+    socketSeverSend(p, strlen(p), data.fdClient);
     cJSON_Delete(pJsonRoot);
 }
 
-static void* APP_write_handle(cJSON*data)
+static void* APP_write_handle(payload_t data)
 {
     int i,j, number1,number2;
     char time[30];
@@ -453,10 +456,10 @@ static void* APP_write_handle(cJSON*data)
     /*insert data*/
     char sql_1[200] ;
     char* sql_2 = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
-    number1 = cJSON_GetArraySize(data);
+    number1 = cJSON_GetArraySize(data.pdu);
     printf("number1:%d\n",number1);
     for(i = 0; i < number1; i++){
-        devDataJson = cJSON_GetArrayItem(data, i);
+        devDataJson = cJSON_GetArrayItem(data.pdu, i);
         devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
         printf("devId:%s\n",devIdJson->valuestring);
         paramDataJson = cJSON_GetObjectItem(devDataJson, "param");
@@ -502,7 +505,7 @@ static void* APP_write_handle(cJSON*data)
     sqlite3_close(db);
 }
 
-static void* APP_echo_dev_info_handle(cJSON*data)
+static void* APP_echo_dev_info_handle(payload_t data)
 {
     int i,number,rc;
     cJSON* devDataJson = NULL;
@@ -516,8 +519,8 @@ static void* APP_echo_dev_info_handle(cJSON*data)
 
     sqlite3_open(db_path,&db);
 
-    APIdJson = cJSON_GetObjectItem(data, "APId");
-    devDataJson = cJSON_GetObjectItem(data,"devId");
+    APIdJson = cJSON_GetObjectItem(data.pdu, "APId");
+    devDataJson = cJSON_GetObjectItem(data.pdu,"devId");
     printf("AP_ID:%s\n",APIdJson->valuestring);
 
     sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = %s and AP_ID = %s;",APIdJson->valuestring,APIdJson->valuestring);
@@ -545,7 +548,7 @@ static void* APP_echo_dev_info_handle(cJSON*data)
     sqlite3_close(db);
 }
 
-static void* APP_req_added_dev_info_handle(void)
+static void* APP_req_added_dev_info_handle(int fdClient)
 {
     /*cJSON*/
     int pduType = TYPE_M1_REPORT_ADDED_INFO;
@@ -626,9 +629,9 @@ static void* APP_req_added_dev_info_handle(void)
             }
             cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 
-            cJSON_AddNumberToObject(devDataObject, "PORT", sqlite3_column_int(stmt_1, 5));
-            cJSON_AddStringToObject(devDataObject, "AP_ID",  (const char*)sqlite3_column_text(stmt_1, 4));
-            cJSON_AddStringToObject(devDataObject, "DEV_NAME", (const char*)sqlite3_column_text(stmt_1, 3));
+            cJSON_AddNumberToObject(devDataObject, "PORT", sqlite3_column_int(stmt_1, 4));
+            cJSON_AddStringToObject(devDataObject, "AP_ID",  (const char*)sqlite3_column_text(stmt_1, 3));
+            cJSON_AddStringToObject(devDataObject, "DEV_NAME", (const char*)sqlite3_column_text(stmt_1, 2));
             
             /*create devData array*/
              devArray = cJSON_CreateArray();
@@ -678,18 +681,20 @@ static void* APP_req_added_dev_info_handle(void)
     }
 
     printf("string:%s\n",p);
+    /*response to client*/
+    socketSeverSend(p, strlen(p), fdClient);
     cJSON_Delete(pJsonRoot);
 
 }
 
-static void* APP_net_control(cJSON *data)
+static void* APP_net_control(payload_t data)
 {
     
-    printf("  net control:%d\n",data->valueint);
+    printf("  net control:%d\n",data.pdu->valueint);
     
 }
 
-static void* M1_report_ap_info(void)
+static void* M1_report_ap_info(int fdClient)
 {
     printf(" M1_report_ap_info\n");
     /*cJSON*/
@@ -787,18 +792,20 @@ static void* M1_report_ap_info(void)
     }
 
     printf("string:%s\n",p);
+    /*response to client*/
+    socketSeverSend(p, strlen(p), fdClient);
     cJSON_Delete(pJsonRoot);
 
 }
 
-static void* M1_report_dev_info(cJSON*data)
+static void* M1_report_dev_info(payload_t data)
 {
      printf(" M1_report_dev_info\n");
     /*cJSON*/
     int pduType = TYPE_AP_REPORT_DEV_INFO;
     char* ap = NULL;
 
-    ap = data->valuestring;
+    ap = data.pdu->valuestring;
 
 
     cJSON * pJsonRoot = NULL;
@@ -895,12 +902,14 @@ static void* M1_report_dev_info(cJSON*data)
     }
 
     printf("string:%s\n",p);
+    /*response to client*/
+    socketSeverSend(p, strlen(p), data.fdClient);
     cJSON_Delete(pJsonRoot);
 
 
 }
 
-static void* common_rsp(cJSON* data)
+static void* common_rsp(payload_t data)
 {
     printf(" M1_report_dev_info\n");
     /*cJSON*/
