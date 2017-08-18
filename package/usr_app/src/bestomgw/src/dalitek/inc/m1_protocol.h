@@ -11,15 +11,35 @@
 #include "cJSON.h"
 #include "sqlite3.h"
 
+/*api result*/
+enum m1_protocol_result{
+	M1_PROTOCOL_OK = 0,
+	M1_PROTOCOL_FAILED,
+	M1_PROTOCOL_NO_RSP,
+};
+
+/*response result*/
+enum rsp_result{
+	RSP_FAILED = 0,
+	RSP_OK = 1,
+};
+/*socket package*/
 typedef struct _socket_package{
  	int fdClient;
  	char* data;
 }m1_package_t;
-
+/*pdu*/
 typedef struct _payload{
   	int fdClient;
   	cJSON* pdu;
 }payload_t;
+/*common response data*/
+typedef struct _rsp_data{
+	int fdClient;
+	int sn;
+	int pduType;
+	int result;
+}rsp_data_t;
 
 //void data_handle(char* data);
 void data_handle(m1_package_t package);
