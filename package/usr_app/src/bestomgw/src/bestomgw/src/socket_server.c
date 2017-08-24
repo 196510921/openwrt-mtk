@@ -39,6 +39,8 @@
 /*********************************************************************
  * INCLUDES
  */
+#define _GNU_SOURCE  1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,8 +82,9 @@ socketServerCb_t socketServerConnectCb;
 /*********************************************************************
  * LOCAL FUNCTION PROTOTYPES
  */
-static void deleteSocketRec(int rmSocketFd);
+//static void deleteSocketRec(int rmSocketFd);
 static int createSocketRec(void);
+static void deleteSocketRec(int rmSocketFd);
 
 /*********************************************************************
  * FUNCTIONS
@@ -336,7 +339,7 @@ uint32 socketSeverGetNumClients(void)
  */
 void socketSeverPoll(int clinetFd, int revent)
 {
-	printf("pollSocket++\n");
+	printf("pollSocket++, revent: %d\n",revent);
 
 	//is this a new connection on the listening socket
 	if (clinetFd == socketRecordHead->socketFd)
@@ -364,6 +367,7 @@ void socketSeverPoll(int clinetFd, int revent)
 		}
 		if (revent & POLLRDHUP)
 		{
+			printf("POLLRDHUP\n");
 			//its a shut down close the socket
 			printf("Client fd:%d disconnected\n", clinetFd);
 

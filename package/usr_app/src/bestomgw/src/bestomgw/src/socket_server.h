@@ -59,7 +59,7 @@ typedef void (*socketServerCb_t)(int clientFd);
 //#define SOCKET_SERVER_PORT 1234
 #define MAX_CLIENTS 50
 
-#define POLLRDHUP 1
+//#define POLLRDHUP 1
 
 /*
  * serverSocketInit - initialises the server.
@@ -100,6 +100,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient);
  * socketSeverClose - Closes the client connections.
  */
 void socketSeverClose(void);
+
 
 #ifdef __cplusplus
 }

@@ -1563,7 +1563,7 @@ static uint8_t SRPC_permit_join_network(uint8_t *pBuf, uint32_t clientFd)
 	bool state;
 
        uint8_t duration;
-      duration = 0xFF; // 60Ãë=0x3C  25 Ãë =0x19  0xFF;  //ÓÀ¾Ã´ò¿ª
+      duration = 0xFF; // 60ÃƒÃ«=0x3C  25 ÃƒÃ« =0x19  0xFF;  //Ã“Ã€Â¾ÃƒÂ´Ã²Â¿Âª
 	zbSocOpenNwk(duration);
 
 	return 0;
@@ -1740,19 +1740,11 @@ void SRPC_ConnectCB(int clientFd)
 	 epInfo = devListGetNextDev(epInfo->nwkAddr, epInfo->endpoint);
 	 }
 	 */
-	 srpcSend("connected success !  ", clientFd);
-	printf("SRPC_ConnectCB--\n");
+	//srpcSend("connected success !  ", clientFd);
+	printf("connected success !\n");
+	//printf("SRPC_ConnectCB--\n");
 }
 
-//??????? ????
-void analydealcmdjson(int fd, unsigned char read_buf[256], unsigned char send_buf[256], int nlen)
-{
-
-	
-
-
-
-}
 
 /***************************************************************************************************
  * @fn      SRPC_RxCB

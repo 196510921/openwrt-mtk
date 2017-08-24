@@ -35,6 +35,7 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+#define _GNU_SOURCE  1
 
 #include <string.h>
 #include <stdio.h>
@@ -50,7 +51,7 @@
 
 
 #define MAX_DB_FILENAMR_LEN 255
-#define POLLRDHUP 1
+
 
 //全局变量	
 //int fdserwrite, fdread; //串口 写,读
@@ -101,76 +102,16 @@ int main(int argc, char* argv[])
 
 	printf("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 
-	
-	// accept only 1
-	// if (argc != 2)
-	// {
-	// 	//usage(argv[0]);
-	// 	printf("attempting to use /dev/ttyACM0\n");
-		
-	// 	zbSoc_fd = zbSocOpen("/dev/ttyUSB0");
-
-	// 	//if (zbSoc_fd<0 )
-	// 	//	{zbSoc_fd = zbSocOpen("/dev/null");}
-	// 	//init_serial();
-
-	// }
-	// else
-	// {
-	// 	zbSoc_fd = zbSocOpen(argv[1]);
-	// }
-
-	// if (zbSoc_fd == -1)
-	// {
-	// 	exit(-1);
-	// }
-
-	// //printf("zllMain: restoring device, group and scene lists\n");
-	
-	// sprintf(dbFilename, "%.*s/devicelistfile.dat",
-	// 		strrchr(argv[0], '/') - argv[0], argv[0]);
-	// printf("zllMain: device DB file name %s\n", dbFilename);
-	// devListInitDatabase(dbFilename);
-
-	// sprintf(dbFilename, "%.*s/grouplistfile.dat", strrchr(argv[0], '/') - argv[0],
-	// 		argv[0]);
-	// printf("zllMain: group DB file name %s\n", dbFilename);
-	// groupListInitDatabase(dbFilename);
-
-	// sprintf(dbFilename, "%.*s/scenelistfile.dat", strrchr(argv[0], '/') - argv[0],
-	// 		argv[0]);
-	// printf("zllMain: scene DB file name %s\n", dbFilename);
-	// sceneListInitDatabase(dbFilename);
-
- //   	int rc;
-	//  char processname[1024];
- //     GetCurrentExcutableFilePathName(sexepath, processname, sizeof(sexepath));
-
-	// sprintf(slogpath,"%szigbee.log",sexepath);
-	// sprintf(sdbpath,"%ssmgw.db",sexepath);
-	// sprintf(sinipath,"%ssmgw.ini",sexepath);
-	// rc = sqlite3_open(sdbpath, &gdb); //打开指定的数据库文件,如果不存在将创建一个同名的数据库文件
-	// if( rc )
-	// {
-	// 	fprintf(stderr, "Can't open database: %s", sqlite3_errmsg(gdb));
-	// 	sqlite3_close(gdb);
-	// 	exit(1);
-	// }	
-	// printf("sexepath=%s; slogpath= %s; sdbpath=%s;sinipath=%s ;gdb =%d\n", sexepath, slogpath, sdbpath, sinipath,gdb );
-	
-	// zbSocRegisterCallbacks(zbSocCbs);
-
-	// zbSocGetInfo();
-
 	SRPC_Init();
 
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
-
+		printf("numClientFds:%d\n",numClientFds);
 		//poll on client socket fd's and the ZllSoC serial port for any activity
 		if (numClientFds)
 		{
+			printf("numClientFds:%d\n",numClientFds);
 			int pollFdIdx;
 			int *client_fds = malloc(numClientFds * sizeof(int));
 			//socket client FD's + zllSoC serial port FD
@@ -180,33 +121,24 @@ int main(int argc, char* argv[])
 			if (client_fds && pollFds)
 			{
 				//set the zllSoC serial port FD in the poll file descriptors
-				pollFds[0].fd = zbSoc_fd;
-				pollFds[0].events = POLLIN;
+				// pollFds[0].fd = zbSoc_fd;
+				// pollFds[0].events = POLLIN;
 
 				//Set the socket file descriptors
 				socketSeverGetClientFds(client_fds, numClientFds);
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
-					pollFds[pollFdIdx + 1].fd = client_fds[pollFdIdx];
-					pollFds[pollFdIdx + 1].events = POLLIN | POLLRDHUP;
-					//printf("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
+					pollFds[pollFdIdx].fd = client_fds[pollFdIdx];
+					pollFds[pollFdIdx].events = POLLIN | POLLRDHUP;
+					printf("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
 				}
 
 				printf("zllMain: waiting for poll()\n");
 
-				poll(pollFds, (numClientFds + 1), -1);
+				poll(pollFds, (numClientFds), -1);
+				printf("poll out\n");
 
-				//printf("zllMain: got poll()\n");
-
-				//did the poll unblock because of the zllSoC serial?
-				if (pollFds[0].revents)
-				{
-					printf("Message from ZLL SoC\n");
-					//zbSocProcessRpc();
-					myzbSocProcessRpc();//串口接收数据
-				}
-				//did the poll unblock because of activity on the socket interface?
-				for (pollFdIdx = 1; pollFdIdx < (numClientFds + 1); pollFdIdx++)
+				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
 					if ((pollFds[pollFdIdx].revents))
 					{
@@ -217,6 +149,7 @@ int main(int argc, char* argv[])
 
 				free(client_fds);
 				free(pollFds);
+				printf("free client\n");
 			}
 		}
 	}
