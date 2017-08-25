@@ -684,7 +684,6 @@ static int APP_req_added_dev_info_handle(int clientFd)
     /*sqlite3*/
     int rc;
     rc = sqlite3_open(db_path, &db);  
-  
     if( rc ){  
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
         return M1_PROTOCOL_FAILED;  
@@ -776,8 +775,91 @@ static int APP_req_added_dev_info_handle(int clientFd)
 
 static int APP_net_control(payload_t data)
 {
+    printf("APP_net_control\n");
+    int pduType = TYPE_DEV_NET_CONTROL;
+    cJSON * pJsonRoot = NULL;
+
+    cJSON* apIdJson = NULL;
+    cJSON* valueJson = NULL;
+
+    if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
+
+    apIdJson = cJSON_GetObjectItem(data.pdu, "apId");
+    printf("apId:%s\n",apIdJson->valuestring);
+    valueJson = cJSON_GetObjectItem(data.pdu, "value");
+    printf("value:%d\n",valueJson->valueint);
+
+    /*sqlite3*/
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    char sql[200]; 
+    int rc, clientFd, row_n;   
+
+    rc = sqlite3_open(db_path, &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
+    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = %s;",apIdJson->valuestring);
+    row_n = sql_row_number(db, sql);
+    printf("row_n:%d\n",row_n);
+    if(row_n > 0){ 
+        sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+        rc = sqlite3_step(stmt);
+        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+        if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
+        clientFd = sqlite3_column_int(stmt,0);
+        /*create json*/
+        pJsonRoot = cJSON_CreateObject();
+        if(NULL == pJsonRoot)
+        {
+            printf("pJsonRoot NULL\n");
+            cJSON_Delete(pJsonRoot);
+            return M1_PROTOCOL_FAILED;
+        }
+
+        cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+        cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
+        cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
+        cJSON_AddNumberToObject(pJsonRoot, "cmdType", 2);
+        /*create pdu object*/
+        cJSON * pduJsonObject = NULL;
+        pduJsonObject = cJSON_CreateObject();
+        if(NULL == pduJsonObject)
+        {
+            // create object faild, exit
+            cJSON_Delete(pduJsonObject);
+            return M1_PROTOCOL_FAILED;
+        }
+        /*add pdu to root*/
+        cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
+        /*add pdu type to pdu object*/
+        cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
+        /*add dev data to pdu object*/
+        cJSON_AddNumberToObject(pduJsonObject, "devData", valueJson->valueint);
+
+    }else{
+        return M1_PROTOCOL_FAILED;        
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    char * p = cJSON_Print(pJsonRoot);
     
-    printf("  net control:%d\n",data.pdu->valueint);
+    if(NULL == p)
+    {    
+        cJSON_Delete(pJsonRoot);
+        return M1_PROTOCOL_FAILED;
+    }
+
+    printf("string:%s\n",p);
+    /*response to client*/
+    socketSeverSend((uint8*)p, strlen(p), clientFd);
+    cJSON_Delete(pJsonRoot);
 
     return M1_PROTOCOL_OK;
 }
