@@ -21,6 +21,7 @@ extern pthread_mutex_t mut;
 static int AP_report_data_handle(payload_t data);
 static int APP_read_handle(payload_t data);
 static int APP_write_handle(payload_t data);
+static int M1_write_to_AP(cJSON* data);
 static int APP_echo_dev_info_handle(payload_t data);
 static int APP_req_added_dev_info_handle(int clientFd);
 static int APP_net_control(payload_t data);
@@ -88,7 +89,7 @@ void data_handle(m1_package_t package)
     switch(pduType){
                     case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
                     case TYPE_DEV_READ: APP_read_handle(pdu); break;
-                    case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); break;
+                    case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson);break;
                     case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
                     case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle( package.clientFd); break;
                     case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
@@ -476,7 +477,7 @@ static int APP_read_handle(payload_t data)
     sqlite3_finalize(stmt_1);
     sqlite3_close(db);
 
-    char * p = cJSON_Print(pJsonRoot);
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -487,6 +488,86 @@ static int APP_read_handle(payload_t data)
     printf("string:%s\n",p);
     socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     cJSON_Delete(pJsonRoot);
+
+    return M1_PROTOCOL_OK;
+}
+
+static int M1_write_to_AP(cJSON* data)
+{
+    printf("M1_write_to_AP\n");
+    int sn = 2;
+    cJSON* snJson = NULL;
+    cJSON* pduJson = NULL;
+    cJSON* devDataJson = NULL;
+    cJSON* dataArrayJson = NULL;
+    cJSON* devIdJson = NULL;
+    /*更改sn*/
+    snJson = cJSON_GetObjectItem(data, "sn");
+    cJSON_SetIntValue(snJson, sn);
+    /*获取clientFd*/
+    pduJson = cJSON_GetObjectItem(data, "pdu");
+    devDataJson = cJSON_GetObjectItem(pduJson, "devData");
+    dataArrayJson = cJSON_GetArrayItem(devDataJson, 0);
+    devIdJson = cJSON_GetObjectItem(dataArrayJson, "devId");
+    printf("devId:%s\n",devIdJson->valuestring);
+
+    int clientFd;
+    /*sqlite3*/
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    int rc,row_n;
+    const char* ap_id = NULL;
+
+    rc = sqlite3_open(db_path, &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    } 
+
+    char sql[200];
+    /*get apId*/
+    sprintf(sql,"select AP_ID from all_dev where DEV_ID = %s limit 1;",devIdJson->valuestring);
+    row_n = sql_row_number(db, sql);
+    printf("row_n:%d\n",row_n);
+    if(row_n > 0){ 
+        sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+        rc = sqlite3_step(stmt);
+        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+        if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
+        ap_id = sqlite3_column_text(stmt,0);
+        printf("ap_id%s\n",ap_id);
+    }
+
+    /*get clientFd*/
+    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = %s limit 1;",ap_id);
+    row_n = sql_row_number(db, sql);
+    printf("row_n:%d\n",row_n);
+    if(row_n > 0){
+        sqlite3_reset(stmt); 
+        sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+        rc = sqlite3_step(stmt);
+        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+        if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
+        clientFd = sqlite3_column_int(stmt,0);
+    }
+
+    sqlite3_finalize(stmt);
+
+    char * p = cJSON_PrintUnformatted(data);
+    
+    if(NULL == p)
+    {    
+        cJSON_Delete(data);
+        return M1_PROTOCOL_FAILED;
+    }
+
+    printf("string:%s\n",p);
+    /*response to client*/
+    socketSeverSend((uint8*)p, strlen(p), clientFd);
+
+    sqlite3_close(db);
 
     return M1_PROTOCOL_OK;
 }
@@ -757,7 +838,7 @@ static int APP_req_added_dev_info_handle(int clientFd)
     sqlite3_finalize(stmt_2);
     sqlite3_close(db);
 
-    char * p = cJSON_Print(pJsonRoot);
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -848,7 +929,7 @@ static int APP_net_control(payload_t data)
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    char * p = cJSON_Print(pJsonRoot);
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -953,7 +1034,7 @@ static int M1_report_ap_info(int clientFd)
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    char * p = cJSON_Print(pJsonRoot);
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1063,7 +1144,7 @@ static int M1_report_dev_info(payload_t data)
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    char * p = cJSON_Print(pJsonRoot);
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1127,7 +1208,7 @@ static int common_rsp(rsp_data_t data)
     cJSON_AddNumberToObject(devDataObject, "pduType", data.pduType);
     cJSON_AddNumberToObject(devDataObject, "result", data.result);
 
-    char * p = cJSON_Print(pJsonRoot);
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
