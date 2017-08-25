@@ -377,7 +377,7 @@ void SRPC_ProcessIncoming(uint8_t *pBuf, unsigned int nlen, uint32_t clientFd)
 
 	m1_package_t package;
 
-	package.fdClient = clientFd;
+	package.clientFd = clientFd;
 	package.data = pBuf;
 	
 	printf("SRPC_ProcessIncoming:%s",pBuf);

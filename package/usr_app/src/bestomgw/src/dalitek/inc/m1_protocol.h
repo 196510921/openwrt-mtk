@@ -25,17 +25,17 @@ enum rsp_result{
 };
 /*socket package*/
 typedef struct _socket_package{
- 	int fdClient;
+ 	int clientFd;
  	char* data;
 }m1_package_t;
 /*pdu*/
 typedef struct _payload{
-  	int fdClient;
+  	int clientFd;
   	cJSON* pdu;
 }payload_t;
 /*common response data*/
 typedef struct _rsp_data{
-	int fdClient;
+	int clientFd;
 	int sn;
 	int pduType;
 	int result;
