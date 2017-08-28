@@ -1,15 +1,5 @@
 #ifndef _M1_PROTOCOL_H_
 #define _M1_PROTOCOL_H_
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/time.h>
-#include <errno.h>
-#include <time.h>
-
-#include "cJSON.h"
-#include "sqlite3.h"
 
 /*api result*/
 enum m1_protocol_result{

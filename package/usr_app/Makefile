@@ -5,12 +5,15 @@ PKG_RELEASE:=1
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
+
 include $(INCLUDE_DIR)/package.mk
+include $(INCLUDE_DIR)/cmake.mk
 
 define Package/helloworld
-	SECTION:=utils
-	CATEGORY:=Utilities
-	TITLE:=Helloworld -- prints a snarky message
+  SECTION:=utils
+  CATEGORY:=Utilities
+  TITLE:=Helloworld -- prints a snarky message
+  DEPENDS:= +libc +USE_EGLIBC:librt +USE_EGLIBC:libpthread
 endef
 
 define Package/helloworld/description
@@ -18,7 +21,7 @@ define Package/helloworld/description
 endef
 
 define Build/Prepare
-	echo "Here is Package/Prepare"
+        echo "Here is Package/Prepare"
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
 endef

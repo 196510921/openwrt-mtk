@@ -889,6 +889,47 @@ static void* M1_report_dev_info(cJSON*data)
 
 }
 
+static void common_rsp(cJSON* data)
+{
+    printf(" M1_report_dev_info\n");
+    /*cJSON*/
+    int pduType = TYPE_COMMON_RSP;
+
+    cJSON * pJsonRoot = NULL;
+    /*sqlite3*/
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    char sql[100];
+
+    pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        printf("pJsonRoot NULL\n");
+        cJSON_Delete(pJsonRoot);
+        return NULL;
+    }
+
+    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
+    cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
+    /*create pdu object*/
+    cJSON * pduJsonObject = NULL;
+    pduJsonObject = cJSON_CreateObject();
+    if(NULL == pduJsonObject)
+    {
+        // create object faild, exit
+        cJSON_Delete(pduJsonObject);
+        return NULL;
+    }
+    /*add pdu to root*/
+    cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
+    /*add pdu type to pdu object*/
+    cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
+
+
+}
+
 static void getNowTime(char* _time)
 {
 

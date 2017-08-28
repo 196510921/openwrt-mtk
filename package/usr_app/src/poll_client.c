@@ -12,8 +12,9 @@
 #define HEAD_LEN    3
 
 #define MAXLINE     1024
-#define IPADDRESS   "192.168.137.163"
-#define SERV_PORT   63823
+#define IPADDRESS   "172.16.200.129"
+//#define IPADDRESS   "172.16.23.73"
+#define SERV_PORT   11235
 
 #define max(a,b) (a > b) ? a : b
 

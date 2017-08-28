@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "cJSON.h"
 #include "sqlite3.h"
 
 #include "m1_protocol.h"
@@ -98,7 +97,7 @@ void data_handle(m1_package_t package)
                     case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
                     case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
 
-        default: printf("pdu type not match\n");break;
+        default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
 
     if(rc != M1_PROTOCOL_NO_RSP){
@@ -413,7 +412,7 @@ static int APP_read_handle(payload_t data)
         paramTypeJson = cJSON_GetObjectItem(devDataJson, "paramType");
         number2 = cJSON_GetArraySize(paramTypeJson);
         /*get sql data json*/
-        sprintf(sql, "select DEV_NAME from param_table where DEV_ID  = %s order by time asc limit 1;", dev_id);
+        sprintf(sql, "select DEV_NAME from param_table where DEV_ID  = %s order by ID desc limit 1;", dev_id);
         printf("%s\n", sql);
         row_n = sql_row_number(db, sql);
         printf("row_n:%d\n",row_n);
@@ -449,7 +448,7 @@ static int APP_read_handle(payload_t data)
             /*read json*/
             paramJson = cJSON_GetArrayItem(paramTypeJson, j);
             /*get sql data json*/
-            sprintf(sql, "select VALUE from param_table where DEV_ID  = %s and TYPE = %05d order by time asc limit 1;", dev_id, paramJson->valueint);
+            sprintf(sql, "select VALUE from param_table where DEV_ID  = %s and TYPE = %05d order by ID desc limit 1;", dev_id, paramJson->valueint);
             printf("%s\n", sql);
             row_n = sql_row_number(db, sql);
             printf("row_n:%d\n",row_n);
