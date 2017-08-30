@@ -1,6 +1,7 @@
 #ifndef _M1_PROTOCOL_H_
 #define _M1_PROTOCOL_H_
 
+#include "cJSON.h"
 /*api result*/
 enum m1_protocol_result{
 	M1_PROTOCOL_OK = 0,

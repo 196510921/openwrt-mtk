@@ -29,6 +29,7 @@ static int M1_report_ap_info(int clientFd);
 static int AP_report_dev_handle(payload_t data);
 static int AP_report_ap_handle(payload_t data);
 static int common_rsp(rsp_data_t data);
+static int common_rsp_handle(payload_t data);
 
 static void getNowTime(char* time);
 static int sql_id(sqlite3* db, char* sql);
@@ -96,6 +97,7 @@ void data_handle(m1_package_t package)
                     case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
                     case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
                     case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
+                    case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -109,6 +111,16 @@ void data_handle(m1_package_t package)
     }
 
     cJSON_Delete(rootJson);
+}
+
+static int common_rsp_handle(payload_t data)
+{
+    cJSON* resultJson = NULL;
+    printf("common_rsp_handle\n");
+    if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
+
+    resultJson = cJSON_GetObjectItem(data.pdu, "result");
+    printf("result:%d\n",resultJson->valueint);
 }
 
 /*AP report device data to M1*/
@@ -293,16 +305,16 @@ static int AP_report_ap_handle(payload_t data)
     apNameJson = cJSON_GetObjectItem(data.pdu,"apName");
     printf("APName:%s\n",apNameJson->valuestring);
     /*update clientFd*/
-    sprintf(sql_1, "select ID from conn_info where AP_ID  = %s", apIdJson->valuestring);
+    sprintf(sql_1, "select ID from conn_info where AP_ID  = \"%s\"", apIdJson->valuestring);
     rc = sql_row_number(db, sql_1);
     printf("rc:%d\n",rc);
     if(rc > 0){
-        sprintf(sql_1, "update conn_info set CLIENT_FD = %d where AP_ID  = %s", data.clientFd, apIdJson->valuestring);
+        sprintf(sql_1, "update conn_info set CLIENT_FD = %d  AP_ID  = \"%s\"", data.clientFd, apIdJson->valuestring);
         printf("%s\n",sql_1);
     }else{
         sql = "select ID from conn_info order by ID desc limit 1";
         id = sql_id(db, sql);
-        sprintf(sql_1, " insert into conn_info(ID, AP_ID, CLIENT_FD) values(%d,%s,%d);", id, apIdJson->valuestring, data.clientFd);
+        sprintf(sql_1, " insert into conn_info(ID, AP_ID, CLIENT_FD) values(%d,\"%s\",%d);", id, apIdJson->valuestring, data.clientFd);
         printf("%s\n",sql_1);
     }
     rc = sql_exec(db, sql_1);
@@ -412,7 +424,7 @@ static int APP_read_handle(payload_t data)
         paramTypeJson = cJSON_GetObjectItem(devDataJson, "paramType");
         number2 = cJSON_GetArraySize(paramTypeJson);
         /*get sql data json*/
-        sprintf(sql, "select DEV_NAME from param_table where DEV_ID  = %s order by ID desc limit 1;", dev_id);
+        sprintf(sql, "select DEV_NAME from param_table where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
         printf("%s\n", sql);
         row_n = sql_row_number(db, sql);
         printf("row_n:%d\n",row_n);
@@ -448,7 +460,7 @@ static int APP_read_handle(payload_t data)
             /*read json*/
             paramJson = cJSON_GetArrayItem(paramTypeJson, j);
             /*get sql data json*/
-            sprintf(sql, "select VALUE from param_table where DEV_ID  = %s and TYPE = %05d order by ID desc limit 1;", dev_id, paramJson->valueint);
+            sprintf(sql, "select VALUE from param_table where DEV_ID  = \"%s\" and TYPE = %05d order by ID desc limit 1;", dev_id, paramJson->valueint);
             printf("%s\n", sql);
             row_n = sql_row_number(db, sql);
             printf("row_n:%d\n",row_n);
@@ -527,7 +539,7 @@ static int M1_write_to_AP(cJSON* data)
 
     char sql[200];
     /*get apId*/
-    sprintf(sql,"select AP_ID from all_dev where DEV_ID = %s limit 1;",devIdJson->valuestring);
+    sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" limit 1;",devIdJson->valuestring);
     row_n = sql_row_number(db, sql);
     printf("row_n:%d\n",row_n);
     if(row_n > 0){ 
@@ -540,7 +552,7 @@ static int M1_write_to_AP(cJSON* data)
     }
 
     /*get clientFd*/
-    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = %s limit 1;",ap_id);
+    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\" limit 1;",ap_id);
     row_n = sql_row_number(db, sql);
     printf("row_n:%d\n",row_n);
     if(row_n > 0){
@@ -682,7 +694,7 @@ static int APP_echo_dev_info_handle(payload_t data)
         devDataJson = cJSON_GetObjectItem(devdataArrayJson,"devId");
         printf("AP_ID:%s\n",APIdJson->valuestring);
 
-        sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = %s and AP_ID = %s;",APIdJson->valuestring,APIdJson->valuestring);
+        sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
         printf("sql_1:%s\n",sql_1);
         rc = sqlite3_exec(db, sql_1, NULL, 0, &err_msg);
         if(rc != SQLITE_OK){
@@ -698,7 +710,7 @@ static int APP_echo_dev_info_handle(payload_t data)
                 devArrayJson = cJSON_GetArrayItem(devDataJson, j);
                 printf("  devId:%s\n",devArrayJson->valuestring);
 
-                sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = %s and AP_ID = %s;",devArrayJson->valuestring,APIdJson->valuestring);
+                sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",devArrayJson->valuestring,APIdJson->valuestring);
                 printf("sql_1:%s\n",sql_1);
                 rc = sqlite3_exec(db, sql_1, NULL, 0, &err_msg);
                 if(rc != SQLITE_OK){
@@ -809,7 +821,7 @@ static int APP_req_added_dev_info_handle(int clientFd)
             /*add devData array to pdu pbject*/
             cJSON_AddItemToObject(devDataObject, "dev", devArray);
             /*sqlite3*/
-            sprintf(sql_2,"select * from all_dev where AP_ID  = %s and AP_ID != DEV_ID and ADDED = 1;",sqlite3_column_text(stmt_1, 3));
+            sprintf(sql_2,"select * from all_dev where AP_ID  = \"%s\" and AP_ID != DEV_ID and ADDED = 1;",sqlite3_column_text(stmt_1, 3));
             printf("sql_2:%s\n",sql_2);
             row_n = sql_row_number(db, sql_1);
             printf("row_n:%d\n",row_n);
@@ -883,7 +895,7 @@ static int APP_net_control(payload_t data)
         fprintf(stderr, "Opened database successfully\n");  
     }
 
-    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = %s;",apIdJson->valuestring);
+    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",apIdJson->valuestring);
     row_n = sql_row_number(db, sql);
     printf("row_n:%d\n",row_n);
     if(row_n > 0){ 
@@ -1114,7 +1126,7 @@ static int M1_report_dev_info(payload_t data)
     int row_n;
     cJSON*  devDataObject= NULL;
 
-    sprintf(sql,"select * from all_dev where AP_ID != DEV_ID and AP_ID = %s;", ap);
+    sprintf(sql,"select * from all_dev where AP_ID != DEV_ID and AP_ID = \"%s\";", ap);
     printf("string:%s\n",sql);
     row_n = sql_row_number(db, sql);
     printf("row_n:%d\n",row_n);
