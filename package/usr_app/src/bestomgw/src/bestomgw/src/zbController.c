@@ -48,8 +48,6 @@
 #include "interface_scenelist.h"
 
 
-
-
 #define MAX_DB_FILENAMR_LEN 255
 
 
@@ -103,6 +101,7 @@ int main(int argc, char* argv[])
 	printf("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 
 	SRPC_Init();
+	m1_protocol_init();
 
 	while (1)
 	{

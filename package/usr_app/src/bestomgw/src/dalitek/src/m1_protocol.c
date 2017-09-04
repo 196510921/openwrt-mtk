@@ -6,8 +6,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "sqlite3.h"
-
 #include "m1_protocol.h"
 #include "socket_server.h"
 
@@ -37,6 +35,13 @@ static int sql_row_number(sqlite3* db, char*sql);
 static int sql_exec(sqlite3* db, char*sql);
 
 char* db_path = "dev_info.db";
+fifo_t dev_data_fifo;
+static uint32_t dev_data_buf[256];
+
+void m1_protocol_init(void)
+{
+    fifo_init(&dev_data_fifo, dev_data_buf, 256);
+}
 
 void data_handle(m1_package_t package)
 {
@@ -155,6 +160,11 @@ static int AP_report_data_handle(payload_t data)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     }
+    /*添加update/insert/delete监察*/
+    rc = sqlite3_update_hook(db, trigger_cb, "AP_report_data_handle");
+    if(rc){
+        fprintf(stderr, "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
+    }
 
     id = sql_id(db, sql);
 
@@ -190,11 +200,14 @@ static int AP_report_data_handle(payload_t data)
             sqlite3_bind_text(stmt, 6,  time, -1, NULL);
             rc = sqlite3_step(stmt);
             printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+
         }
     }
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);
+
+    trigger_cb_handle();
 
     return M1_PROTOCOL_OK;
 }
@@ -230,7 +243,13 @@ static int AP_report_dev_handle(payload_t data)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     }
-    
+
+    /*添加update/insert/delete监察*/
+    rc = sqlite3_update_hook(db, trigger_cb, "AP_report_dev_handle");
+    if(rc){
+        fprintf(stderr, "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
+    }
+
     portJson = cJSON_GetObjectItem(data.pdu,"port");
     printf("port:%d\n",portJson->valueint);
     apIdJson = cJSON_GetObjectItem(data.pdu,"apId");
@@ -296,6 +315,12 @@ static int AP_report_ap_handle(payload_t data)
         return M1_PROTOCOL_FAILED;  
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
+    }
+
+    /*添加update/insert/delete监察*/
+    rc = sqlite3_update_hook(db, trigger_cb, "AP_report_ap_handle");
+    if(rc){
+        fprintf(stderr, "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
     }
 
     portJson = cJSON_GetObjectItem(data.pdu,"port");
@@ -611,7 +636,13 @@ static int APP_write_handle(payload_t data)
         return M1_PROTOCOL_FAILED;  
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
-    } 
+    }
+    /*添加update/insert/delete监察*/
+    rc = sqlite3_update_hook(db, trigger_cb, "APP_write_handle");
+    if(rc){
+        fprintf(stderr, "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
+    }
+
     id = sql_id(db, sql);
     printf("id:%d\n",id);
     /*cJSON*/

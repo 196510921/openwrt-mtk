@@ -2,6 +2,7 @@
 #define _M1_PROTOCOL_H_
 
 #include "cJSON.h"
+#include "sqlite3.h"
 /*api result*/
 enum m1_protocol_result{
 	M1_PROTOCOL_OK = 0,
@@ -32,9 +33,30 @@ typedef struct _rsp_data{
 	int result;
 }rsp_data_t;
 
-//void data_handle(char* data);
-void data_handle(m1_package_t package);
+typedef struct _linkage_status{
+	char* logical;
+	char* status;
+	int value;
+	int threshold;
+} linkage_status_t;
 
+typedef struct _fifo_t {
+    uint32_t* buffer;
+    uint32_t len;
+    uint32_t wptr;
+    uint32_t rptr;
+}fifo_t;
+
+void data_handle(m1_package_t package);
+void create_sql_trigger(void);
+void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
+void data_update_cb(int id);
+
+int trigger_cb_handle();
+void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
+void fifo_write(fifo_t* fifo, uint32_t d);
+uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
+void m1_protocol_init(void);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003
