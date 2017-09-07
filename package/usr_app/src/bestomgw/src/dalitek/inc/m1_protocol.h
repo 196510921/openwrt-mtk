@@ -57,6 +57,7 @@ void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
 void fifo_write(fifo_t* fifo, uint32_t d);
 uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
 void m1_protocol_init(void);
+int linkage_task(void);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003

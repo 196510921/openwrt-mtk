@@ -36,11 +36,14 @@ static int sql_exec(sqlite3* db, char*sql);
 
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
+fifo_t link_exec_fifo;
 static uint32_t dev_data_buf[256];
+static uint32_t link_exec_buf[256];
 
 void m1_protocol_init(void)
 {
     fifo_init(&dev_data_fifo, dev_data_buf, 256);
+    fifo_init(&link_exec_fifo, link_exec_buf, 256);
 }
 
 void data_handle(m1_package_t package)
@@ -116,6 +119,7 @@ void data_handle(m1_package_t package)
     }
 
     cJSON_Delete(rootJson);
+    linkage_task();
 }
 
 static int common_rsp_handle(payload_t data)

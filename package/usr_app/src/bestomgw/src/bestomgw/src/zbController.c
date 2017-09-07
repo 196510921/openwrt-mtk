@@ -102,7 +102,6 @@ int main(int argc, char* argv[])
 
 	SRPC_Init();
 	m1_protocol_init();
-
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
@@ -149,6 +148,7 @@ int main(int argc, char* argv[])
 				free(client_fds);
 				free(pollFds);
 				printf("free client\n");
+
 			}
 		}
 	}
