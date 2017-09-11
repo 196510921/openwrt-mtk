@@ -12,7 +12,6 @@
 extern fifo_t dev_data_fifo;
 extern fifo_t link_exec_fifo;
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
-//void* sqlite3_update_hool(sqlite3* db, update_callback, void* udp);
 
 /*联动触发*/
 static int scenario_exec(char* data, sqlite3* db)
@@ -137,7 +136,6 @@ static int scenario_exec(char* data, sqlite3* db)
         	return M1_PROTOCOL_FAILED;
     	}
     	/*get clientfd*/
-
     	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
     	printf("sql_3:%s\n", sql_3);
     	sqlite3_reset(stmt_3);
@@ -147,8 +145,6 @@ static int scenario_exec(char* data, sqlite3* db)
     	clientFd = sqlite3_column_int(stmt_3,0);
     	printf("string:%s\n",p);
     	socketSeverSend((uint8*)p, strlen(p), clientFd);
-    	//cJSON_Delete(devDataObject);
-    	//}
     	
 	}
 
@@ -163,6 +159,190 @@ static int scenario_exec(char* data, sqlite3* db)
 static int device_exec(char* data)
 {
 
+}
+
+int linkage_msg_handle(payload_t data)
+{
+	printf("linkage_msg_handle\n");
+	cJSON* linkNameJson = NULL;
+	cJSON* districtJson = NULL;
+	cJSON* logicalJson = NULL;
+	cJSON* execTypeJson = NULL;
+	cJSON* triggerJson = NULL;
+	cJSON* triggerArrayJson = NULL;
+	cJSON* executeJson = NULL;
+	cJSON* executeArrayJson = NULL;
+	cJSON* scenNameJson = NULL;
+	cJSON* apIdJson = NULL;
+	cJSON* devIdJson = NULL;
+	cJSON* paramJson = NULL;
+	cJSON* paramArrayJson = NULL;
+	cJSON* typeJson = NULL;
+	cJSON* conditionJson = NULL;
+	cJSON* valueJson = NULL;
+	cJSON* delayJson = NULL;
+
+	sqlite3* db = NULL;
+	sqlite3_stmt* stmt = NULL, *stmt_1 = NULL;
+	int id, id_1, rc, number1, i, j, number2;
+	int row_number = 0;
+	char time[30];
+	char sql_1[200];
+
+	if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
+	getNowTime(time);
+
+	/*获取收到数据包信息*/
+    linkNameJson = cJSON_GetObjectItem(data.pdu, "LinkName");
+    districtJson = cJSON_GetObjectItem(data.pdu, "district");
+    logicalJson = cJSON_GetObjectItem(data.pdu, "logical");
+    execTypeJson = cJSON_GetObjectItem(data.pdu, "execType");
+    triggerJson = cJSON_GetObjectItem(data.pdu, "trigger");
+    executeJson = cJSON_GetObjectItem(data.pdu, "execute");
+    executeArrayJson = cJSON_GetArrayItem(executeJson, 0);
+    if(strcmp( execTypeJson->valuestring, "scenario") == 0){
+    	scenNameJson = cJSON_GetObjectItem(executeArrayJson, "scenName");
+	}else{
+		scenNameJson = cJSON_GetObjectItem(executeArrayJson, "devId");
+	}
+    printf("LinkName:%s, district:%s, logical:%s, execType:%s, scenName:%s\n",linkNameJson->valuestring,
+    	districtJson->valuestring, logicalJson->valuestring, execTypeJson->valuestring, scenNameJson->valuestring);
+    /*打开sqlite3*/
+    rc = sqlite3_open("dev_info.db", &db);  
+    if(rc){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
+   	/*检查联动是否存在*/
+	sprintf(sql_1,"select ID from linkage_table where LINK_NAME = \"%s\" order by ID desc limit 1;",linkNameJson->valuestring);	
+	row_number = sql_row_number(db, sql_1);
+	printf("row_number:%d\n",row_number);
+	if(row_number > 0){
+		/*delete linkage_table member*/
+		sprintf(sql_1,"delete from linkage_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
+		sqlite3_reset(stmt);
+		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+		//sql_exec(db,sql_1);
+		while(sqlite3_step(stmt) == SQLITE_ROW);
+		/*delete link_trigger_table member*/
+		sprintf(sql_1,"delete from link_trigger_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
+		//sql_exec(db,sql_1);
+		sqlite3_reset(stmt);
+		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+		while(sqlite3_step(stmt) == SQLITE_ROW);
+		/*delete link_exec_table member*/
+		sprintf(sql_1,"delete from link_exec_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
+		//sql_exec(db,sql_1);
+		sqlite3_reset(stmt);
+		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+		while(sqlite3_step(stmt) == SQLITE_ROW);
+	}
+
+	/*获取table id*/
+	char* sql = "select ID from linkage_table order by ID desc limit 1";
+    /*linkage_table*/
+    id = sql_id(db, sql);
+    sql = "insert into linkage_table(ID, LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, STATUS, TIME) values(?,?,?,?,?,?,?);";
+    printf("sql:%s\n",sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    /*link_trigger_table*/
+    sql = "select ID from link_trigger_table order by ID desc limit 1";
+    id_1 = sql_id(db, sql);
+    sql = "insert into link_trigger_table(ID, LINK_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, THRESHOLD, CONDITION,LOGICAL,STATUS,TIME) values(?,?,?,?,?,?,?,?,?,?,?);";
+    printf("sql:%s\n",sql);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+	
+    number1 = cJSON_GetArraySize(triggerJson);
+    for(i = 0; i < number1; i++){
+    	triggerArrayJson = cJSON_GetArrayItem(triggerJson, i);
+    	apIdJson = cJSON_GetObjectItem(triggerArrayJson, "apId");
+    	devIdJson = cJSON_GetObjectItem(triggerArrayJson, "devId");
+    	
+	   	sqlite3_reset(stmt);
+	   	sqlite3_bind_int(stmt, 1, id);
+	   	id++;
+	   	sqlite3_bind_text(stmt, 2,  linkNameJson->valuestring, -1, NULL);
+	   	sqlite3_bind_text(stmt, 3,  districtJson->valuestring, -1, NULL);
+	   	sqlite3_bind_text(stmt, 4,  execTypeJson->valuestring, -1, NULL);
+	   	sqlite3_bind_text(stmt, 5,  scenNameJson->valuestring, -1, NULL);
+
+	   	sqlite3_bind_text(stmt, 6,  "OFF", -1, NULL);
+	   	sqlite3_bind_text(stmt, 7,  time, -1, NULL);
+	   	rc = sqlite3_step(stmt);
+	   	printf("step1() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+    	paramJson = cJSON_GetObjectItem(triggerArrayJson, "param");
+    	number2 = cJSON_GetArraySize(paramJson);
+    	for(j = 0; j < number2; j++){	
+    		paramArrayJson = cJSON_GetArrayItem(paramJson, j);
+    		typeJson = cJSON_GetObjectItem(paramArrayJson, "type");
+    		conditionJson = cJSON_GetObjectItem(paramArrayJson, "condition");
+    		valueJson = cJSON_GetObjectItem(paramArrayJson, "value");
+    		printf("type:%d, condition:%s, value:%d\n",typeJson->valueint,conditionJson->valuestring,valueJson->valueint);
+    	
+	    	sqlite3_reset(stmt_1);
+		   	sqlite3_bind_int(stmt_1, 1, id_1);
+		   	id_1++;
+		   	sqlite3_bind_text(stmt_1, 2,  linkNameJson->valuestring, -1, NULL);
+		   	sqlite3_bind_text(stmt_1, 3,  districtJson->valuestring, -1, NULL);
+		   	sqlite3_bind_text(stmt_1, 4,  devIdJson->valuestring, -1, NULL);
+		   	sqlite3_bind_text(stmt_1, 5,  apIdJson->valuestring, -1, NULL);
+		   	sqlite3_bind_int(stmt_1, 6,  typeJson->valueint);
+		   	sqlite3_bind_int(stmt_1, 7,  valueJson->valueint);
+		   	sqlite3_bind_text(stmt_1, 8,  conditionJson->valuestring, -1, NULL);
+		   	sqlite3_bind_text(stmt_1, 9,  logicalJson->valuestring, -1, NULL);
+		   	sqlite3_bind_text(stmt_1, 10,  "OFF", -1, NULL);
+		   	sqlite3_bind_text(stmt_1, 11,  time, -1, NULL);
+		   	rc = sqlite3_step(stmt_1);
+		   	printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+	    	
+	    }
+
+    }
+    /*联动执行*/
+    if(strcmp( execTypeJson->valuestring, "scenario") != 0){
+	    sql = "select ID from link_trigger_table order by ID desc limit 1";
+	    id_1 = sql_id(db, sql);
+	    sql = "insert into link_exec_table(ID, LINK_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, TIME) values(?,?,?,?,?,?,?,?,?);";
+	    printf("sql:%s\n",sql);
+	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+	    number1 = cJSON_GetArraySize(executeJson);
+	    for(i = 0; i < number1; i++){
+	    	executeArrayJson = cJSON_GetArrayItem(executeJson, i);
+	    	apIdJson = cJSON_GetObjectItem(executeArrayJson, "apId");
+	    	devIdJson = cJSON_GetObjectItem(executeArrayJson, "devId");
+	    	delayJson = cJSON_GetObjectItem(executeArrayJson, "delay");
+	    	paramJson = cJSON_GetObjectItem(triggerArrayJson, "param");
+	    	number2 = cJSON_GetArraySize(paramJson);
+	    	for(j = 0; j < number2; j++){
+	    		paramArrayJson = cJSON_GetArrayItem(paramJson, j);
+	    		typeJson = cJSON_GetObjectItem(paramArrayJson, "type");
+	    		valueJson = cJSON_GetObjectItem(paramArrayJson, "value");
+	    		sqlite3_reset(stmt_1);
+			   	sqlite3_bind_int(stmt_1, 1, id_1);
+			   	id_1++;
+			   	sqlite3_bind_text(stmt_1, 2,  linkNameJson->valuestring, -1, NULL);
+			   	sqlite3_bind_text(stmt_1, 3,  districtJson->valuestring, -1, NULL);
+			   	sqlite3_bind_text(stmt_1, 4,  apIdJson->valueint, -1, NULL);
+			   	sqlite3_bind_text(stmt_1, 5,  devIdJson->valuestring, -1, NULL);
+			   	sqlite3_bind_int(stmt_1, 6,  typeJson->valueint);
+			   	sqlite3_bind_int(stmt_1, 7,  valueJson->valueint);
+			   	sqlite3_bind_int(stmt_1, 8,  delayJson->valueint);
+			   	sqlite3_bind_text(stmt_1, 9,  time, -1, NULL);
+			   	rc = sqlite3_step(stmt_1);
+			   	printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+	    	}
+	    }
+	}
+
+    sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt_1);
+    sqlite3_close(db);
+
+    return M1_PROTOCOL_OK;
 }
 
 int linkage_task(void)
@@ -202,6 +382,7 @@ int linkage_task(void)
 
 	sqlite3_finalize(stmt);
 	sqlite3_close(db);
+	return M1_PROTOCOL_OK;
 }
 
 static char* linkage_status(char* condition, int threshold, int value)

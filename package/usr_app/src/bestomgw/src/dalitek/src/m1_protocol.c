@@ -29,10 +29,6 @@ static int AP_report_ap_handle(payload_t data);
 static int common_rsp(rsp_data_t data);
 static int common_rsp_handle(payload_t data);
 
-static void getNowTime(char* time);
-static int sql_id(sqlite3* db, char* sql);
-static int sql_row_number(sqlite3* db, char*sql);
-static int sql_exec(sqlite3* db, char*sql);
 
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
@@ -106,6 +102,7 @@ void data_handle(m1_package_t package)
                     case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
                     case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
                     case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
+                    case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -1270,7 +1267,7 @@ static int common_rsp(rsp_data_t data)
     return M1_PROTOCOL_OK;
 }
 
-static void getNowTime(char* _time)
+void getNowTime(char* _time)
 {
 
     struct tm nowTime;
@@ -1283,7 +1280,7 @@ static void getNowTime(char* _time)
       nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
 }
   
-static int sql_id(sqlite3* db, char* sql)
+int sql_id(sqlite3* db, char* sql)
 {
     sqlite3_stmt* stmt = NULL;
     int id, total_column;
@@ -1301,7 +1298,7 @@ static int sql_id(sqlite3* db, char* sql)
     return id;
 }
 
-static int sql_row_number(sqlite3* db, char*sql)
+int sql_row_number(sqlite3* db, char*sql)
 {
     char** p_result;
     char* errmsg;
@@ -1316,14 +1313,16 @@ static int sql_row_number(sqlite3* db, char*sql)
     return n_row;
 }
 
-static int sql_exec(sqlite3* db, char*sql)
+int sql_exec(sqlite3* db, char*sql)
 {
     sqlite3_stmt* stmt = NULL;
     int rc;
     /*get id*/
     sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
    
-    rc = sqlite3_step(stmt);
+    while(rc = sqlite3_step(stmt) == SQLITE_ROW){
+        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+    }
     
     sqlite3_finalize(stmt);
     return rc;

@@ -48,6 +48,10 @@ typedef struct _fifo_t {
 }fifo_t;
 
 void data_handle(m1_package_t package);
+void getNowTime(char* _time);
+int sql_exec(sqlite3* db, char*sql);
+int sql_id(sqlite3* db, char* sql);
+int sql_row_number(sqlite3* db, char*sql);
 void create_sql_trigger(void);
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
 void data_update_cb(int id);
@@ -58,6 +62,7 @@ void fifo_write(fifo_t* fifo, uint32_t d);
 uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
 void m1_protocol_init(void);
 int linkage_task(void);
+int linkage_msg_handle(payload_t data);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003
@@ -67,8 +72,11 @@ int linkage_task(void);
 #define TYPE_DEV_WRITE                           0x0005
 /*device read*/
 #define TYPE_DEV_READ                            0x0006
+/*联动新建*/
+#define TYPE_CREATE_LINKAGE                      0x000A
 /*APP request device information */
 #define TYPE_REQ_DEV_INFO                        0x000E
+
 
 /*Upload*********************************************************************/
 
