@@ -13,149 +13,6 @@ extern fifo_t dev_data_fifo;
 extern fifo_t link_exec_fifo;
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
 
-/*联动触发*/
-static int scenario_exec(char* data, sqlite3* db)
-{
-	cJSON * pJsonRoot = NULL; 
-    cJSON * pduJsonObject = NULL;
-    cJSON * devDataJsonArray = NULL;
-    cJSON * devDataObject= NULL;
-    cJSON * paramArray = NULL;
-    cJSON*  paramObject = NULL;
-
-
-	char sql[200],sql_1[200],sql_2[200],sql_3[200];
-	char*ap_id = NULL,*dev_id = NULL;
-	int type,value,delay;
-	sqlite3_stmt* stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
- 
- 	printf("scenario_exec\n");
-    int rc;
-    int clientFd;
-    char * p = NULL;
-    int pduType = TYPE_DEV_WRITE;
-
-    pJsonRoot = cJSON_CreateObject();
-    if(NULL == pJsonRoot)
-    {
-        printf("pJsonRoot NULL\n");
-        cJSON_Delete(pJsonRoot);
-        return M1_PROTOCOL_FAILED;
-    }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
-    cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
-    cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
-    cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
-    /*create pdu object*/
-    pduJsonObject = cJSON_CreateObject();
-    if(NULL == pduJsonObject)
-    {
-        // create object faild, exit
-        cJSON_Delete(pduJsonObject);
-        return M1_PROTOCOL_FAILED;
-    }
-    /*add pdu to root*/
-    cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
-    /*add pdu type to pdu object*/
-    cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
-    /*create devData array*/
-    devDataJsonArray = cJSON_CreateArray();
-    if(NULL == devDataJsonArray)
-    {
-        cJSON_Delete(devDataJsonArray);
-        return M1_PROTOCOL_FAILED;
-    }
-    /*add devData array to pdu pbject*/
-    cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-
-	sprintf(sql,"select distinct AP_ID from scenario_table where SCEN_NAME = \"%s\";", data);	
-	
-	printf("sql:%s\n",sql);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-	while(sqlite3_step(stmt) == SQLITE_ROW){
-		ap_id = sqlite3_column_text(stmt,0);
-		sqlite3_reset(stmt_1);
-		sprintf(sql_1,"select distinct DEV_ID from scenario_table where SCEN_NAME = \"%s\" and AP_ID = \"%s\";",data, ap_id);	
-		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-		printf("sql_1:%s\n",sql_1);
-		while(sqlite3_step(stmt_1) == SQLITE_ROW){
-			dev_id = sqlite3_column_text(stmt_1,0);
-			/*create device data object*/
-			devDataObject = cJSON_CreateObject();
-	        if(NULL == devDataObject)
-	        {
-	            // create object faild, exit
-	            printf("devDataObject NULL\n");
-	            cJSON_Delete(devDataObject);
-	            return M1_PROTOCOL_FAILED;
-	        }
-	        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-	       	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
-	        printf("1\n");
-	        /*create param array*/
-		    paramArray = cJSON_CreateArray();
-		    if(NULL == paramArray)
-		    {
-		    	printf("paramArray NULL\n");
-		        cJSON_Delete(paramArray);
-		        return M1_PROTOCOL_FAILED;
-		    }
-    		printf("2\n");
-			cJSON_AddItemToObject(devDataObject, "param", paramArray);
-			sprintf(sql_2,"select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",data, dev_id);
-			printf("sql_2:%s\n",sql_2);
-			sqlite3_reset(stmt_2);
-			sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-			while(sqlite3_step(stmt_2) == SQLITE_ROW){
-				type = sqlite3_column_int(stmt_2,0);
-				value = sqlite3_column_int(stmt_2,1);
-				delay = sqlite3_column_int(stmt_2,2);
-				printf("type:%d,value:%d,delay:%d\n", type, value, delay);
-			    paramObject = cJSON_CreateObject();
-	            if(NULL == paramObject)
-	            {
-	                // create object faild, exit
-	                printf("devDataObject NULL\n");
-	                cJSON_Delete(paramObject);
-	                return M1_PROTOCOL_FAILED;
-	            }
-	            printf("3\n");
-	            cJSON_AddItemToArray(paramArray, paramObject);
-	            cJSON_AddNumberToObject(paramObject, "type", type);
-	            cJSON_AddNumberToObject(paramObject, "value", value);
-	            printf("4\n");
-
-        	}
-		}
-		printf("5\n");		
-    	p = cJSON_PrintUnformatted(pJsonRoot);
-    	if(NULL == p)
-    	{    
-    		printf("p NULL\n");
-        	cJSON_Delete(pJsonRoot);
-        	return M1_PROTOCOL_FAILED;
-    	}
-    	/*get clientfd*/
-    	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
-    	printf("sql_3:%s\n", sql_3);
-    	sqlite3_reset(stmt_3);
-    	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
-    	rc = sqlite3_step(stmt_3);
-    	printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
-    	clientFd = sqlite3_column_int(stmt_3,0);
-    	printf("string:%s\n",p);
-    	socketSeverSend((uint8*)p, strlen(p), clientFd);
-    	
-	}
-
-	sqlite3_finalize(stmt);
-	sqlite3_finalize(stmt_1);
-   	sqlite3_finalize(stmt_2);
-   	sqlite3_finalize(stmt_3);
-	cJSON_Delete(pJsonRoot);
-	return M1_PROTOCOL_OK;
-}
-
 static int device_exec(char* data)
 {
 
@@ -193,7 +50,7 @@ int linkage_msg_handle(payload_t data)
 	getNowTime(time);
 
 	/*获取收到数据包信息*/
-    linkNameJson = cJSON_GetObjectItem(data.pdu, "LinkName");
+    linkNameJson = cJSON_GetObjectItem(data.pdu, "linkName");
     districtJson = cJSON_GetObjectItem(data.pdu, "district");
     logicalJson = cJSON_GetObjectItem(data.pdu, "logical");
     execTypeJson = cJSON_GetObjectItem(data.pdu, "execType");
@@ -205,7 +62,7 @@ int linkage_msg_handle(payload_t data)
 	}else{
 		scenNameJson = cJSON_GetObjectItem(executeArrayJson, "devId");
 	}
-    printf("LinkName:%s, district:%s, logical:%s, execType:%s, scenName:%s\n",linkNameJson->valuestring,
+    printf("linkName:%s, district:%s, logical:%s, execType:%s, scenName:%s\n",linkNameJson->valuestring,
     	districtJson->valuestring, logicalJson->valuestring, execTypeJson->valuestring, scenNameJson->valuestring);
     /*打开sqlite3*/
     rc = sqlite3_open("dev_info.db", &db);  
@@ -225,17 +82,14 @@ int linkage_msg_handle(payload_t data)
 		sprintf(sql_1,"delete from linkage_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		//sql_exec(db,sql_1);
 		while(sqlite3_step(stmt) == SQLITE_ROW);
 		/*delete link_trigger_table member*/
 		sprintf(sql_1,"delete from link_trigger_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
-		//sql_exec(db,sql_1);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
 		while(sqlite3_step(stmt) == SQLITE_ROW);
 		/*delete link_exec_table member*/
 		sprintf(sql_1,"delete from link_exec_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
-		//sql_exec(db,sql_1);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
 		while(sqlite3_step(stmt) == SQLITE_ROW);
