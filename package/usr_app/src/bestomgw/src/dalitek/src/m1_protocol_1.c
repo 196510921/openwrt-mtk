@@ -249,31 +249,31 @@ int linkage_msg_handle(payload_t data)
     printf("sql:%s\n",sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	sqlite3_bind_int(stmt, 1, id);
+	id++;
+	sqlite3_bind_text(stmt, 2,  linkNameJson->valuestring, -1, NULL);
+	sqlite3_bind_text(stmt, 3,  districtJson->valuestring, -1, NULL);
+	sqlite3_bind_text(stmt, 4,  execTypeJson->valuestring, -1, NULL);
+	sqlite3_bind_text(stmt, 5,  scenNameJson->valuestring, -1, NULL);
+
+	sqlite3_bind_text(stmt, 6,  "OFF", -1, NULL);
+	sqlite3_bind_text(stmt, 7,  time, -1, NULL);
+	rc = sqlite3_step(stmt);
+	printf("step1() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+
+
     /*link_trigger_table*/
     sql = "select ID from link_trigger_table order by ID desc limit 1";
     id_1 = sql_id(db, sql);
     sql = "insert into link_trigger_table(ID, LINK_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, THRESHOLD, CONDITION,LOGICAL,STATUS,TIME) values(?,?,?,?,?,?,?,?,?,?,?);";
     printf("sql:%s\n",sql);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
-	
+
     number1 = cJSON_GetArraySize(triggerJson);
     for(i = 0; i < number1; i++){
     	triggerArrayJson = cJSON_GetArrayItem(triggerJson, i);
     	apIdJson = cJSON_GetObjectItem(triggerArrayJson, "apId");
     	devIdJson = cJSON_GetObjectItem(triggerArrayJson, "devId");
-    	
-	   	sqlite3_reset(stmt);
-	   	sqlite3_bind_int(stmt, 1, id);
-	   	id++;
-	   	sqlite3_bind_text(stmt, 2,  linkNameJson->valuestring, -1, NULL);
-	   	sqlite3_bind_text(stmt, 3,  districtJson->valuestring, -1, NULL);
-	   	sqlite3_bind_text(stmt, 4,  execTypeJson->valuestring, -1, NULL);
-	   	sqlite3_bind_text(stmt, 5,  scenNameJson->valuestring, -1, NULL);
-
-	   	sqlite3_bind_text(stmt, 6,  "OFF", -1, NULL);
-	   	sqlite3_bind_text(stmt, 7,  time, -1, NULL);
-	   	rc = sqlite3_step(stmt);
-	   	printf("step1() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
     	paramJson = cJSON_GetObjectItem(triggerArrayJson, "param");
     	number2 = cJSON_GetArraySize(paramJson);
     	for(j = 0; j < number2; j++){	
@@ -288,8 +288,8 @@ int linkage_msg_handle(payload_t data)
 		   	id_1++;
 		   	sqlite3_bind_text(stmt_1, 2,  linkNameJson->valuestring, -1, NULL);
 		   	sqlite3_bind_text(stmt_1, 3,  districtJson->valuestring, -1, NULL);
-		   	sqlite3_bind_text(stmt_1, 4,  devIdJson->valuestring, -1, NULL);
-		   	sqlite3_bind_text(stmt_1, 5,  apIdJson->valuestring, -1, NULL);
+		   	sqlite3_bind_text(stmt_1, 4,  apIdJson->valuestring, -1, NULL);
+		   	sqlite3_bind_text(stmt_1, 5,  devIdJson->valuestring, -1, NULL);
 		   	sqlite3_bind_int(stmt_1, 6,  typeJson->valueint);
 		   	sqlite3_bind_int(stmt_1, 7,  valueJson->valueint);
 		   	sqlite3_bind_text(stmt_1, 8,  conditionJson->valuestring, -1, NULL);
@@ -460,6 +460,7 @@ static void linkage_check(sqlite3* db, char* link_name)
 
 int trigger_cb_handle(void)
 {
+	printf("trigger_cb_handle\n");
 	int rc ,value, param_type, threshold;
 	uint32_t rowid;
 	char* devId = NULL, *condition = NULL, *status = NULL, *link_name = NULL;
@@ -497,6 +498,7 @@ int trigger_cb_handle(void)
 	    /*get linkage table*/
 	    sprintf(sql_1,"select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = \"%s\" and TYPE = %05d;",devId,param_type);
 		printf("sql_1:%s\n",sql_1);
+		sqlite3_reset(stmt_1);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 		while(sqlite3_step(stmt_1) == SQLITE_ROW){
 			threshold = sqlite3_column_int(stmt_1,0);
