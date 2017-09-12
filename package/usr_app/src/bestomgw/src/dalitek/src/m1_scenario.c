@@ -87,7 +87,6 @@ int scenario_exec(char* data, sqlite3* db)
 	        }
 	        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 	       	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
-	        printf("1\n");
 	        /*create param array*/
 		    paramArray = cJSON_CreateArray();
 		    if(NULL == paramArray)
@@ -96,7 +95,6 @@ int scenario_exec(char* data, sqlite3* db)
 		        cJSON_Delete(paramArray);
 		        return M1_PROTOCOL_FAILED;
 		    }
-    		printf("2\n");
 			cJSON_AddItemToObject(devDataObject, "param", paramArray);
 			sprintf(sql_2,"select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",data, dev_id);
 			printf("sql_2:%s\n",sql_2);
@@ -115,15 +113,12 @@ int scenario_exec(char* data, sqlite3* db)
 	                cJSON_Delete(paramObject);
 	                return M1_PROTOCOL_FAILED;
 	            }
-	            printf("3\n");
 	            cJSON_AddItemToArray(paramArray, paramObject);
 	            cJSON_AddNumberToObject(paramObject, "type", type);
 	            cJSON_AddNumberToObject(paramObject, "value", value);
-	            printf("4\n");
 
         	}
 		}
-		printf("5\n");		
     	p = cJSON_PrintUnformatted(pJsonRoot);
     	if(NULL == p)
     	{    

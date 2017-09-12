@@ -57,6 +57,8 @@ int linkage_msg_handle(payload_t data);
 /*场景相关API*/
 int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
+/*区域相关API*/
+int district_create_handle(payload_t data);
 /*通用API*/
 void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
 void fifo_write(fifo_t* fifo, uint32_t d);
@@ -80,6 +82,8 @@ void create_sql_trigger(void);
 #define TYPE_CREATE_LINKAGE                      0x000A
 /*场景新建*/
 #define TYPE_CREATE_SCENARIO                     0x000B
+/*区域新建*/
+#define TYPE_CREATE_DISTRICT                     0x000C
 /*APP request device information */
 #define TYPE_REQ_DEV_INFO                        0x000E
 

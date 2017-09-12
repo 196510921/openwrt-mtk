@@ -104,6 +104,7 @@ void data_handle(m1_package_t package)
                     case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
                     case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
                     case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
+                    case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
