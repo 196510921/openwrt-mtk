@@ -57,6 +57,7 @@ int linkage_msg_handle(payload_t data);
 /*场景相关API*/
 int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
+int scenario_alarm_create_handle(payload_t data);
 /*区域相关API*/
 int district_create_handle(payload_t data);
 /*通用API*/
@@ -84,6 +85,8 @@ void create_sql_trigger(void);
 #define TYPE_CREATE_SCENARIO                     0x000B
 /*区域新建*/
 #define TYPE_CREATE_DISTRICT                     0x000C
+/*场景定时*/
+#define TYPE_SCENARIO_ALARM                      0x000D
 /*APP request device information */
 #define TYPE_REQ_DEV_INFO                        0x000E
 

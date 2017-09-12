@@ -245,7 +245,81 @@ int scenario_create_handle(payload_t data)
     
 }
 
+int scenario_alarm_create_handle(payload_t data)
+{
+	printf("scenario_alarm_create_handle\n");
+	cJSON* scenNameJson = NULL;
+	cJSON* hourJson = NULL;
+	cJSON* minutesJson = NULL;
+	cJSON* weekJson = NULL;
+	cJSON* statusJson = NULL;
+	
+	sqlite3* db = NULL;
+	sqlite3_stmt* stmt = NULL;
+	int id, rc;
+	int row_number = 0;
+	char time[30];
+	char sql_1[200];
 
+	if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
+	getNowTime(time);
+
+    rc = sqlite3_open("dev_info.db", &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
+	/*获取table id*/
+	char* sql = "select ID from scen_alarm_table order by ID desc limit 1";
+	/*linkage_table*/
+	id = sql_id(db, sql);
+
+	/*获取收到数据包信息*/
+    scenNameJson = cJSON_GetObjectItem(data.pdu, "scenarioName");
+    printf("scenName:%s\n",scenNameJson->valuestring);
+    hourJson = cJSON_GetObjectItem(data.pdu, "hour");
+    printf("hour:%d\n",hourJson->valueint);
+    minutesJson = cJSON_GetObjectItem(data.pdu, "minutes");
+    printf("minutes:%d\n",minutesJson->valueint);
+    weekJson = cJSON_GetObjectItem(data.pdu, "week");
+    printf("week:%s\n",weekJson->valuestring);
+    statusJson = cJSON_GetObjectItem(data.pdu, "status");
+    printf("status:%s\n",statusJson->valuestring);
+   	/*删除原有表scenario_table中的旧scenario*/
+	sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
+	row_number = sql_row_number(db, sql_1);
+	printf("row_number:%d\n",row_number);
+	if(row_number > 0){
+		sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
+		sqlite3_reset(stmt);
+		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+		while(sqlite3_step(stmt) == SQLITE_ROW);
+	}
+	
+    sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
+    printf("sql:%s\n",sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	sqlite3_bind_int(stmt, 1, id);
+	sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
+	sqlite3_bind_int(stmt, 3, hourJson->valueint);
+	sqlite3_bind_int(stmt, 4, minutesJson->valueint);
+	sqlite3_bind_text(stmt, 5, weekJson->valuestring, -1, NULL);
+	sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
+	sqlite3_bind_text(stmt, 7, time, -1, NULL);
+	
+	rc = sqlite3_step(stmt); 
+	printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+   
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return M1_PROTOCOL_OK;
+    
+}
 
 
 
