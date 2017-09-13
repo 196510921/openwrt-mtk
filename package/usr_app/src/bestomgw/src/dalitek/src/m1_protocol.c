@@ -26,6 +26,7 @@ static int M1_report_dev_info(payload_t data);
 static int M1_report_ap_info(int clientFd);
 static int AP_report_dev_handle(payload_t data);
 static int AP_report_ap_handle(payload_t data);
+static int common_operate(payload_t data);
 static int common_rsp(rsp_data_t data);
 static int common_rsp_handle(payload_t data);
 
@@ -106,6 +107,7 @@ void data_handle(m1_package_t package)
                     case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
                     case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
                     case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
+                    case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -1204,6 +1206,112 @@ static int M1_report_dev_info(payload_t data)
     cJSON_Delete(pJsonRoot);
 
     return M1_PROTOCOL_OK;
+}
+
+/*子设备/AP/联动/场景/区域/-启动/停止/删除*/
+static int common_operate(payload_t data)
+{
+    printf("common_operate\n");
+    cJSON* typeJson = NULL;
+    cJSON* idJson = NULL;
+    cJSON* operateJson = NULL;
+
+    typeJson = cJSON_GetObjectItem(data.pdu, "type");   
+    printf("type:%s\n",typeJson->valuestring);
+    idJson = cJSON_GetObjectItem(data.pdu, "id");   
+    printf("id:%s\n",idJson->valuestring);
+    operateJson = cJSON_GetObjectItem(data.pdu, "operate");   
+    printf("operate:%s\n",operateJson->valuestring);
+    /*sqlite3 相关操作*/
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    int id, rc, number1,i;
+    int row_number = 0;
+    char*scen_name = NULL;
+    char time[30];
+    char sql_1[200];
+
+    if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
+    getNowTime(time);
+
+    rc = sqlite3_open("dev_info.db", &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
+    if(strcmp(typeJson->valuestring, "device") == 0){
+
+    }else if(strcmp(typeJson->valuestring, "linkage") == 0){
+        if(strcmp(operateJson->valuestring, "delete") == 0){
+            /*删除联动表linkage_table中相关内容*/
+            sprintf(sql_1,"delete from linkage_table where LINK_NAME = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+            /*删除联动触发表link_trigger_table相关内容*/
+            sprintf(sql_1,"delete from link_trigger_table where LINK_NAME = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+            /*删除联动触发表link_exec_table相关内容*/
+            sprintf(sql_1,"delete from link_exec_table where LINK_NAME = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+        }
+    }else if(strcmp(typeJson->valuestring, "scenario") == 0){
+        if(strcmp(operateJson->valuestring, "delete") == 0){
+            /*删除场景表相关内容*/
+            sprintf(sql_1,"delete from scenario_table where SCEN_NAME = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+            /*删除场景定时相关内容*/
+            sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+        }
+    }else if(strcmp(typeJson->valuestring, "district") == 0){
+        if(strcmp(operateJson->valuestring, "delete") == 0){
+            /*删除区域相关内容*/
+            sprintf(sql_1,"delete from district_table where DIS_NAME = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+            /*删除区域下的联动表中相关内容*/
+            sprintf(sql_1,"delete from linkage_table where DISTRICT = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);    
+            /*删除区域下的联动触发表中相关内容*/
+            sprintf(sql_1,"delete from link_trigger_table where DISTRICT = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);    
+            /*删除区域下的联动触发表中相关内容*/
+            sprintf(sql_1,"delete from link_exec_table where DISTRICT = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1); 
+            /*删除场景定时相关内容*/
+            sprintf(sql_1,"select SCEN_NAME from scenario_table where DISTRICT = \"%s\" limit 1;",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sqlite3_reset(stmt);
+            sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+            rc = sqlite3_step(stmt);
+            printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+            scen_name = sqlite3_column_text(stmt,0);
+            sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scen_name);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1); 
+            /*删除区域下场景表相关内容*/   
+            sprintf(sql_1,"delete from scenario_table where DISTRICT = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1); 
+        }
+    }else if(strcmp(typeJson->valuestring, "ap") == 0){
+
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+     return M1_PROTOCOL_OK;
 }
 
 static int common_rsp(rsp_data_t data)

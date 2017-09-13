@@ -79,6 +79,8 @@ void create_sql_trigger(void);
 #define TYPE_DEV_WRITE                           0x0005
 /*device read*/
 #define TYPE_DEV_READ                            0x0006
+/*子设备/AP/联动/场景/区域-启动(停止/删除)*/
+#define TYPE_COMMON_OPERATE                      0x0007
 /*联动新建*/
 #define TYPE_CREATE_LINKAGE                      0x000A
 /*场景新建*/
