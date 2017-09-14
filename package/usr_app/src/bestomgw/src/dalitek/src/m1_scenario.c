@@ -21,7 +21,7 @@ int scenario_exec(char* data, sqlite3* db)
 
 
 	char sql[200],sql_1[200],sql_2[200],sql_3[200];
-	char*ap_id = NULL,*dev_id = NULL;
+	char*ap_id = NULL,*dev_id = NULL,*status = NULL;
 	int type,value,delay;
 	sqlite3_stmt* stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
  
@@ -76,47 +76,56 @@ int scenario_exec(char* data, sqlite3* db)
 		printf("sql_1:%s\n",sql_1);
 		while(sqlite3_step(stmt_1) == SQLITE_ROW){
 			dev_id = sqlite3_column_text(stmt_1,0);
-			/*create device data object*/
-			devDataObject = cJSON_CreateObject();
-	        if(NULL == devDataObject)
-	        {
-	            // create object faild, exit
-	            printf("devDataObject NULL\n");
-	            cJSON_Delete(devDataObject);
-	            return M1_PROTOCOL_FAILED;
-	        }
-	        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-	       	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
-	        /*create param array*/
-		    paramArray = cJSON_CreateArray();
-		    if(NULL == paramArray)
-		    {
-		    	printf("paramArray NULL\n");
-		        cJSON_Delete(paramArray);
-		        return M1_PROTOCOL_FAILED;
-		    }
-			cJSON_AddItemToObject(devDataObject, "param", paramArray);
-			sprintf(sql_2,"select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",data, dev_id);
-			printf("sql_2:%s\n",sql_2);
-			sqlite3_reset(stmt_2);
-			sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-			while(sqlite3_step(stmt_2) == SQLITE_ROW){
-				type = sqlite3_column_int(stmt_2,0);
-				value = sqlite3_column_int(stmt_2,1);
-				delay = sqlite3_column_int(stmt_2,2);
-				printf("type:%d,value:%d,delay:%d\n", type, value, delay);
-			    paramObject = cJSON_CreateObject();
-	            if(NULL == paramObject)
-	            {
-	                // create object faild, exit
-	                printf("devDataObject NULL\n");
-	                cJSON_Delete(paramObject);
-	                return M1_PROTOCOL_FAILED;
-	            }
-	            cJSON_AddItemToArray(paramArray, paramObject);
-	            cJSON_AddNumberToObject(paramObject, "type", type);
-	            cJSON_AddNumberToObject(paramObject, "value", value);
+			/*检查设备启/停状态*/
+		 	sprintf(sql_2,"select STATUS from all_dev where DEV_ID = \"%s\";",dev_id);
+		 	sqlite3_reset(stmt_2);
+		 	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+		 	rc = sqlite3_step(stmt_1);
+			printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
+		    status = sqlite3_column_text(stmt_2,0);
+		    if(strcmp(status,"ON") == 0){
+				/*create device data object*/
+				devDataObject = cJSON_CreateObject();
+		        if(NULL == devDataObject)
+		        {
+		            // create object faild, exit
+		            printf("devDataObject NULL\n");
+		            cJSON_Delete(devDataObject);
+		            return M1_PROTOCOL_FAILED;
+		        }
+		        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
+		       	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
+		        /*create param array*/
+			    paramArray = cJSON_CreateArray();
+			    if(NULL == paramArray)
+			    {
+			    	printf("paramArray NULL\n");
+			        cJSON_Delete(paramArray);
+			        return M1_PROTOCOL_FAILED;
+			    }
+				cJSON_AddItemToObject(devDataObject, "param", paramArray);
+				sprintf(sql_2,"select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",data, dev_id);
+				printf("sql_2:%s\n",sql_2);
+				sqlite3_reset(stmt_2);
+				sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+				while(sqlite3_step(stmt_2) == SQLITE_ROW){
+					type = sqlite3_column_int(stmt_2,0);
+					value = sqlite3_column_int(stmt_2,1);
+					delay = sqlite3_column_int(stmt_2,2);
+					printf("type:%d,value:%d,delay:%d\n", type, value, delay);
+				    paramObject = cJSON_CreateObject();
+		            if(NULL == paramObject)
+		            {
+		                // create object faild, exit
+		                printf("devDataObject NULL\n");
+		                cJSON_Delete(paramObject);
+		                return M1_PROTOCOL_FAILED;
+		            }
+		            cJSON_AddItemToArray(paramArray, paramObject);
+		            cJSON_AddNumberToObject(paramObject, "type", type);
+		            cJSON_AddNumberToObject(paramObject, "value", value);
 
+	        	}
         	}
 		}
     	p = cJSON_PrintUnformatted(pJsonRoot);

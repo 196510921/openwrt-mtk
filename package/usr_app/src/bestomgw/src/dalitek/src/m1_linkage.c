@@ -349,26 +349,36 @@ int trigger_cb_handle(void)
 	    devId = sqlite3_column_text(stmt,1);
 	    param_type = sqlite3_column_int(stmt,2);
 	    printf("value:%05d, devId:%s, param_type:\n",value, devId, param_type);
-	    /*get linkage table*/
-	    sprintf(sql_1,"select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = \"%s\" and TYPE = %05d;",devId,param_type);
-		printf("sql_1:%s\n",sql_1);
-		sqlite3_reset(stmt_1);
-		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-		while(sqlite3_step(stmt_1) == SQLITE_ROW){
-			threshold = sqlite3_column_int(stmt_1,0);
-	        condition = sqlite3_column_text(stmt_1,1);
-	        link_name = sqlite3_column_text(stmt_1,2);
-	        printf("threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
-	 		status = linkage_status(condition, threshold, value);
-	 		/*set linkage table*/
-	 		sprintf(sql_2,"update link_trigger_table set STATUS = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d and LINK_NAME = \"%s\" ;",status,devId,param_type,link_name);
-	 		//printf("sql_2:%s\n",sql_2);
-	 		sqlite3_reset(stmt_2);
-			sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-			rc = sqlite3_step(stmt_2);
-			printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
-			/*检查是否满足触发条件*/
-			linkage_check(db, link_name);
+	 	/*检查设备启/停状态*/
+	 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
+	 	sqlite3_reset(stmt_1);
+	 	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+	 	rc = sqlite3_step(stmt_1);
+		printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
+	    status = sqlite3_column_text(stmt_1,0);
+	    /*设备处于启动状态*/
+	    if(strcmp(status,"ON") == 0){
+		    /*get linkage table*/
+		    sprintf(sql_1,"select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = \"%s\" and TYPE = %05d;",devId,param_type);
+			printf("sql_1:%s\n",sql_1);
+			sqlite3_reset(stmt_1);
+			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+			while(sqlite3_step(stmt_1) == SQLITE_ROW){
+				threshold = sqlite3_column_int(stmt_1,0);
+		        condition = sqlite3_column_text(stmt_1,1);
+		        link_name = sqlite3_column_text(stmt_1,2);
+		        printf("threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
+		 		status = linkage_status(condition, threshold, value);
+		 		/*set linkage table*/
+		 		sprintf(sql_2,"update link_trigger_table set STATUS = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d and LINK_NAME = \"%s\" ;",status,devId,param_type,link_name);
+		 		//printf("sql_2:%s\n",sql_2);
+		 		sqlite3_reset(stmt_2);
+				sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+				rc = sqlite3_step(stmt_2);
+				printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
+				/*检查是否满足触发条件*/
+				linkage_check(db, link_name);
+		 	}
 	 	}
  	}
 

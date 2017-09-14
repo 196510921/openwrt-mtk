@@ -266,7 +266,7 @@ static int AP_report_dev_handle(payload_t data)
     number = cJSON_GetArraySize(devJson); 
 
     id = sql_id(db, sql);
-    sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, TIME) values(?,?,?,?,?,?,?);";
+    sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS, TIME) values(?,?,?,?,?,?,?,?,?);";
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 
     for(i = 0; i< number; i++){
@@ -284,7 +284,9 @@ static int AP_report_dev_handle(payload_t data)
         sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
         sqlite3_bind_int(stmt, 5, portJson->valueint);
         sqlite3_bind_int(stmt, 6, 0);
-        sqlite3_bind_text(stmt, 7,  time, -1, NULL);
+        sqlite3_bind_int(stmt, 7, 1);
+        sqlite3_bind_text(stmt, 8,"ON", -1, NULL);
+        sqlite3_bind_text(stmt, 9,  time, -1, NULL);
         rc = sqlite3_step(stmt);
         printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
     }
@@ -355,7 +357,7 @@ static int AP_report_ap_handle(payload_t data)
     /*insert sql*/
     sql = "select ID from all_dev order by ID desc limit 1";
     id = sql_id(db, sql);
-    sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, TIME) values(?,?,?,?,?,?,?);";
+    sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS,TIME) values(?,?,?,?,?,?,?,?,?);";
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     sqlite3_bind_int(stmt, 1, id);
     id++;
@@ -364,7 +366,9 @@ static int AP_report_ap_handle(payload_t data)
     sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
     sqlite3_bind_int(stmt, 5, portJson->valueint);
     sqlite3_bind_int(stmt, 6, 0);
-    sqlite3_bind_text(stmt, 7,  time, -1, NULL);
+    sqlite3_bind_int(stmt, 7, 1);
+    sqlite3_bind_text(stmt, 8,  "ON", -1, NULL);
+    sqlite3_bind_text(stmt, 9,  time, -1, NULL);
     rc = sqlite3_step(stmt);
     printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
  
@@ -1243,6 +1247,21 @@ static int common_operate(payload_t data)
     }
 
     if(strcmp(typeJson->valuestring, "device") == 0){
+        if(strcmp(operateJson->valuestring, "delete") == 0){
+            /*通知到ap*/
+            /*删除all_dev中的子设备*/
+            sprintf(sql_1,"delete from all_dev where DEV_ID = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+        }else if(strcmp(operateJson->valuestring, "on") == 0){
+            sprintf(sql_1,"update all_dev set STATUS = \"ON\" where DEV_ID = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+        }else if(strcmp(operateJson->valuestring, "off") == 0){
+            sprintf(sql_1,"update all_dev set STATUS = \"OFF\" where DEV_ID = \"%s\";",idJson->valuestring);
+            printf("sql_1:%s\n",sql_1);
+            sql_exec(db, sql_1);
+        }
 
     }else if(strcmp(typeJson->valuestring, "linkage") == 0){
         if(strcmp(operateJson->valuestring, "delete") == 0){
