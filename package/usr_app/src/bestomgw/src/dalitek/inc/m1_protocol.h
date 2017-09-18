@@ -54,6 +54,7 @@ void data_update_cb(int id);
 int trigger_cb_handle(void);
 int linkage_task(void);
 int linkage_msg_handle(payload_t data);
+int app_req_linkage(int clientFd);
 /*场景相关API*/
 int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
@@ -94,7 +95,8 @@ void create_sql_trigger(void);
 #define TYPE_REQ_DEV_INFO                        0x000E
 /*APP 请求场景信息 */
 #define TYPE_REQ_SCEN_INFO                       0x0010
-
+/*APP 请求联动信息 */
+#define TYPE_REQ_LINK_INFO                       0x0011
 
 /*Upload*********************************************************************/
 
@@ -112,6 +114,8 @@ void create_sql_trigger(void);
 #define TYPE_AP_REPORT_DEV_INFO                  0x1007
 /*M1上报场景信息到APP*/
 #define TYPE_M1_REPORT_SCEN_INFO                 0x1008
+/*M1上报联动信息到APP*/
+#define TYPE_M1_REPORT_LINK_INFO                 0x1009
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005

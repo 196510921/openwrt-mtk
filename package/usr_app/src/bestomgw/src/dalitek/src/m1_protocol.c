@@ -109,6 +109,7 @@ void data_handle(m1_package_t package)
         case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
         case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
         case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(package.clientFd);break;
+        case TYPE_REQ_LINK_INFO: rc = app_req_linkage(package.clientFd);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }

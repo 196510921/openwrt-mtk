@@ -395,10 +395,9 @@ int app_req_scenario(int clientFd)
         fprintf(stderr, "Opened database successfully\n");  
     } 
 
-    int row_n;
     char* scen_name = NULL,*district = NULL,*week = NULL, *alarm_status = NULL;
     int hour,minutes;
-    /*去除场景名称*/
+    /*取场景名称*/
     sql = "select distinct SCEN_NAME from scenario_table;";
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -410,16 +409,8 @@ int app_req_scenario(int clientFd)
 	        return M1_PROTOCOL_FAILED;
 	    }
 	    cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
 	    scen_name = sqlite3_column_text(stmt, 0);
 	    cJSON_AddStringToObject(devDataObject, "scenName", scen_name);
-	    devDataObject = cJSON_CreateObject();
-	    if(NULL == devDataObject)
-	    {
-	        cJSON_Delete(devDataObject);
-	        return M1_PROTOCOL_FAILED;
-	    }
-	    cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 	    /*根据场景名称选出隶属区域*/
 	    sprintf(sql_1,"select DISTRICT from scenario_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
 	    sqlite3_reset(stmt_1);
@@ -458,7 +449,6 @@ int app_req_scenario(int clientFd)
 	    }
 	    cJSON_AddItemToObject(devDataObject, "device", deviceArrayObject);
 	    /*设备*/
-
 	    char* apId = NULL, *devId = "devId";
 	    int delay;
 	    /*从场景表scenario_table中选出设备相关信息*/
@@ -498,7 +488,7 @@ int app_req_scenario(int clientFd)
 		    }
 		    cJSON_AddItemToObject(deviceObject, "device", paramArrayObject);
 			
-			sprintf(sql_2,"select AP_ID, DELAY, TYPE, VALUE from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",scen_name, devId);
+			sprintf(sql_2,"select TYPE, VALUE from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",scen_name, devId);
 	    	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 		   	int type, value;
@@ -510,10 +500,10 @@ int app_req_scenario(int clientFd)
 			        return M1_PROTOCOL_FAILED;
 			    }
 			    cJSON_AddItemToArray(paramArrayObject, paramObject);
-				type = sqlite3_column_int(stmt_2, 2);
+				type = sqlite3_column_int(stmt_2, 0);
 			   	cJSON_AddNumberToObject(paramObject, "type", type);
 			   	printf("type:%05d\n");
-			   	value = sqlite3_column_int(stmt_2, 3);
+			   	value = sqlite3_column_int(stmt_2, 1);
 			   	cJSON_AddNumberToObject(paramObject, "value", value);
 			   	printf("value:%05d\n",value);
 		   	}
