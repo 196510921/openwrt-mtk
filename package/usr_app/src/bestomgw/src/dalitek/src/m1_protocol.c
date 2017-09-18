@@ -92,22 +92,23 @@ void data_handle(m1_package_t package)
     rspData.clientFd = package.clientFd;
     printf("pduType:%x\n",pduType);
     switch(pduType){
-                    case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-                    case TYPE_DEV_READ: APP_read_handle(pdu); break;
-                    case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson);break;
-                    case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
-                    case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle( package.clientFd); break;
-                    case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
-                    case TYPE_REQ_AP_INFO: M1_report_ap_info(package.clientFd); break;
-                    case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
-                    case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
-                    case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
-                    case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
-                    case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
-                    case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
-                    case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
-                    case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
-                    case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
+        case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
+        case TYPE_DEV_READ: APP_read_handle(pdu); break;
+        case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson);break;
+        case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
+        case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle( package.clientFd); break;
+        case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
+        case TYPE_REQ_AP_INFO: M1_report_ap_info(package.clientFd); break;
+        case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
+        case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
+        case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
+        case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
+        case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
+        case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
+        case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
+        case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
+        case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
+        case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(package.clientFd);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }

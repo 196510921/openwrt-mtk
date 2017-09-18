@@ -330,6 +330,216 @@ int scenario_alarm_create_handle(payload_t data)
     
 }
 
+int app_req_scenario(int clientFd)
+{
+	printf("app_req_scenario\n");
+	/*cJSON*/
+    int pduType = TYPE_M1_REPORT_SCEN_INFO;
 
+    cJSON * pJsonRoot = NULL;
+    cJSON * pduJsonObject = NULL;
+    cJSON * devDataJsonArray = NULL;
+    cJSON*  devDataObject= NULL;
+    cJSON*  alarmObject= NULL;
+    cJSON*  deviceObject= NULL;
+    cJSON*  deviceArrayObject= NULL;
+    cJSON*  paramArrayObject= NULL;
+    cJSON*  paramObject= NULL;
+    /*sqlite3*/
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
+    char* sql = NULL;
+    char sql_1[200],sql_2[200];
 
+    pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        printf("pJsonRoot NULL\n");
+        cJSON_Delete(pJsonRoot);
+        return M1_PROTOCOL_FAILED;
+    }
+
+    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
+    cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
+    /*create pdu object*/
+    pduJsonObject = cJSON_CreateObject();
+    if(NULL == pduJsonObject)
+    {
+        // create object faild, exit
+        cJSON_Delete(pduJsonObject);
+        return M1_PROTOCOL_FAILED;
+    }
+    /*add pdu to root*/
+    cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
+    /*add pdu type to pdu object*/
+    cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
+    /*create devData array*/
+    devDataJsonArray = cJSON_CreateArray();
+    if(NULL == devDataJsonArray)
+    {
+        cJSON_Delete(devDataJsonArray);
+        return M1_PROTOCOL_FAILED;
+    }
+    /*add devData array to pdu pbject*/
+    cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
+    /*sqlite3*/
+    int rc;
+    rc = sqlite3_open("dev_info.db", &db);  
+  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    } 
+
+    int row_n;
+    char* scen_name = NULL,*district = NULL,*week = NULL, *alarm_status = NULL;
+    int hour,minutes;
+    /*去除场景名称*/
+    sql = "select distinct SCEN_NAME from scenario_table;";
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    while(sqlite3_step(stmt) == SQLITE_ROW){
+	    devDataObject = cJSON_CreateObject();
+	    if(NULL == devDataObject)
+	    {
+	        cJSON_Delete(devDataObject);
+	        return M1_PROTOCOL_FAILED;
+	    }
+	    cJSON_AddItemToArray(devDataJsonArray, devDataObject);
+		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+	    scen_name = sqlite3_column_text(stmt, 0);
+	    cJSON_AddStringToObject(devDataObject, "scenName", scen_name);
+	    devDataObject = cJSON_CreateObject();
+	    if(NULL == devDataObject)
+	    {
+	        cJSON_Delete(devDataObject);
+	        return M1_PROTOCOL_FAILED;
+	    }
+	    cJSON_AddItemToArray(devDataJsonArray, devDataObject);
+	    /*根据场景名称选出隶属区域*/
+	    sprintf(sql_1,"select DISTRICT from scenario_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
+	    sqlite3_reset(stmt_1);
+	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+	    rc = sqlite3_step(stmt_1); 
+		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		district = sqlite3_column_text(stmt_1, 0);
+		cJSON_AddStringToObject(devDataObject, "district", district);
+    	/*选择区域定时执行信息*/
+	    alarmObject = cJSON_CreateObject();
+	    if(NULL == alarmObject)
+	    {
+	        cJSON_Delete(alarmObject);
+	        return M1_PROTOCOL_FAILED;
+	    }
+	    cJSON_AddItemToObject(devDataObject, "alarm", alarmObject);
+	    sprintf(sql_1,"select HOUR, MINUTES, WEEK, STATUS from scen_alarm_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
+	    sqlite3_reset(stmt_1);
+	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+	    rc = sqlite3_step(stmt_1); 
+		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		hour = sqlite3_column_int(stmt_1, 0);
+		cJSON_AddNumberToObject(alarmObject, "hour", hour);
+		minutes = sqlite3_column_int(stmt_1, 1);
+		cJSON_AddNumberToObject(alarmObject, "minutes", minutes);
+		week = sqlite3_column_text(stmt_1, 2);
+		cJSON_AddStringToObject(alarmObject, "week", week);
+		alarm_status = sqlite3_column_text(stmt_1, 3);
+		cJSON_AddStringToObject(alarmObject, "status", alarm_status);
+		/*选择场景内的设备配置信息*/
+	    deviceArrayObject = cJSON_CreateArray();
+	    if(NULL == deviceArrayObject)
+	    {
+	        cJSON_Delete(deviceArrayObject);
+	        return M1_PROTOCOL_FAILED;
+	    }
+	    cJSON_AddItemToObject(devDataObject, "device", deviceArrayObject);
+	    /*设备*/
+
+	    char* apId = NULL, *devId = "devId";
+	    int delay;
+	    /*从场景表scenario_table中选出设备相关信息*/
+	    sprintf(sql_1,"select DISTINCT DEV_ID from scenario_table where SCEN_NAME = \"%s\";",scen_name);
+	    sqlite3_reset(stmt_1);
+	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+	    while(sqlite3_step(stmt_1) == SQLITE_ROW){
+		    deviceObject = cJSON_CreateObject();
+		    if(NULL == deviceObject)
+		    {
+		        cJSON_Delete(deviceObject);
+		        return M1_PROTOCOL_FAILED;
+		    }
+		    cJSON_AddItemToArray(deviceArrayObject, deviceObject);
+		    
+		   	devId = sqlite3_column_text(stmt_1, 0);
+		   	printf("devId:%s\n",devId);
+		   	cJSON_AddStringToObject(deviceObject, "devId", devId);
+		   	/*获取AP_ID*/
+			sprintf(sql_2,"select AP_ID, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\" limit 1;",scen_name, devId);		   	
+		   	sqlite3_reset(stmt_2);
+	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+	    	rc = sqlite3_step(stmt_2); 
+			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		   	apId = sqlite3_column_text(stmt_2, 0);
+		   	cJSON_AddStringToObject(deviceObject, "apId", apId);
+		   	printf("apId:%s\n",apId);
+		   	delay = sqlite3_column_int(stmt_2, 1);
+		   	cJSON_AddNumberToObject(deviceObject, "delay", delay);
+		   	printf("delay:%d\n",delay);
+		   	/*设备参数信息*/
+		   	paramArrayObject = cJSON_CreateArray();
+		   	if(NULL == paramArrayObject)
+		    {
+		        cJSON_Delete(paramArrayObject);
+		        return M1_PROTOCOL_FAILED;
+		    }
+		    cJSON_AddItemToObject(deviceObject, "device", paramArrayObject);
+			
+			sprintf(sql_2,"select AP_ID, DELAY, TYPE, VALUE from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",scen_name, devId);
+	    	sqlite3_reset(stmt_2);
+	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+		   	int type, value;
+		   	while(sqlite3_step(stmt_2) == SQLITE_ROW){
+			    paramObject = cJSON_CreateObject();
+			    if(NULL == paramObject)
+			    {
+			        cJSON_Delete(paramObject);
+			        return M1_PROTOCOL_FAILED;
+			    }
+			    cJSON_AddItemToArray(paramArrayObject, paramObject);
+				type = sqlite3_column_int(stmt_2, 2);
+			   	cJSON_AddNumberToObject(paramObject, "type", type);
+			   	printf("type:%05d\n");
+			   	value = sqlite3_column_int(stmt_2, 3);
+			   	cJSON_AddNumberToObject(paramObject, "value", value);
+			   	printf("value:%05d\n",value);
+		   	}
+		
+		}
+
+	}
+
+	sqlite3_finalize(stmt_1);
+	sqlite3_finalize(stmt_2);
+    sqlite3_close(db);
+
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    
+    if(NULL == p)
+    {    
+        cJSON_Delete(pJsonRoot);
+        return M1_PROTOCOL_FAILED;
+    }
+
+    printf("string:%s\n",p);
+    /*response to client*/
+    socketSeverSend((uint8*)p, strlen(p), clientFd);
+    cJSON_Delete(pJsonRoot);
+
+    return M1_PROTOCOL_OK;
+
+}
 
