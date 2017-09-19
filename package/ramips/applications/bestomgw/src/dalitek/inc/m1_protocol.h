@@ -2,6 +2,7 @@
 #define _M1_PROTOCOL_H_
 
 #include "cJSON.h"
+#include "sqlite3.h"
 /*api result*/
 enum m1_protocol_result{
 	M1_PROTOCOL_OK = 0,
@@ -32,9 +33,43 @@ typedef struct _rsp_data{
 	int result;
 }rsp_data_t;
 
-//void data_handle(char* data);
-void data_handle(m1_package_t package);
+typedef struct _linkage_status{
+	char* logical;
+	char* status;
+	int value;
+	int threshold;
+} linkage_status_t;
 
+typedef struct _fifo_t {
+    uint32_t* buffer;
+    uint32_t len;
+    uint32_t wptr;
+    uint32_t rptr;
+}fifo_t;
+
+void data_handle(m1_package_t package);
+/*联动相关API*/
+void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
+void data_update_cb(int id);
+int trigger_cb_handle(void);
+int linkage_task(void);
+int linkage_msg_handle(payload_t data);
+/*场景相关API*/
+int scenario_exec(char* data, sqlite3* db);
+int scenario_create_handle(payload_t data);
+int scenario_alarm_create_handle(payload_t data);
+/*区域相关API*/
+int district_create_handle(payload_t data);
+/*通用API*/
+void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
+void fifo_write(fifo_t* fifo, uint32_t d);
+uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
+void m1_protocol_init(void);
+void getNowTime(char* _time);
+int sql_exec(sqlite3* db, char*sql);
+int sql_id(sqlite3* db, char* sql);
+int sql_row_number(sqlite3* db, char*sql);
+void create_sql_trigger(void);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003
@@ -44,8 +79,19 @@ void data_handle(m1_package_t package);
 #define TYPE_DEV_WRITE                           0x0005
 /*device read*/
 #define TYPE_DEV_READ                            0x0006
+/*子设备/AP/联动/场景/区域-启动(停止/删除)*/
+#define TYPE_COMMON_OPERATE                      0x0007
+/*联动新建*/
+#define TYPE_CREATE_LINKAGE                      0x000A
+/*场景新建*/
+#define TYPE_CREATE_SCENARIO                     0x000B
+/*区域新建*/
+#define TYPE_CREATE_DISTRICT                     0x000C
+/*场景定时*/
+#define TYPE_SCENARIO_ALARM                      0x000D
 /*APP request device information */
 #define TYPE_REQ_DEV_INFO                        0x000E
+
 
 /*Upload*********************************************************************/
 
