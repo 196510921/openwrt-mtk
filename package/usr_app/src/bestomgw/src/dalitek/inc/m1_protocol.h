@@ -60,6 +60,7 @@ int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
 int scenario_alarm_create_handle(payload_t data);
 int app_req_scenario(int clientFd, int sn);
+int app_req_scenario_name(int clientFd, int sn);
 /*区域相关API*/
 int district_create_handle(payload_t data);
 int app_req_district(int clientFd, int sn);
@@ -100,7 +101,8 @@ void create_sql_trigger(void);
 #define TYPE_REQ_LINK_INFO                       0x0011
 /*APP 请求区域信息 */
 #define TYPE_REQ_DISTRICT_INFO                   0x0012
-
+/*APP 请求场景名称信息 */
+#define TYPE_REQ_SCEN_NAME_INFO                  0x0013
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
@@ -121,6 +123,8 @@ void create_sql_trigger(void);
 #define TYPE_M1_REPORT_LINK_INFO                 0x1009
 /*M1上报区域信息到APP*/
 #define TYPE_M1_REPORT_DISTRICT_INFO             0x100A
+/*M1上报场景名称到APP*/
+#define TYPE_M1_REPORT_SCEN_NAME_INFO            0x100B
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005

@@ -584,6 +584,7 @@ int app_req_scenario(int clientFd, int sn)
 
 	}
 
+	sqlite3_finalize(stmt);
 	sqlite3_finalize(stmt_1);
 	sqlite3_finalize(stmt_2);
     sqlite3_close(db);
@@ -605,3 +606,102 @@ int app_req_scenario(int clientFd, int sn)
 
 }
 
+int app_req_scenario_name(int clientFd, int sn)
+{
+	printf("app_req_scenario_name\n");
+	/*cJSON*/
+    int pduType = TYPE_M1_REPORT_DISTRICT_INFO;
+
+    cJSON * pJsonRoot = NULL;
+    cJSON * pduJsonObject = NULL;
+    cJSON * devDataJsonArray = NULL;
+    cJSON*  devData= NULL;
+    
+    /*sqlite3*/
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
+    char* sql = NULL;
+    char sql_1[200],sql_2[200];
+
+    pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        printf("pJsonRoot NULL\n");
+        cJSON_Delete(pJsonRoot);
+        return M1_PROTOCOL_FAILED;
+    }
+
+    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
+    cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
+    /*create pdu object*/
+    pduJsonObject = cJSON_CreateObject();
+    if(NULL == pduJsonObject)
+    {
+        // create object faild, exit
+        cJSON_Delete(pduJsonObject);
+        return M1_PROTOCOL_FAILED;
+    }
+    /*add pdu to root*/
+    cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
+    /*add pdu type to pdu object*/
+    cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
+    /*create devData array*/
+    devDataJsonArray = cJSON_CreateArray();
+    if(NULL == devDataJsonArray)
+    {
+        cJSON_Delete(devDataJsonArray);
+        return M1_PROTOCOL_FAILED;
+    }
+    /*add devData array to pdu pbject*/
+    cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
+    /*sqlite3*/
+    int rc;
+    rc = sqlite3_open("dev_info.db", &db);  
+  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    } 
+    /*取区域名称*/
+    char* dist_name = NULL, *ap_id = NULL, *ap_name = NULL, *scen_name = NULL;
+    sql = "select distinct SCEN_NAME from scenario_table;";
+   	printf("sql:%s\n", sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    while(sqlite3_step(stmt) == SQLITE_ROW){
+		scen_name = sqlite3_column_text(stmt, 0);
+		printf("scen_name:%s\n",scen_name);
+		devData = cJSON_CreateString(scen_name);
+	    if(NULL == devData)
+	    {
+	        cJSON_Delete(devData);
+	        return M1_PROTOCOL_FAILED;
+	    }
+		cJSON_AddItemToArray(devDataJsonArray, devData);
+	}
+
+	sqlite3_finalize(stmt);
+	sqlite3_finalize(stmt_1);
+	sqlite3_finalize(stmt_2);
+    sqlite3_close(db);
+
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    
+    if(NULL == p)
+    {    
+        cJSON_Delete(pJsonRoot);
+        return M1_PROTOCOL_FAILED;
+    }
+
+    printf("string:%s\n",p);
+    /*response to client*/
+    socketSeverSend((uint8*)p, strlen(p), clientFd);
+    cJSON_Delete(pJsonRoot);
+
+    return M1_PROTOCOL_OK;
+
+}

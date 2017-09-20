@@ -111,6 +111,7 @@ void data_handle(m1_package_t package)
         case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(package.clientFd, rspData.sn);break;
         case TYPE_REQ_LINK_INFO: rc = app_req_linkage(package.clientFd, rspData.sn);break;
         case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(package.clientFd, rspData.sn); break;
+        case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(package.clientFd, rspData.sn);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
