@@ -62,6 +62,7 @@ int scenario_alarm_create_handle(payload_t data);
 int app_req_scenario(int clientFd, int sn);
 /*区域相关API*/
 int district_create_handle(payload_t data);
+int app_req_district(int clientFd, int sn);
 /*通用API*/
 void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
 void fifo_write(fifo_t* fifo, uint32_t d);
@@ -97,6 +98,8 @@ void create_sql_trigger(void);
 #define TYPE_REQ_SCEN_INFO                       0x0010
 /*APP 请求联动信息 */
 #define TYPE_REQ_LINK_INFO                       0x0011
+/*APP 请求区域信息 */
+#define TYPE_REQ_DISTRICT_INFO                   0x0012
 
 /*Upload*********************************************************************/
 
@@ -116,6 +119,8 @@ void create_sql_trigger(void);
 #define TYPE_M1_REPORT_SCEN_INFO                 0x1008
 /*M1上报联动信息到APP*/
 #define TYPE_M1_REPORT_LINK_INFO                 0x1009
+/*M1上报区域信息到APP*/
+#define TYPE_M1_REPORT_DISTRICT_INFO             0x100A
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005

@@ -675,6 +675,7 @@ int app_req_linkage(int clientFd, int sn)
     	}
  	}
 
+ 	sqlite3_finalize(stmt);
  	sqlite3_finalize(stmt_1);
 	sqlite3_finalize(stmt_2);
     sqlite3_close(db);
