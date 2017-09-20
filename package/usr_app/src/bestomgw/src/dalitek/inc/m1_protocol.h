@@ -54,12 +54,12 @@ void data_update_cb(int id);
 int trigger_cb_handle(void);
 int linkage_task(void);
 int linkage_msg_handle(payload_t data);
-int app_req_linkage(int clientFd);
+int app_req_linkage(int clientFd, int sn);
 /*场景相关API*/
 int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
 int scenario_alarm_create_handle(payload_t data);
-int app_req_scenario(int clientFd);
+int app_req_scenario(int clientFd, int sn);
 /*区域相关API*/
 int district_create_handle(payload_t data);
 /*通用API*/

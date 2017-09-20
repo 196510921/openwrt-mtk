@@ -16,14 +16,14 @@
 extern pthread_mutex_t mut;
 
 static int AP_report_data_handle(payload_t data);
-static int APP_read_handle(payload_t data);
+static int APP_read_handle(payload_t data, int sn);
 static int APP_write_handle(payload_t data);
 static int M1_write_to_AP(cJSON* data);
 static int APP_echo_dev_info_handle(payload_t data);
-static int APP_req_added_dev_info_handle(int clientFd);
+static int APP_req_added_dev_info_handle(int clientFd, int sn);
 static int APP_net_control(payload_t data);
-static int M1_report_dev_info(payload_t data);
-static int M1_report_ap_info(int clientFd);
+static int M1_report_dev_info(payload_t data, int sn);
+static int M1_report_ap_info(int clientFd, int sn);
 static int AP_report_dev_handle(payload_t data);
 static int AP_report_ap_handle(payload_t data);
 static int common_operate(payload_t data);
@@ -93,13 +93,13 @@ void data_handle(m1_package_t package)
     printf("pduType:%x\n",pduType);
     switch(pduType){
         case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-        case TYPE_DEV_READ: APP_read_handle(pdu); break;
+        case TYPE_DEV_READ: APP_read_handle(pdu, rspData.sn); break;
         case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson);break;
         case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
-        case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle( package.clientFd); break;
+        case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle( package.clientFd, rspData.sn); break;
         case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
-        case TYPE_REQ_AP_INFO: M1_report_ap_info(package.clientFd); break;
-        case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
+        case TYPE_REQ_AP_INFO: M1_report_ap_info(package.clientFd, rspData.sn); break;
+        case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu, rspData.sn); break;
         case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
         case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
         case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
@@ -108,8 +108,8 @@ void data_handle(m1_package_t package)
         case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
         case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
         case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
-        case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(package.clientFd);break;
-        case TYPE_REQ_LINK_INFO: rc = app_req_linkage(package.clientFd);break;
+        case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(package.clientFd, rspData.sn);break;
+        case TYPE_REQ_LINK_INFO: rc = app_req_linkage(package.clientFd, rspData.sn);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -380,7 +380,7 @@ static int AP_report_ap_handle(payload_t data)
     return M1_PROTOCOL_OK;  
 }
 
-static int APP_read_handle(payload_t data)
+static int APP_read_handle(payload_t data, int sn)
 {   
     /*read json*/
     cJSON* devDataJson = NULL;
@@ -421,7 +421,7 @@ static int APP_read_handle(payload_t data)
         cJSON_Delete(pJsonRoot);
         return M1_PROTOCOL_FAILED;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -466,10 +466,6 @@ static int APP_read_handle(payload_t data)
         row_n = sql_row_number(db, sql);
         printf("row_n:%d\n",row_n);
         if(row_n > 0){
-            sqlite3_reset(stmt);
-            sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        
-            sqlite3_step(stmt);
             devDataObject = cJSON_CreateObject();
             if(NULL == devDataObject)
             {
@@ -479,9 +475,16 @@ static int APP_read_handle(payload_t data)
                 return M1_PROTOCOL_FAILED;
             }
             cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-            cJSON_AddStringToObject(devDataObject, "devName", (const char*)sqlite3_column_text(stmt,0));
             cJSON_AddStringToObject(devDataObject, "devId", dev_id);
-
+            /*取出devName*/
+            sqlite3_reset(stmt);
+            sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+            rc = sqlite3_step(stmt);
+            printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+            if(rc == SQLITE_ROW){
+                cJSON_AddStringToObject(devDataObject, "devName", (const char*)sqlite3_column_text(stmt,0));
+            }
+            
             devArray = cJSON_CreateArray();
             if(NULL == devArray)
             {
@@ -502,10 +505,6 @@ static int APP_read_handle(payload_t data)
             row_n = sql_row_number(db, sql);
             printf("row_n:%d\n",row_n);
             if(row_n > 0){
-                sqlite3_reset(stmt_1);
-                sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
-                sqlite3_step(stmt_1);
-            
                 devObject = cJSON_CreateObject();
                 if(NULL == devObject)
                 {
@@ -515,7 +514,14 @@ static int APP_read_handle(payload_t data)
                 }
                 cJSON_AddItemToArray(devArray, devObject); 
                 cJSON_AddNumberToObject(devObject, "type", paramJson->valueint);
-                cJSON_AddNumberToObject(devObject, "value", sqlite3_column_int(stmt_1,0));
+
+                sqlite3_reset(stmt_1);
+                sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
+                rc = sqlite3_step(stmt_1);
+                printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+                if(rc == SQLITE_ROW){
+                    cJSON_AddNumberToObject(devObject, "value", sqlite3_column_int(stmt_1,0));
+                }
             }
 
         }
@@ -582,10 +588,11 @@ static int M1_write_to_AP(cJSON* data)
     if(row_n > 0){ 
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
         rc = sqlite3_step(stmt);
-        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-        if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
-        ap_id = sqlite3_column_text(stmt,0);
-        printf("ap_id%s\n",ap_id);
+        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+        if(rc == SQLITE_ROW){
+            ap_id = sqlite3_column_text(stmt,0);
+            printf("ap_id%s\n",ap_id);
+        }
     }
 
     /*get clientFd*/
@@ -596,9 +603,10 @@ static int M1_write_to_AP(cJSON* data)
         sqlite3_reset(stmt); 
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
         rc = sqlite3_step(stmt);
-        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-        if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
-        clientFd = sqlite3_column_int(stmt,0);
+        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+        if(rc == SQLITE_ROW){
+            clientFd = sqlite3_column_int(stmt,0);
+        }
     }
 
     sqlite3_finalize(stmt);
@@ -679,10 +687,11 @@ static int APP_write_handle(payload_t data)
             sqlite3_reset(stmt);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
             rc = sqlite3_step(stmt);
-            printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-            dev_name = (const char*)sqlite3_column_text(stmt, 0);
-            printf("dev_name:%s\n",dev_name);
-                
+            printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+            if(rc == SQLITE_ROW){
+                dev_name = (const char*)sqlite3_column_text(stmt, 0);
+                printf("dev_name:%s\n",dev_name);
+            }
             for(j = 0; j < number2; j++){
                 paramArrayJson = cJSON_GetArrayItem(paramDataJson, j);
                 valueTypeJson = cJSON_GetObjectItem(paramArrayJson, "type");
@@ -769,7 +778,7 @@ static int APP_echo_dev_info_handle(payload_t data)
     return M1_PROTOCOL_OK;
 }
 
-static int APP_req_added_dev_info_handle(int clientFd)
+static int APP_req_added_dev_info_handle(int clientFd, int sn)
 {
     /*cJSON*/
     int pduType = TYPE_M1_REPORT_ADDED_INFO;
@@ -789,7 +798,7 @@ static int APP_req_added_dev_info_handle(int clientFd)
         return M1_PROTOCOL_FAILED;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -944,9 +953,11 @@ static int APP_net_control(payload_t data)
     if(row_n > 0){ 
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
         rc = sqlite3_step(stmt);
-        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-        if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
-        clientFd = sqlite3_column_int(stmt,0);
+               rc = sqlite3_step(stmt);
+        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+        if(rc == SQLITE_ROW){
+            clientFd = sqlite3_column_int(stmt,0);
+        }
         /*create json*/
         pJsonRoot = cJSON_CreateObject();
         if(NULL == pJsonRoot)
@@ -999,7 +1010,7 @@ static int APP_net_control(payload_t data)
     return M1_PROTOCOL_OK;
 }
 
-static int M1_report_ap_info(int clientFd)
+static int M1_report_ap_info(int clientFd, int sn)
 {
     printf(" M1_report_ap_info\n");
     /*cJSON*/
@@ -1018,7 +1029,7 @@ static int M1_report_ap_info(int clientFd)
         return M1_PROTOCOL_FAILED;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -1104,7 +1115,7 @@ static int M1_report_ap_info(int clientFd)
     return M1_PROTOCOL_OK;
 }
 
-static int M1_report_dev_info(payload_t data)
+static int M1_report_dev_info(payload_t data, int sn)
 {
      printf(" M1_report_dev_info\n");
     /*cJSON*/
@@ -1128,7 +1139,7 @@ static int M1_report_dev_info(payload_t data)
         return M1_PROTOCOL_FAILED;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -1316,7 +1327,9 @@ static int common_operate(payload_t data)
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
             rc = sqlite3_step(stmt);
             printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
-            scen_name = sqlite3_column_text(stmt,0);
+            if(rc == SQLITE_ROW){
+                scen_name = sqlite3_column_text(stmt,0);
+            }
             sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scen_name);
             printf("sql_1:%s\n",sql_1);
             sql_exec(db, sql_1); 
@@ -1337,7 +1350,7 @@ static int common_operate(payload_t data)
 
 static int common_rsp(rsp_data_t data)
 {
-    printf(" M1_report_dev_info\n");
+    printf(" common_rsp\n");
     /*cJSON*/
     int pduType = TYPE_COMMON_RSP;
 
@@ -1351,7 +1364,7 @@ static int common_rsp(rsp_data_t data)
         return M1_PROTOCOL_FAILED;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -1415,13 +1428,16 @@ void getNowTime(char* _time)
 int sql_id(sqlite3* db, char* sql)
 {
     sqlite3_stmt* stmt = NULL;
-    int id, total_column;
+    int id, total_column, rc;
     /*get id*/
     sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
     total_column = sqlite3_column_count(stmt);
     if(total_column > 0){
         sqlite3_step(stmt);
-        id = (sqlite3_column_int(stmt, 0) + 1);
+        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+        if(rc == SQLITE_ROW){
+            id = (sqlite3_column_int(stmt, 0) + 1);
+        }
     }else{
         id = 1;
     }

@@ -409,7 +409,7 @@ void trigger_cb(void* udp, int type, char const* db_name, char const* table_name
 	
 }
 
-int app_req_linkage(int clientFd)
+int app_req_linkage(int clientFd, int sn)
 {
 	printf("app_req_linkage\n");
 	/*数据包类型*/
@@ -439,7 +439,7 @@ int app_req_linkage(int clientFd)
         return M1_PROTOCOL_FAILED;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);

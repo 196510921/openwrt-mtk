@@ -382,7 +382,7 @@ int scenario_alarm_create_handle(payload_t data)
     
 }
 
-int app_req_scenario(int clientFd)
+int app_req_scenario(int clientFd, int sn)
 {
 	printf("app_req_scenario\n");
 	/*cJSON*/
@@ -411,7 +411,7 @@ int app_req_scenario(int clientFd)
         return M1_PROTOCOL_FAILED;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
