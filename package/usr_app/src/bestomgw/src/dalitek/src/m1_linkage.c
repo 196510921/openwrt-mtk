@@ -115,7 +115,6 @@ int linkage_msg_handle(payload_t data)
 	rc = sqlite3_step(stmt);
 	printf("step1() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
 
-
     /*link_trigger_table*/
     sql = "select ID from link_trigger_table order by ID desc limit 1";
     id_1 = sql_id(db, sql);
@@ -224,13 +223,15 @@ int linkage_task(void)
 		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 		rc = sqlite3_step(stmt);
 		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
-		exec_type = sqlite3_column_text(stmt,0);
-		exec_id = sqlite3_column_text(stmt,1);
-		link_name = sqlite3_column_text(stmt,2);
-		if(strcmp(exec_type, "scenario") == 0){
-			scenario_exec(exec_id, db);
-		}else{
-			device_exec(link_name);			
+		if(rc == SQLITE_ROW){
+			exec_type = sqlite3_column_text(stmt,0);
+			exec_id = sqlite3_column_text(stmt,1);
+			link_name = sqlite3_column_text(stmt,2);
+			if(strcmp(exec_type, "scenario") == 0){
+				scenario_exec(exec_id, db);
+			}else{
+				device_exec(link_name);			
+			}
 		}
 	}
 
@@ -302,9 +303,11 @@ static void linkage_check(sqlite3* db, char* link_name)
 		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 		rc = sqlite3_step(stmt);
 		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-		rowid = sqlite3_column_int(stmt,0);
-		printf("rowid:%d\n",rowid);
-		fifo_write(&link_exec_fifo, rowid);
+		if(rc == SQLITE_ROW){
+			rowid = sqlite3_column_int(stmt,0);
+			printf("rowid:%d\n",rowid);
+			fifo_write(&link_exec_fifo, rowid);
+		}
 	}
 
 	sqlite3_finalize(stmt);
@@ -345,17 +348,21 @@ int trigger_cb_handle(void)
 		}
 		rc = sqlite3_step(stmt);
 		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-	    value = sqlite3_column_int(stmt,0);
-	    devId = sqlite3_column_text(stmt,1);
-	    param_type = sqlite3_column_int(stmt,2);
-	    printf("value:%05d, devId:%s, param_type:\n",value, devId, param_type);
+		if(rc == SQLITE_ROW){
+		    value = sqlite3_column_int(stmt,0);
+		    devId = sqlite3_column_text(stmt,1);
+		    param_type = sqlite3_column_int(stmt,2);
+		    printf("value:%05d, devId:%s, param_type:\n",value, devId, param_type);
+		}
 	 	/*检查设备启/停状态*/
 	 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
 	 	sqlite3_reset(stmt_1);
 	 	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 	 	rc = sqlite3_step(stmt_1);
-		printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
-	    status = sqlite3_column_text(stmt_1,0);
+		printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		if(rc == SQLITE_ROW){		
+	    	status = sqlite3_column_text(stmt_1,0);
+		}
 	    /*设备处于启动状态*/
 	    if(strcmp(status,"ON") == 0){
 		    /*get linkage table*/
@@ -469,7 +476,7 @@ int app_req_linkage(int clientFd)
     } 
 
     char* link_name = NULL, *district = NULL, *logical = NULL, *exec_type = NULL, *exec_id = NULL,
-    *ap_id = NULL, *dev_id = NULL, *condition = NULL;
+    *ap_id = NULL, *dev_id = NULL, *condition = NULL, *dev_name = NULL;
     int type, value, delay;
     sql = "select LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID from linkage_table;";
     sqlite3_reset(stmt);
@@ -496,8 +503,10 @@ int app_req_linkage(int clientFd)
     	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
     	rc = sqlite3_step(stmt_1); 
 		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-		logical = sqlite3_column_text(stmt_1, 0);
-	    cJSON_AddStringToObject(devDataObject, "logical", logical);
+		if(rc == SQLITE_ROW){
+			logical = sqlite3_column_text(stmt_1, 0);
+	    	cJSON_AddStringToObject(devDataObject, "logical", logical);
+		}
 	    /*获取联动触发信息*/
  	    triggerJsonArray = cJSON_CreateArray();
  	    if(NULL == triggerJsonArray)
@@ -527,9 +536,21 @@ int app_req_linkage(int clientFd)
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 	    	rc = sqlite3_step(stmt_2); 
 			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-		   	ap_id = sqlite3_column_text(stmt_2, 0);
-		   	cJSON_AddStringToObject(triggerObject, "apId", ap_id);
-		   	printf("apId:%s\n",ap_id);
+			if(rc == SQLITE_ROW){
+			   	ap_id = sqlite3_column_text(stmt_2, 0);
+			   	cJSON_AddStringToObject(triggerObject, "apId", ap_id);
+			   	printf("apId:%s\n",ap_id);
+		   	}
+		   	/*获取设备名称*/
+		   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
+		   	sqlite3_reset(stmt_2);
+	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+	    	rc = sqlite3_step(stmt_2); 
+			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+			if(rc == SQLITE_ROW){ 
+			   	dev_name = sqlite3_column_text(stmt_2, 0);
+			   	cJSON_AddStringToObject(triggerObject, "devName", dev_name);
+		   	}
     		/*获取参数*/
     		paramJsonArray = cJSON_CreateArray();
  	    	if(NULL == paramJsonArray)
@@ -592,12 +613,24 @@ int app_req_linkage(int clientFd)
 		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 		    	rc = sqlite3_step(stmt_2); 
 				printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-			   	ap_id = sqlite3_column_text(stmt_2, 0);
-			   	cJSON_AddStringToObject(execObject, "apId", ap_id);
-			   	printf("apId:%s\n",ap_id);
-			   	delay = sqlite3_column_int(stmt_2, 1);
-			   	cJSON_AddNumberToObject(execObject, "delay", delay);
-			   	printf("delay:%s\n",delay);
+				if(rc == SQLITE_ROW){
+				   	ap_id = sqlite3_column_text(stmt_2, 0);
+				   	cJSON_AddStringToObject(execObject, "apId", ap_id);
+				   	printf("apId:%s\n",ap_id);
+				   	delay = sqlite3_column_int(stmt_2, 1);
+				   	cJSON_AddNumberToObject(execObject, "delay", delay);
+				   	printf("delay:%s\n",delay);
+			   	}
+			   	/*获取设备名称*/
+			   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
+			   	sqlite3_reset(stmt_2);
+		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+		    	rc = sqlite3_step(stmt_2); 
+				printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+				if(rc == SQLITE_ROW){
+				   	dev_name = sqlite3_column_text(stmt_2, 0);
+				   	cJSON_AddStringToObject(execObject, "devName", dev_name);
+				}
 	    		/*获取参数*/
 	    		paramJsonArray = cJSON_CreateArray();
 	 	    	if(NULL == paramJsonArray)
