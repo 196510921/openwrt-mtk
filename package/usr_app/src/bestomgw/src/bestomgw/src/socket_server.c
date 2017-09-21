@@ -370,7 +370,6 @@ void socketSeverPoll(int clinetFd, int revent)
 			printf("POLLRDHUP\n");
 			//its a shut down close the socket
 			printf("Client fd:%d disconnected\n", clinetFd);
-
 			//remove the record and close the socket
 			deleteSocketRec(clinetFd);
 		}

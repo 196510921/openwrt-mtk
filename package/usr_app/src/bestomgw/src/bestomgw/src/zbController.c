@@ -41,6 +41,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <poll.h>
+#include <pthread.h>
+#include "thpool.h"
 
 #include "zbSocCmd.h"
 #include "interface_devicelist.h"
@@ -52,6 +54,7 @@
 
 
 //全局变量	
+threadpool thpool;//线程池
 //int fdserwrite, fdread; //串口 写,读
  long MAXLEN = 10*1024;//10KB
  char sexepath[PATH_MAX];
@@ -102,6 +105,9 @@ int main(int argc, char* argv[])
 
 	SRPC_Init();
 	m1_protocol_init();
+	/*init thread pool*/
+	puts("Making threadpool with 6 threads");
+	thpool = thpool_init(6);
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
@@ -118,10 +124,6 @@ int main(int argc, char* argv[])
 
 			if (client_fds && pollFds)
 			{
-				//set the zllSoC serial port FD in the poll file descriptors
-				// pollFds[0].fd = zbSoc_fd;
-				// pollFds[0].events = POLLIN;
-
 				//Set the socket file descriptors
 				socketSeverGetClientFds(client_fds, numClientFds);
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
@@ -153,7 +155,8 @@ int main(int argc, char* argv[])
 		}
 	}
 
-
+	puts("Killing threadpool");
+	thpool_destroy(thpool);
 	return retval;
 }
 

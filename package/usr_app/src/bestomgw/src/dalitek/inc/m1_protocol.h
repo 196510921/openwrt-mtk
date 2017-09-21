@@ -17,6 +17,7 @@ enum rsp_result{
 };
 /*socket package*/
 typedef struct _socket_package{
+	int len;
  	int clientFd;
  	char* data;
 }m1_package_t;
@@ -47,7 +48,8 @@ typedef struct _fifo_t {
     uint32_t rptr;
 }fifo_t;
 
-void data_handle(m1_package_t package);
+//void data_handle(m1_package_t* package);
+void data_handle(void);
 /*联动相关API*/
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
 void data_update_cb(int id);
@@ -74,6 +76,7 @@ int sql_exec(sqlite3* db, char*sql);
 int sql_id(sqlite3* db, char* sql);
 int sql_row_number(sqlite3* db, char*sql);
 void create_sql_trigger(void);
+
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003

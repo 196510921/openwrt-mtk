@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <malloc.h>
 
 #include "m1_protocol.h"
 #include "socket_server.h"
@@ -34,17 +35,22 @@ static int common_rsp_handle(payload_t data);
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
+fifo_t msg_fifo;
 static uint32_t dev_data_buf[256];
 static uint32_t link_exec_buf[256];
+static uint32_t msg_buf[256];
 
 void m1_protocol_init(void)
 {
     fifo_init(&dev_data_fifo, dev_data_buf, 256);
     fifo_init(&link_exec_fifo, link_exec_buf, 256);
+    fifo_init(&msg_fifo, msg_buf, 256);
 }
 
-void data_handle(m1_package_t package)
+//void data_handle(m1_package_t* package)
+void data_handle(void)
 {
+    printf("data_handle\n");
     int rc = M1_PROTOCOL_NO_RSP;
     payload_t pdu;
     rsp_data_t rspData;
@@ -55,7 +61,11 @@ void data_handle(m1_package_t package)
     cJSON* pduDataJson = NULL;
     int pduType;
 
-    rootJson = cJSON_Parse(package.data);
+    uint32_t* msg = NULL;
+    fifo_read(&msg_fifo, &msg);
+    m1_package_t* package = (m1_package_t*)msg;
+    printf("Rx message:%s\n",package->data);
+    rootJson = cJSON_Parse(package->data);
     if(NULL == rootJson){
         printf("rootJson null\n");
         return;
@@ -86,19 +96,19 @@ void data_handle(m1_package_t package)
 
     }
     /*pdu*/ 
-    pdu.clientFd = package.clientFd;
+    pdu.clientFd = package->clientFd;
     pdu.pdu = pduDataJson;
 
-    rspData.clientFd = package.clientFd;
+    rspData.clientFd = package->clientFd;
     printf("pduType:%x\n",pduType);
     switch(pduType){
         case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
         case TYPE_DEV_READ: APP_read_handle(pdu, rspData.sn); break;
         case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson);break;
         case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
-        case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle( package.clientFd, rspData.sn); break;
+        case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(rspData.clientFd , rspData.sn); break;
         case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
-        case TYPE_REQ_AP_INFO: M1_report_ap_info(package.clientFd, rspData.sn); break;
+        case TYPE_REQ_AP_INFO: M1_report_ap_info(rspData.clientFd , rspData.sn); break;
         case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu, rspData.sn); break;
         case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
         case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
@@ -108,10 +118,10 @@ void data_handle(m1_package_t package)
         case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
         case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
         case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
-        case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(package.clientFd, rspData.sn);break;
-        case TYPE_REQ_LINK_INFO: rc = app_req_linkage(package.clientFd, rspData.sn);break;
-        case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(package.clientFd, rspData.sn); break;
-        case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(package.clientFd, rspData.sn);break;
+        case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(rspData.clientFd, rspData.sn);break;
+        case TYPE_REQ_LINK_INFO: rc = app_req_linkage(rspData.clientFd, rspData.sn);break;
+        case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(rspData.clientFd, rspData.sn); break;
+        case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(rspData.clientFd, rspData.sn);break;
 
         default: printf("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -125,6 +135,10 @@ void data_handle(m1_package_t package)
     }
 
     cJSON_Delete(rootJson);
+    /*free*/
+    printf("free\n");
+    free(package->data);
+    free(package);
     linkage_task();
 }
 
@@ -1477,3 +1491,4 @@ int sql_exec(sqlite3* db, char*sql)
     sqlite3_finalize(stmt);
     return rc;
 }
+
