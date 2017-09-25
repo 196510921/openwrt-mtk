@@ -31,20 +31,23 @@ static int common_operate(payload_t data);
 static int common_rsp(rsp_data_t data);
 static int common_rsp_handle(payload_t data);
 
-
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
 fifo_t msg_fifo;
+fifo_t tx_fifo;
 static uint32_t dev_data_buf[256];
 static uint32_t link_exec_buf[256];
 static uint32_t msg_buf[256];
+static uint32_t tx_buf[256];
 
 void m1_protocol_init(void)
 {
+    sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
     fifo_init(&dev_data_fifo, dev_data_buf, 256);
     fifo_init(&link_exec_fifo, link_exec_buf, 256);
     fifo_init(&msg_fifo, msg_buf, 256);
+    fifo_init(&tx_fifo, tx_buf, 256);
 }
 
 //void data_handle(m1_package_t* package)
@@ -191,8 +194,9 @@ static int AP_report_data_handle(payload_t data)
     }
 
     id = sql_id(db, sql);
-
+    printf("id:%d\n",id);
     sql = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
+    printf("sql:%s\n",sql);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 
     number1 = cJSON_GetArraySize(data.pdu);
@@ -334,7 +338,6 @@ static int AP_report_ap_handle(payload_t data)
     char sql_1[200];
     char* sql = NULL; 
     int id;
-
     rc = sqlite3_open(db_path, &db);  
     if(rc){  
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
@@ -1074,8 +1077,8 @@ static int M1_report_ap_info(int clientFd, int sn)
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
     /*sqlite3*/
     int rc;
+
     rc = sqlite3_open(db_path, &db);  
-  
     if( rc ){  
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
         return M1_PROTOCOL_FAILED;  
@@ -1185,7 +1188,6 @@ static int M1_report_dev_info(payload_t data, int sn)
     /*sqlite3*/
     int rc;
     rc = sqlite3_open(db_path, &db);  
-  
     if( rc ){  
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
         return M1_PROTOCOL_FAILED;  
@@ -1443,17 +1445,15 @@ void getNowTime(char* _time)
   
 int sql_id(sqlite3* db, char* sql)
 {
+    printf("sql_id\n");
     sqlite3_stmt* stmt = NULL;
     int id, total_column, rc;
     /*get id*/
     sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
-    total_column = sqlite3_column_count(stmt);
-    if(total_column > 0){
-        sqlite3_step(stmt);
-        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
-        if(rc == SQLITE_ROW){
+    rc = sqlite3_step(stmt);
+    printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+    if(rc == SQLITE_ROW){
             id = (sqlite3_column_int(stmt, 0) + 1);
-        }
     }else{
         id = 1;
     }

@@ -137,7 +137,6 @@ int app_req_district(int clientFd, int sn)
     /*sqlite3*/
     int rc;
     rc = sqlite3_open("dev_info.db", &db);  
-  
     if( rc ){  
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
         return M1_PROTOCOL_FAILED;  

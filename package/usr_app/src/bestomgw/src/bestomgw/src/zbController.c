@@ -49,12 +49,11 @@
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
 
-
 #define MAX_DB_FILENAMR_LEN 255
-
 
 //全局变量	
 threadpool thpool;//线程池
+threadpool tx_thpool;//线程池
 //int fdserwrite, fdread; //串口 写,读
  long MAXLEN = 10*1024;//10KB
  char sexepath[PATH_MAX];
@@ -106,8 +105,11 @@ int main(int argc, char* argv[])
 	SRPC_Init();
 	m1_protocol_init();
 	/*init thread pool*/
-	puts("Making threadpool with 6 threads");
-	thpool = thpool_init(6);
+	puts("Making threadpool with 1 threads");
+	/*接收线程*/
+	thpool = thpool_init(1);
+	/*发送线程*/
+	tx_thpool = thpool_init(2);
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
