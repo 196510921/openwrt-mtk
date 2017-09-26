@@ -226,9 +226,9 @@ static int AP_report_data_handle(payload_t data)
             sqlite3_bind_int(stmt, 4,typeJson->valueint);
             sqlite3_bind_int(stmt, 5, valueJson->valueint);
             sqlite3_bind_text(stmt, 6,  time, -1, NULL);
-            rc = sqlite3_step(stmt);
-            printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-
+            //rc = sqlite3_step(stmt);
+            //printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+            thread_sqlite3_step(stmt, db);
         }
     }
 
@@ -1492,3 +1492,16 @@ int sql_exec(sqlite3* db, char*sql)
     return rc;
 }
 
+int thread_sqlite3_step(sqlite3_stmt* stmt, sqlite3* db)
+{
+    int rc;
+    /*sqlite3 lock*/
+    sqlite3_mutex_enter(sqlite3_db_mutex(db));
+    do{
+        rc = sqlite3_step(stmt);   
+    }while(rc == SQLITE_BUSY);
+    /*sqlite3 unlock*/
+    sqlite3_mutex_leave(sqlite3_db_mutex(db));
+    printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+    return rc;
+}

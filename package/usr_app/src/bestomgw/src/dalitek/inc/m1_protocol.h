@@ -76,7 +76,8 @@ int sql_exec(sqlite3* db, char*sql);
 int sql_id(sqlite3* db, char* sql);
 int sql_row_number(sqlite3* db, char*sql);
 void create_sql_trigger(void);
-
+/*数据库*/
+int thread_sqlite3_step(sqlite3_stmt* stmt, sqlite3* db);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003
