@@ -54,7 +54,9 @@
 #include <sys/ioctl.h>
 #include <poll.h>
 #include <errno.h>
+#include <malloc.h>
 
+#include "thpool.h"
 #include "socket_server.h"
 #include "m1_protocol.h"
 
@@ -370,7 +372,6 @@ void socketSeverPoll(int clinetFd, int revent)
 			printf("POLLRDHUP\n");
 			//its a shut down close the socket
 			printf("Client fd:%d disconnected\n", clinetFd);
-
 			//remove the record and close the socket
 			deleteSocketRec(clinetFd);
 		}
@@ -390,23 +391,93 @@ void socketSeverPoll(int clinetFd, int revent)
  *
  * @return  Status
  */
-int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
+extern threadpool tx_thpool;
+extern fifo_t tx_fifo;
+static void thread_socketSeverSend(void)
 {
-	int32 rtn;
+	printf("thread_socketSeverSend\n");
+	int rtn;
+	uint32_t* msg = NULL;
 
-	printf("socketSeverSend++: writing to socket fd %d\n", fdClient);
-
-	if (fdClient)
+    if(fifo_read(&tx_fifo, &msg) == 0){
+    	printf("fifo read failed\n");
+    	return;
+    }
+    printf("2.msg:%x\n", msg);
+    if(msg == NULL){
+    	printf("msg NULL\n");
+    	return ;
+    }
+    m1_package_t* package = (m1_package_t*)msg;
+    printf("tx message:%s\n",package->data);
+    printf("socketSeverSend++: writing to socket fd %d\n", package->clientFd);
+	if (package->clientFd)
 	{
-		rtn = write(fdClient, buf, len);
+		rtn = write(package->clientFd, package->data, package->len);
 		if (rtn < 0)
 		{
-			printf("ERROR writing to socket %d\n", fdClient);
-			return rtn;
+			printf("ERROR writing to socket %d\n", package->clientFd);
 		}
 	}
 
-	printf("socketSeverSend--\n");
+	printf("socketSeverSend--\n");		
+	/*free*/
+    printf("free\n");
+    free(package->data);
+    //free(package);
+}
+
+/*分配tx message地址*/
+#define SOCKT_MSG_NUMBER    100
+static m1_package_t socket_msg[SOCKT_MSG_NUMBER];
+static m1_package_t* socket_msg_alloc(void)
+{
+	static uint32_t i = 0;
+	m1_package_t* add = NULL;
+
+	i %= SOCKT_MSG_NUMBER;
+	add = &socket_msg[i];
+	printf("socket_msg_alloc:%d\n",i);
+	i++;
+	return add;
+}
+
+int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
+{
+	m1_package_t * msg = socket_msg_alloc();
+	//m1_package_t * msg = (m1_package_t *)malloc(sizeof(m1_package_t));
+	if(msg == NULL)
+	{
+		printf("malloc failed\n");
+		return ;
+	}
+	printf("1.msg:%x\n", msg);
+	msg->len = len;
+	msg->clientFd = fdClient;
+	msg->data = (char*)malloc(len);
+	if(msg->data == NULL)
+	{
+		printf("malloc failed\n");
+		return ;
+	}
+	printf("1.msg->data:%x\n", msg->data);
+	memcpy(msg->data, buf, len);
+	fifo_write(&tx_fifo, msg);
+	puts("Adding task to threadpool\n");
+	thpool_add_work(tx_thpool, (void*)thread_socketSeverSend, NULL);
+
+	// int rtn;
+	// if (fdClient)
+	// {
+	// 	rtn = write(fdClient, buf, len);
+	// 	if (rtn < 0)
+	// 	{
+	// 		printf("ERROR writing to socket %d\n", fdClient);
+	// 	}
+	// }
+
+	//printf("socketSeverSend--\n");	
+
 	return 0;
 }
 

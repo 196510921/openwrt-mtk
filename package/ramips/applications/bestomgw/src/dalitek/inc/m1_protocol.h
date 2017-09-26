@@ -17,6 +17,7 @@ enum rsp_result{
 };
 /*socket package*/
 typedef struct _socket_package{
+	int len;
  	int clientFd;
  	char* data;
 }m1_package_t;
@@ -47,19 +48,24 @@ typedef struct _fifo_t {
     uint32_t rptr;
 }fifo_t;
 
-void data_handle(m1_package_t package);
+//void data_handle(m1_package_t* package);
+void data_handle(void);
 /*联动相关API*/
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
 void data_update_cb(int id);
 int trigger_cb_handle(void);
 int linkage_task(void);
 int linkage_msg_handle(payload_t data);
+int app_req_linkage(int clientFd, int sn);
 /*场景相关API*/
 int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
 int scenario_alarm_create_handle(payload_t data);
+int app_req_scenario(int clientFd, int sn);
+int app_req_scenario_name(int clientFd, int sn);
 /*区域相关API*/
 int district_create_handle(payload_t data);
+int app_req_district(int clientFd, int sn);
 /*通用API*/
 void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
 void fifo_write(fifo_t* fifo, uint32_t d);
@@ -70,6 +76,8 @@ int sql_exec(sqlite3* db, char*sql);
 int sql_id(sqlite3* db, char* sql);
 int sql_row_number(sqlite3* db, char*sql);
 void create_sql_trigger(void);
+/*数据库*/
+int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003
@@ -91,8 +99,14 @@ void create_sql_trigger(void);
 #define TYPE_SCENARIO_ALARM                      0x000D
 /*APP request device information */
 #define TYPE_REQ_DEV_INFO                        0x000E
-
-
+/*APP 请求场景信息 */
+#define TYPE_REQ_SCEN_INFO                       0x0010
+/*APP 请求联动信息 */
+#define TYPE_REQ_LINK_INFO                       0x0011
+/*APP 请求区域信息 */
+#define TYPE_REQ_DISTRICT_INFO                   0x0012
+/*APP 请求场景名称信息 */
+#define TYPE_REQ_SCEN_NAME_INFO                  0x0013
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
@@ -107,6 +121,14 @@ void create_sql_trigger(void);
 #define TYPE_AP_REPORT_AP_INFO                   0x1006
 /*AP report device information to M1*/
 #define TYPE_AP_REPORT_DEV_INFO                  0x1007
+/*M1上报场景信息到APP*/
+#define TYPE_M1_REPORT_SCEN_INFO                 0x1008
+/*M1上报联动信息到APP*/
+#define TYPE_M1_REPORT_LINK_INFO                 0x1009
+/*M1上报区域信息到APP*/
+#define TYPE_M1_REPORT_DISTRICT_INFO             0x100A
+/*M1上报场景名称到APP*/
+#define TYPE_M1_REPORT_SCEN_NAME_INFO            0x100B
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005

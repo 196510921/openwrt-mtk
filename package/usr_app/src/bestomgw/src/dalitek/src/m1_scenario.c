@@ -68,20 +68,20 @@ int scenario_exec(char* data, sqlite3* db)
 	
 	printf("sql:%s\n",sql);
 	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-	while(sqlite3_step(stmt) == SQLITE_ROW){
+	while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 		ap_id = sqlite3_column_text(stmt,0);
 		sqlite3_reset(stmt_1);
 		sprintf(sql_1,"select distinct DEV_ID from scenario_table where SCEN_NAME = \"%s\" and AP_ID = \"%s\";",data, ap_id);	
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 		printf("sql_1:%s\n",sql_1);
-		while(sqlite3_step(stmt_1) == SQLITE_ROW){
+		while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 			dev_id = sqlite3_column_text(stmt_1,0);
 			/*检查设备启/停状态*/
 		 	sprintf(sql_2,"select STATUS from all_dev where DEV_ID = \"%s\";",dev_id);
 		 	sqlite3_reset(stmt_2);
 		 	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-		 	rc = sqlite3_step(stmt_1);
-			printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+		 	rc = thread_sqlite3_step(&stmt_1,db);
+	
 		   	if(rc == SQLITE_ROW){
 				status = sqlite3_column_text(stmt_2,0);
 			}		
@@ -110,7 +110,7 @@ int scenario_exec(char* data, sqlite3* db)
 				printf("sql_2:%s\n",sql_2);
 				sqlite3_reset(stmt_2);
 				sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-				while(sqlite3_step(stmt_2) == SQLITE_ROW){
+				while(thread_sqlite3_step(&stmt_2,db) == SQLITE_ROW){
 					type = sqlite3_column_int(stmt_2,0);
 					value = sqlite3_column_int(stmt_2,1);
 					delay = sqlite3_column_int(stmt_2,2);
@@ -142,8 +142,8 @@ int scenario_exec(char* data, sqlite3* db)
     	printf("sql_3:%s\n", sql_3);
     	sqlite3_reset(stmt_3);
     	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
-    	rc = sqlite3_step(stmt_3);
-    	printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+    	rc = thread_sqlite3_step(&stmt_3,db);
+    
     	if(rc == SQLITE_ROW){
 			clientFd = sqlite3_column_int(stmt_3,0);
 		}		
@@ -225,7 +225,7 @@ int scenario_create_handle(payload_t data)
 		sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(sqlite3_step(stmt) == SQLITE_ROW);
+		while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW);
 	}
 	
     sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
@@ -240,8 +240,7 @@ int scenario_create_handle(payload_t data)
 	sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
 	sqlite3_bind_text(stmt, 7, time, -1, NULL);
 	
-	rc = sqlite3_step(stmt); 
-	printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+	rc = thread_sqlite3_step(&stmt, db); 
 	
 	/*获取联动表 id*/
 	sql = "select ID from scenario_table order by ID desc limit 1";
@@ -255,7 +254,7 @@ int scenario_create_handle(payload_t data)
 		sprintf(sql_1,"delete from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(sqlite3_step(stmt) == SQLITE_ROW);
+		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 	}
 
     districtJson = cJSON_GetObjectItem(data.pdu, "district");
@@ -292,8 +291,7 @@ int scenario_create_handle(payload_t data)
 			sqlite3_bind_int(stmt, 8, delayJson->valueint);
 			sqlite3_bind_text(stmt, 9, time, -1, NULL);
 			id++;
-			rc = sqlite3_step(stmt); 
-			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+			rc = thread_sqlite3_step(&stmt, db); 
 	
     	}	
     }
@@ -355,7 +353,7 @@ int scenario_alarm_create_handle(payload_t data)
 		sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(sqlite3_step(stmt) == SQLITE_ROW);
+		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 	}
 	
     sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
@@ -370,8 +368,7 @@ int scenario_alarm_create_handle(payload_t data)
 	sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
 	sqlite3_bind_text(stmt, 7, time, -1, NULL);
 	
-	rc = sqlite3_step(stmt); 
-	printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+	rc = thread_sqlite3_step(&stmt, db); 
    
     sqlite3_finalize(stmt);
     sqlite3_close(db);
@@ -452,7 +449,7 @@ int app_req_scenario(int clientFd, int sn)
     sql = "select distinct SCEN_NAME from scenario_table;";
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-    while(sqlite3_step(stmt) == SQLITE_ROW){
+    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 	    devDataObject = cJSON_CreateObject();
 	    if(NULL == devDataObject)
 	    {
@@ -466,8 +463,8 @@ int app_req_scenario(int clientFd, int sn)
 	    sprintf(sql_1,"select DISTRICT from scenario_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
 	    sqlite3_reset(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-	    rc = sqlite3_step(stmt_1); 
-		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+	    rc = thread_sqlite3_step(&stmt_1, db); 
+
 		if(rc == SQLITE_ROW){
 			district = sqlite3_column_text(stmt_1, 0);
 			cJSON_AddStringToObject(devDataObject, "district", district);
@@ -484,8 +481,7 @@ int app_req_scenario(int clientFd, int sn)
 	    sprintf(sql_1,"select HOUR, MINUTES, WEEK, STATUS from scen_alarm_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
 	    sqlite3_reset(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-	    rc = sqlite3_step(stmt_1); 
-		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+	    rc = thread_sqlite3_step(&stmt_1, db); 
 		if(rc == SQLITE_ROW){
 			hour = sqlite3_column_int(stmt_1, 0);
 			cJSON_AddNumberToObject(alarmObject, "hour", hour);
@@ -512,7 +508,7 @@ int app_req_scenario(int clientFd, int sn)
 	    sprintf(sql_1,"select DISTINCT DEV_ID from scenario_table where SCEN_NAME = \"%s\";",scen_name);
 	    sqlite3_reset(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-	    while(sqlite3_step(stmt_1) == SQLITE_ROW){
+	    while(thread_sqlite3_step(&stmt_1,db) == SQLITE_ROW){
 		    deviceObject = cJSON_CreateObject();
 		    if(NULL == deviceObject)
 		    {
@@ -528,8 +524,8 @@ int app_req_scenario(int clientFd, int sn)
 			sprintf(sql_2,"select AP_ID, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\" limit 1;",scen_name, dev_id);		   	
 		   	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-	    	rc = sqlite3_step(stmt_2); 
-			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+	    	rc = thread_sqlite3_step(&stmt_2, db); 
+			
 			if(rc == SQLITE_ROW){
 				ap_id = sqlite3_column_text(stmt_2, 0);
 			   	cJSON_AddStringToObject(deviceObject, "apId", ap_id);
@@ -542,8 +538,8 @@ int app_req_scenario(int clientFd, int sn)
 		   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 		   	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-	    	rc = sqlite3_step(stmt_2); 
-			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+	    	rc = thread_sqlite3_step(&stmt_2, db); 
+
 			if(rc == SQLITE_ROW){
 				dev_name = sqlite3_column_text(stmt_2, 0);
 		   		printf("dev_name:%s\n",dev_name);
@@ -563,7 +559,7 @@ int app_req_scenario(int clientFd, int sn)
 	    	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 		   	int type, value;
-		   	while(sqlite3_step(stmt_2) == SQLITE_ROW){
+		   	while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
 			    paramObject = cJSON_CreateObject();
 			    if(NULL == paramObject)
 			    {
@@ -670,7 +666,7 @@ int app_req_scenario_name(int clientFd, int sn)
    	printf("sql:%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-    while(sqlite3_step(stmt) == SQLITE_ROW){
+    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 		scen_name = sqlite3_column_text(stmt, 0);
 		printf("scen_name:%s\n",scen_name);
 		devData = cJSON_CreateString(scen_name);

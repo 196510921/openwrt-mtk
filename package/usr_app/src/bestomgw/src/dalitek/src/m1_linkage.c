@@ -82,17 +82,17 @@ int linkage_msg_handle(payload_t data)
 		sprintf(sql_1,"delete from linkage_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(sqlite3_step(stmt) == SQLITE_ROW);
+		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 		/*delete link_trigger_table member*/
 		sprintf(sql_1,"delete from link_trigger_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(sqlite3_step(stmt) == SQLITE_ROW);
+		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 		/*delete link_exec_table member*/
 		sprintf(sql_1,"delete from link_exec_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(sqlite3_step(stmt) == SQLITE_ROW);
+		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 	}
 
 	/*获取table id*/
@@ -112,7 +112,7 @@ int linkage_msg_handle(payload_t data)
 
 	sqlite3_bind_text(stmt, 6,  "OFF", -1, NULL);
 	sqlite3_bind_text(stmt, 7,  time, -1, NULL);
-	rc = sqlite3_step(stmt);
+	rc = thread_sqlite3_step(&stmt, db);
 	printf("step1() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
 
     /*link_trigger_table*/
@@ -149,7 +149,7 @@ int linkage_msg_handle(payload_t data)
 		   	sqlite3_bind_text(stmt_1, 9,  logicalJson->valuestring, -1, NULL);
 		   	sqlite3_bind_text(stmt_1, 10,  "OFF", -1, NULL);
 		   	sqlite3_bind_text(stmt_1, 11,  time, -1, NULL);
-		   	rc = sqlite3_step(stmt_1);
+		   	rc = thread_sqlite3_step(&stmt_1, db);
 		   	printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
 	    	
 	    }
@@ -185,8 +185,7 @@ int linkage_msg_handle(payload_t data)
 			   	sqlite3_bind_int(stmt_1, 7,  valueJson->valueint);
 			   	sqlite3_bind_int(stmt_1, 8,  delayJson->valueint);
 			   	sqlite3_bind_text(stmt_1, 9,  time, -1, NULL);
-			   	rc = sqlite3_step(stmt_1);
-			   	printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+			   	rc = thread_sqlite3_step(&stmt_1, db);
 	    	}
 	    }
 	}
@@ -221,8 +220,8 @@ int linkage_task(void)
 		printf("sql:%s\n", sql);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-		rc = sqlite3_step(stmt);
-		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
+		rc = thread_sqlite3_step(&stmt, db);
+		
 		if(rc == SQLITE_ROW){
 			exec_type = sqlite3_column_text(stmt,0);
 			exec_id = sqlite3_column_text(stmt,1);
@@ -274,7 +273,7 @@ static void linkage_check(sqlite3* db, char* link_name)
 	sprintf(sql,"select STATUS, LOGICAL from link_trigger_table where LINK_NAME = \"%s\";",link_name);
 	printf("sql:%s\n",sql);
 	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-	while(sqlite3_step(stmt) == SQLITE_ROW){
+	while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW){
 		status = sqlite3_column_text(stmt,0);
 		logical = sqlite3_column_text(stmt,1);
 		if((strcmp(logical, "&") == 0)){
@@ -295,14 +294,12 @@ static void linkage_check(sqlite3* db, char* link_name)
 		sprintf(sql,"update linkage_table set STATUS = \"ON\" where LINK_NAME = \"%s\";", link_name);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-		rc = sqlite3_step(stmt);
-		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		rc = thread_sqlite3_step(&stmt, db);
 		
 		sprintf(sql,"select rowid from linkage_table where LINK_NAME = \"%s\";", link_name);
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-		rc = sqlite3_step(stmt);
-		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		rc = thread_sqlite3_step(&stmt, db);
 		if(rc == SQLITE_ROW){
 			rowid = sqlite3_column_int(stmt,0);
 			printf("rowid:%d\n",rowid);
@@ -346,8 +343,7 @@ int trigger_cb_handle(void)
 		}else{
 			printf("sqlite3_prepare_v2 ok\n");  		
 		}
-		rc = sqlite3_step(stmt);
-		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		rc = thread_sqlite3_step(&stmt, db);
 		if(rc == SQLITE_ROW){
 		    value = sqlite3_column_int(stmt,0);
 		    devId = sqlite3_column_text(stmt,1);
@@ -358,8 +354,7 @@ int trigger_cb_handle(void)
 	 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
 	 	sqlite3_reset(stmt_1);
 	 	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-	 	rc = sqlite3_step(stmt_1);
-		printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+	 	rc = thread_sqlite3_step(&stmt_1, db);
 		if(rc == SQLITE_ROW){		
 	    	status = sqlite3_column_text(stmt_1,0);
 		}
@@ -370,7 +365,7 @@ int trigger_cb_handle(void)
 			printf("sql_1:%s\n",sql_1);
 			sqlite3_reset(stmt_1);
 			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-			while(sqlite3_step(stmt_1) == SQLITE_ROW){
+			while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 				threshold = sqlite3_column_int(stmt_1,0);
 		        condition = sqlite3_column_text(stmt_1,1);
 		        link_name = sqlite3_column_text(stmt_1,2);
@@ -381,8 +376,7 @@ int trigger_cb_handle(void)
 		 		//printf("sql_2:%s\n",sql_2);
 		 		sqlite3_reset(stmt_2);
 				sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-				rc = sqlite3_step(stmt_2);
-				printf("step2() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 		
+				rc = thread_sqlite3_step(&stmt_2, db);
 				/*检查是否满足触发条件*/
 				linkage_check(db, link_name);
 		 	}
@@ -480,7 +474,7 @@ int app_req_linkage(int clientFd, int sn)
     sql = "select LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID from linkage_table;";
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-    while(sqlite3_step(stmt) == SQLITE_ROW){
+    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
     	devDataObject = cJSON_CreateObject();
 	    if(NULL == devDataObject)
 	    {
@@ -500,8 +494,7 @@ int app_req_linkage(int clientFd, int sn)
 	    printf("sql_1:%s\n", sql_1);
     	sqlite3_reset(stmt_1);
     	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-    	rc = sqlite3_step(stmt_1); 
-		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+    	rc = thread_sqlite3_step(&stmt_1, db); 
 		if(rc == SQLITE_ROW){
 			logical = sqlite3_column_text(stmt_1, 0);
 	    	cJSON_AddStringToObject(devDataObject, "logical", logical);
@@ -518,7 +511,7 @@ int app_req_linkage(int clientFd, int sn)
  	    printf("sql_1:%s\n", sql_1);
     	sqlite3_reset(stmt_1);
     	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-    	while(sqlite3_step(stmt_1) == SQLITE_ROW){
+    	while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
     		triggerObject = cJSON_CreateObject();
 		    if(NULL == triggerObject)
 		    {
@@ -533,8 +526,7 @@ int app_req_linkage(int clientFd, int sn)
 		   	printf("sql_2:%s\n", sql_2);
 		   	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-	    	rc = sqlite3_step(stmt_2); 
-			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+	    	rc = thread_sqlite3_step(&stmt_2, db); 
 			if(rc == SQLITE_ROW){
 			   	ap_id = sqlite3_column_text(stmt_2, 0);
 			   	cJSON_AddStringToObject(triggerObject, "apId", ap_id);
@@ -544,8 +536,7 @@ int app_req_linkage(int clientFd, int sn)
 		   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 		   	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-	    	rc = sqlite3_step(stmt_2); 
-			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+	    	rc = thread_sqlite3_step(&stmt_2, db); 
 			if(rc == SQLITE_ROW){ 
 			   	dev_name = sqlite3_column_text(stmt_2, 0);
 			   	cJSON_AddStringToObject(triggerObject, "devName", dev_name);
@@ -563,7 +554,7 @@ int app_req_linkage(int clientFd, int sn)
 	    	printf("sql_2:%s\n", sql_2);
 	    	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-		   	while(sqlite3_step(stmt_2) == SQLITE_ROW){
+		   	while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
 			    paramObject = cJSON_CreateObject();
 			    if(NULL == paramObject)
 			    {
@@ -595,7 +586,7 @@ int app_req_linkage(int clientFd, int sn)
 	 	    printf("sql_1:%s\n", sql_1);
 	    	sqlite3_reset(stmt_1);
 	    	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-	    	while(sqlite3_step(stmt_1) == SQLITE_ROW){
+	    	while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 	    		execObject = cJSON_CreateObject();
 			    if(NULL == execObject)
 			    {
@@ -610,8 +601,7 @@ int app_req_linkage(int clientFd, int sn)
 			   	printf("sql_2:%s\n", sql_2);
 			   	sqlite3_reset(stmt_2);
 		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-		    	rc = sqlite3_step(stmt_2); 
-				printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		    	rc = thread_sqlite3_step(&stmt_2, db); 
 				if(rc == SQLITE_ROW){
 				   	ap_id = sqlite3_column_text(stmt_2, 0);
 				   	cJSON_AddStringToObject(execObject, "apId", ap_id);
@@ -624,8 +614,7 @@ int app_req_linkage(int clientFd, int sn)
 			   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 			   	sqlite3_reset(stmt_2);
 		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-		    	rc = sqlite3_step(stmt_2); 
-				printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+		    	rc = thread_sqlite3_step(&stmt_2,db); 
 				if(rc == SQLITE_ROW){
 				   	dev_name = sqlite3_column_text(stmt_2, 0);
 				   	cJSON_AddStringToObject(execObject, "devName", dev_name);
@@ -643,7 +632,7 @@ int app_req_linkage(int clientFd, int sn)
 		    	printf("sql_2:%s\n", sql_2);
 		    	sqlite3_reset(stmt_2);
 		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-			   	while(sqlite3_step(stmt_2) == SQLITE_ROW){
+			   	while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
 				    paramObject = cJSON_CreateObject();
 				    if(NULL == paramObject)
 				    {

@@ -36,7 +36,6 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,12 +47,14 @@
 #include <sys/signal.h>
 #include <sys/ioctl.h>
 #include <poll.h>
+#include <malloc.h>
 
 #include "interface_srpcserver.h"
 #include "socket_server.h"
 #include "interface_devicelist.h"
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
+#include "thpool.h"
 
 #include "hal_defs.h"
 
@@ -374,99 +375,16 @@ static void srpcSendAll(uint8_t* srpcMsg)
 
 void SRPC_ProcessIncoming(uint8_t *pBuf, unsigned int nlen, uint32_t clientFd)
 {
-
-	m1_package_t package;
-
-	package.clientFd = clientFd;
-	package.data = pBuf;
+	printf("SRPC_ProcessIncoming:%s\n",pBuf);
+	extern threadpool thpool;
+	m1_package_t* package = malloc(sizeof(m1_package_t));
+	package->clientFd = clientFd;
+	package->data = malloc(nlen);
 	
-	printf("SRPC_ProcessIncoming:%s",pBuf);
-	data_handle(package);
+	puts("Adding task to threadpool\n");
+	thpool_add_work(thpool, (void*)data_handle, (void*)&package);
 
-	//srpcProcessMsg_t func;
-
-  	//printf("SRPC_ProcessIncoming++[%x]\n", pBuf[SRPC_FUNC_ID]);
-	/* look up and call processing function */
-	
-	//?? json
-	//char * pMsg;
-	//int ipos=0;
-	//int i;
-	//char cjsonbuf[4096]={0};
-	//char cjsonbuf[1024]={0};
-	//char scmd[20]={0};
-	//int nlen= pBuf[1]*256 + pBuf[2];
-	
-	// for (i=0;i<nlen;i++ )
-	// {
- //    	printf("%s,%d,pBuf[%d]=%u \n",__FUNCTION__,__LINE__,i,pBuf[i]);
-	//    if (pBuf[i]==0x3B) 
-	//    {
-	//      ipos = i; 
-	//      break;
-	//    }
-	// }
-	// gw_debug("SRPC_ProcessIncoming step 1", &pBuf[0], nlen);
-#if 0	
-//	printf("%s,%d,ipos=%d \n",__FUNCTION__,__LINE__,ipos);	
-		#if 1
-		gw_debug("cjson: ", &pBuf[0], nlen );
-		#endif 	
-  //  pBuf+=3; 		
-	memcpy(cjsonbuf, pBuf, ipos  );
-		#if 1
-		gw_debug("cjsonbuf: ", cjsonbuf, ipos  );
-		printf("%s,%d;cjsonbuf=%s \n",__FUNCTION__,__LINE__,cjsonbuf);
-		#endif 		
-	cJSON * pJson = cJSON_Parse(cjsonbuf);
-		 	printf("%s,%d  ,pJson=%u \n",__FUNCTION__,__LINE__,pJson);
-	if(NULL == pJson)                                                                                         
-    {
-       // parse faild, return
-      return ;
-     }
- // get string from json
-     cJSON * pSub = cJSON_GetObjectItem(pJson, "cmd");
-	 	printf("%s,%d  ,pSub=%u \n",__FUNCTION__,__LINE__,pSub);
-     if(NULL == pSub)
-     {
-         //get object named "hello" faild
-     }
-	 sprintf(scmd,"%s",pSub->valuestring);
-     printf("%d, cmd : %s;scmd=%s\n",__LINE__, pSub->valuestring,scmd);
- 
-                                                                                                       
-    cJSON_Delete(pJson);
-#endif
-	//cjsonbuf[4096]=NULL;
-////
-#if 0		
-		printf("%s,%d;ncmd=%d\n",__FUNCTION__,__LINE__,sizeof(cmdProcessIncoming));		
-	int ifunc=-1;	
-    for(i=0;i< sizeof(cmdProcessIncoming);i++)
-	{	
-	   if (0== strcmp(cmdProcessIncoming[i], scmd))
-	     ifunc = i;
-	}
-	 printf("ifunc : %d \n", ifunc);
-
-	//func = rpcsProcessIncoming[(pBuf[SRPC_FUNC_ID] & ~(0x80))];
-	if (ifunc>=0)
-	{
-	  func = rpcsProcessIncoming[ifunc];
-	
-	  if (func)
-	  {
-	  	(*func)(pBuf, clientFd);
-	  }
-	  else
-	  {
-		//printf("Error: no processing function for CMD 0x%x\n", pBuf[SRPC_FUNC_ID]);
-	  }
-	  
-	}
-#endif 
-	//printf("SRPC_ProcessIncoming--\n");
+	//data_handle(package);
 }
 
 
@@ -1722,27 +1640,8 @@ uint8_t SRPC_SendEpInfo(epInfoExtended_t *epInfoEx)
 void SRPC_ConnectCB(int clientFd)
 {
 	printf("SRPC_ConnectCB++ \n");
-	/*
-	 epInfo = devListGetNextDev(0xFFFF, 0);
 
-	 while(epInfo)
-	 {
-	 printf("SRPC_ConnectCB: send epInfo\n");
-	 //Send device Annce
-	 uint8_t *pSrpcMessage = srpcParseEpInfo(epInfo);
-	 //Send SRPC
-	 srpcSend(pSrpcMessage, clientFd);
-	 free(pSrpcMessage);
-
-	 usleep(1000);
-
-	 //get next device (NULL if all done)
-	 epInfo = devListGetNextDev(epInfo->nwkAddr, epInfo->endpoint);
-	 }
-	 */
-	//srpcSend("connected success !  ", clientFd);
 	printf("connected success !\n");
-	//printf("SRPC_ConnectCB--\n");
 }
 
 
@@ -1753,11 +1652,10 @@ void SRPC_ConnectCB(int clientFd)
  *
  * @return  Status
  ***************************************************************************************************/
+extern fifo_t msg_fifo;
+extern threadpool thpool;
 void SRPC_RxCB(int clientFd)
 {
-	//unsigned char buffer[4096];
-
-	
 	int byteToRead;
 	int byteRead;
 	int rtn;
@@ -1771,12 +1669,11 @@ void SRPC_RxCB(int clientFd)
 		printf("SRPC_RxCB: Socket error\n");
 	}
 	printf("byteToRead:%d\n",byteToRead);
-	//while (byteToRead)
 	while(byteToRead)
 	{
 #if 1	 
-		unsigned char buffer[2048*2] = {0};//
-		unsigned char read_buf[2048], data[1024];
+		unsigned char buffer[2048*2] = {0};
+		char read_buf[2048];
 		int i, head = 0, tail = 0; //
 		int nready, nread, dlen;
 
@@ -1784,23 +1681,36 @@ void SRPC_RxCB(int clientFd)
 		byteRead += read(clientFd, read_buf, sizeof(read_buf));
 		byteToRead -= byteRead;
 		printf("byteRead:%d\n",byteRead);
-		if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail))
-		{
-		    memcpy(&buffer[tail], read_buf, byteRead);
-		    tail += byteRead;
+		if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail)){
+			memcpy(&buffer[tail], read_buf, byteRead);
+			tail += byteRead;
+
+			m1_package_t * msg = (m1_package_t*)malloc(sizeof(m1_package_t));
+			msg->len = byteRead;
+			msg->clientFd = clientFd;
+			msg->data = (char*)malloc(byteRead);
+			memcpy(msg->data, read_buf, byteRead);
+			fifo_write(&msg_fifo, msg);
+			puts("Adding task to threadpool\n");
+			thpool_add_work(thpool, (void*)data_handle, NULL);
+		}
+		 // if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail))
+		 // {
+		 //     memcpy(&buffer[tail], read_buf, byteRead);
+		 //     tail += byteRead;
 		
-		    //i = 0;
-		    //while(i < tail && buffer[i] != 0x3A) i++;
-		   	// while(i < tail) i++;
+		 //     //i = 0;
+		 //     //while(i < tail && buffer[i] != 0x3A) i++;
+		 //    	// while(i < tail) i++;
 				
-		    //while(buffer[i] == 0x3A && buffer[i+1] <= tail-i)
-		    //{
-			//	memset(data, 0, sizeof(data));
-			//	dlen = buffer[i+1]*256+buffer[i+2];
-			//	memcpy(data, &buffer[i], dlen);
+		 //     //while(buffer[i] == 0x3A && buffer[i+1] <= tail-i)
+		 //     //{
+		 // 	//	memset(data, 0, sizeof(data));
+		 // 	//	dlen = buffer[i+1]*256+buffer[i+2];
+		 // 	//	memcpy(data, &buffer[i], dlen);
 				
-			//	SRPC_ProcessIncoming(&data[3], dlen - 3, clientFd);
-			SRPC_ProcessIncoming(read_buf, byteRead, clientFd);
+		 // 	//	SRPC_ProcessIncoming(&data[3], dlen - 3, clientFd);
+		 // 	SRPC_ProcessIncoming(read_buf, byteRead, clientFd);
 
 				
 		//		head = i + dlen;
@@ -1815,7 +1725,7 @@ void SRPC_RxCB(int clientFd)
 		//		while(i < tail && buffer[i] != 0x3A) i++;
 		//    }
 		
-		}
+		// }
 #endif						
 	}
 

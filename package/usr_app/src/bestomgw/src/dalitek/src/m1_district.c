@@ -55,7 +55,7 @@ int district_create_handle(payload_t data)
 		sprintf(sql_1,"delete from district_table where DIS_NAME = \"%s\";",districtNameJson->valuestring);				
 		sqlite3_reset(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(sqlite3_step(stmt) == SQLITE_ROW);
+		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 	}
     
     /*存取到数据表scenario_table中*/
@@ -72,7 +72,7 @@ int district_create_handle(payload_t data)
 		sqlite3_bind_text(stmt, 2, districtNameJson->valuestring, -1, NULL);
 		sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
 		sqlite3_bind_text(stmt, 4, time, -1, NULL);
-		rc = sqlite3_step(stmt); 
+		rc = thread_sqlite3_step(&stmt, db); 
 		printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
     }
 
@@ -149,7 +149,7 @@ int app_req_district(int clientFd, int sn)
    	printf("sql:%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-    while(sqlite3_step(stmt) == SQLITE_ROW){
+    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
     	dist_name = sqlite3_column_text(stmt,0);
 	    devDataObject = cJSON_CreateObject();
 	    if(NULL == devDataObject)
@@ -172,7 +172,7 @@ int app_req_district(int clientFd, int sn)
 	    printf("sql_1:%s\n", sql_1);
 	    sqlite3_reset(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-	    while(sqlite3_step(stmt_1) == SQLITE_ROW){
+	    while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 	    	ap_id = sqlite3_column_text(stmt_1,0);
 	    	printf("ap_id:%s\n",ap_id);
 		    apInfoObject = cJSON_CreateObject();
@@ -188,7 +188,7 @@ int app_req_district(int clientFd, int sn)
 		    printf("sql_2:%s\n", sql_2);
 		    sqlite3_reset(stmt_2);
 		    sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-		    rc = sqlite3_step(stmt_2); 
+		    rc = thread_sqlite3_step(&stmt_2, db); 
 			printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
 			if(rc == SQLITE_ROW){
 				ap_name = sqlite3_column_text(stmt_2,0);

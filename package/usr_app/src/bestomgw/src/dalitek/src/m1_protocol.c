@@ -226,9 +226,8 @@ static int AP_report_data_handle(payload_t data)
             sqlite3_bind_int(stmt, 4,typeJson->valueint);
             sqlite3_bind_int(stmt, 5, valueJson->valueint);
             sqlite3_bind_text(stmt, 6,  time, -1, NULL);
-            //rc = sqlite3_step(stmt);
-            //printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
-            thread_sqlite3_step(stmt, db);
+        
+            thread_sqlite3_step(&stmt, db);
         }
     }
 
@@ -309,8 +308,7 @@ static int AP_report_dev_handle(payload_t data)
         sqlite3_bind_int(stmt, 7, 1);
         sqlite3_bind_text(stmt, 8,"ON", -1, NULL);
         sqlite3_bind_text(stmt, 9,  time, -1, NULL);
-        rc = sqlite3_step(stmt);
-        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+        rc = thread_sqlite3_step(&stmt,db);
     }
 
     sqlite3_finalize(stmt);
@@ -390,8 +388,7 @@ static int AP_report_ap_handle(payload_t data)
     sqlite3_bind_int(stmt, 7, 1);
     sqlite3_bind_text(stmt, 8,  "ON", -1, NULL);
     sqlite3_bind_text(stmt, 9,  time, -1, NULL);
-    rc = sqlite3_step(stmt);
-    printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+    rc = thread_sqlite3_step(&stmt,db);
  
     sqlite3_finalize(stmt);
     sqlite3_close(db);  
@@ -498,8 +495,7 @@ static int APP_read_handle(payload_t data, int sn)
             /*取出devName*/
             sqlite3_reset(stmt);
             sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-            rc = sqlite3_step(stmt);
-            printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+            rc = thread_sqlite3_step(&stmt, db);
             if(rc == SQLITE_ROW){
                 cJSON_AddStringToObject(devDataObject, "devName", (const char*)sqlite3_column_text(stmt,0));
             }
@@ -536,8 +532,7 @@ static int APP_read_handle(payload_t data, int sn)
 
                 sqlite3_reset(stmt_1);
                 sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
-                rc = sqlite3_step(stmt_1);
-                printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+                rc = thread_sqlite3_step(&stmt_1,db);
                 if(rc == SQLITE_ROW){
                     cJSON_AddNumberToObject(devObject, "value", sqlite3_column_int(stmt_1,0));
                 }
@@ -606,8 +601,7 @@ static int M1_write_to_AP(cJSON* data)
     printf("row_n:%d\n",row_n);
     if(row_n > 0){ 
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        rc = sqlite3_step(stmt);
-        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+        rc = thread_sqlite3_step(&stmt,db);
         if(rc == SQLITE_ROW){
             ap_id = sqlite3_column_text(stmt,0);
             printf("ap_id%s\n",ap_id);
@@ -621,8 +615,7 @@ static int M1_write_to_AP(cJSON* data)
     if(row_n > 0){
         sqlite3_reset(stmt); 
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        rc = sqlite3_step(stmt);
-        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+        rc = thread_sqlite3_step(&stmt, db);
         if(rc == SQLITE_ROW){
             clientFd = sqlite3_column_int(stmt,0);
         }
@@ -705,8 +698,7 @@ static int APP_write_handle(payload_t data)
         if(row_n > 0){        
             sqlite3_reset(stmt);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-            rc = sqlite3_step(stmt);
-            printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+            rc = thread_sqlite3_step(&stmt, db);
             if(rc == SQLITE_ROW){
                 dev_name = (const char*)sqlite3_column_text(stmt, 0);
                 printf("dev_name:%s\n",dev_name);
@@ -727,8 +719,7 @@ static int APP_write_handle(payload_t data)
                 sqlite3_bind_int(stmt_1, 4, valueTypeJson->valueint);
                 sqlite3_bind_int(stmt_1, 5, valueJson->valueint);
                 sqlite3_bind_text(stmt_1, 6,  time, -1, NULL);
-                rc = sqlite3_step(stmt_1);
-                printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+                rc = thread_sqlite3_step(&stmt_1, db);
             }
         }
     }
@@ -864,7 +855,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
     printf("row_n:%d\n",row_n);
     if(row_n > 0){ 
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
-        while(sqlite3_step(stmt_1) == SQLITE_ROW){
+        while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
             /*add ap infomation: port,ap_id,ap_name,time */
             devDataObject = cJSON_CreateObject();
 
@@ -898,7 +889,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
             printf("row_n:%d\n",row_n);
             if(row_n > 0){ 
                 sqlite3_prepare_v2(db, sql_2, strlen(sql_2),&stmt_2, NULL);
-                while(sqlite3_step(stmt_2) == SQLITE_ROW){
+                while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
                      /*add ap infomation: port,ap_id,ap_name,time */
                     devObject = cJSON_CreateObject();
                     if(NULL == devObject)
@@ -971,8 +962,7 @@ static int APP_net_control(payload_t data)
     printf("row_n:%d\n",row_n);
     if(row_n > 0){ 
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        rc = sqlite3_step(stmt);
-               rc = sqlite3_step(stmt);
+        rc = thread_sqlite3_step(&stmt, db);
         printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
         if(rc == SQLITE_ROW){
             clientFd = sqlite3_column_int(stmt,0);
@@ -1094,7 +1084,7 @@ static int M1_report_ap_info(int clientFd, int sn)
     printf("row_n:%d\n",row_n);
     if(row_n > 0){ 
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        while(sqlite3_step(stmt) == SQLITE_ROW){
+        while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
             /*add ap infomation: port,ap_id,ap_name,time */
             devDataObject = cJSON_CreateObject();
 
@@ -1204,7 +1194,7 @@ static int M1_report_dev_info(payload_t data, int sn)
     printf("row_n:%d\n",row_n);
     if(row_n > 0){ 
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        while(sqlite3_step(stmt) == SQLITE_ROW){
+        while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW){
             /*add ap infomation: port,ap_id,ap_name,time */
             devDataObject = cJSON_CreateObject();
 
@@ -1343,7 +1333,7 @@ static int common_operate(payload_t data)
             printf("sql_1:%s\n",sql_1);
             sqlite3_reset(stmt);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-            rc = sqlite3_step(stmt);
+            rc = thread_sqlite3_step(&stmt, db);
             printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
             if(rc == SQLITE_ROW){
                 scen_name = sqlite3_column_text(stmt,0);
@@ -1450,8 +1440,7 @@ int sql_id(sqlite3* db, char* sql)
     int id, total_column, rc;
     /*get id*/
     sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
-    rc = sqlite3_step(stmt);
-    printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+    rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
             id = (sqlite3_column_int(stmt, 0) + 1);
     }else{
@@ -1467,8 +1456,11 @@ int sql_row_number(sqlite3* db, char*sql)
     char** p_result;
     char* errmsg;
     int n_row, n_col, rc;
-
+    /*sqlite3 lock*/
+    sqlite3_mutex_enter(sqlite3_db_mutex(db));
     rc = sqlite3_get_table(db, sql, &p_result,&n_row, &n_col, &errmsg);
+    /*sqlite3 unlock*/
+    sqlite3_mutex_leave(sqlite3_db_mutex(db));
     printf("n_row:%d\n",n_row);
 
     sqlite3_free(errmsg);
@@ -1484,24 +1476,24 @@ int sql_exec(sqlite3* db, char*sql)
     /*get id*/
     sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
    
-    while(rc = sqlite3_step(stmt) == SQLITE_ROW){
-        printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
-    }
-    
+    do{
+        rc = thread_sqlite3_step(&stmt, db);
+    }while(rc == SQLITE_ROW);
+   
     sqlite3_finalize(stmt);
     return rc;
 }
 
-int thread_sqlite3_step(sqlite3_stmt* stmt, sqlite3* db)
+int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 {
     int rc;
     /*sqlite3 lock*/
-    sqlite3_mutex_enter(sqlite3_db_mutex(db));
-    do{
-        rc = sqlite3_step(stmt);   
-    }while(rc == SQLITE_BUSY);
+    //sqlite3_mutex_enter(sqlite3_db_mutex(db));
+    //do{
+        rc = sqlite3_step(*stmt);   
+    //}while(rc == SQLITE_BUSY);
     /*sqlite3 unlock*/
-    sqlite3_mutex_leave(sqlite3_db_mutex(db));
+    //sqlite3_mutex_leave(sqlite3_db_mutex(db));
     printf("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
     return rc;
 }
