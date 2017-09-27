@@ -38,10 +38,11 @@ int linkage_msg_handle(payload_t data)
 	cJSON* conditionJson = NULL;
 	cJSON* valueJson = NULL;
 	cJSON* delayJson = NULL;
+	cJSON* delayArrayJson = NULL;
 
 	sqlite3* db = NULL;
 	sqlite3_stmt* stmt = NULL, *stmt_1 = NULL;
-	int id, id_1, rc, number1, i, j, number2;
+	int id, id_1, rc, number1, i, j, number2, delay;
 	int row_number = 0;
 	char time[30];
 	char sql_1[200];
@@ -113,7 +114,6 @@ int linkage_msg_handle(payload_t data)
 	sqlite3_bind_text(stmt, 6,  "OFF", -1, NULL);
 	sqlite3_bind_text(stmt, 7,  time, -1, NULL);
 	rc = thread_sqlite3_step(&stmt, db);
-	printf("step1() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
 
     /*link_trigger_table*/
     sql = "select ID from link_trigger_table order by ID desc limit 1";
@@ -167,8 +167,13 @@ int linkage_msg_handle(payload_t data)
 	    	executeArrayJson = cJSON_GetArrayItem(executeJson, i);
 	    	apIdJson = cJSON_GetObjectItem(executeArrayJson, "apId");
 	    	devIdJson = cJSON_GetObjectItem(executeArrayJson, "devId");
-	    	delayJson = cJSON_GetObjectItem(executeArrayJson, "delay");
 	    	paramJson = cJSON_GetObjectItem(triggerArrayJson, "param");
+	    	delayArrayJson = cJSON_GetObjectItem(executeArrayJson, "delay");
+	    	number2 = cJSON_GetArraySize(delayArrayJson);
+	    	for(j = 0, delay = 0; j < number2; j++){
+	    		delayJson = cJSON_GetArrayItem(delayArrayJson, j);
+	    		delay += delayJson->valueint;
+	    	}
 	    	number2 = cJSON_GetArraySize(paramJson);
 	    	for(j = 0; j < number2; j++){
 	    		paramArrayJson = cJSON_GetArrayItem(paramJson, j);
@@ -419,6 +424,8 @@ int app_req_linkage(int clientFd, int sn)
     cJSON*  execObject= NULL;
     cJSON * paramJsonArray = NULL;
     cJSON*  paramObject= NULL;
+    cJSON* delayArrayObject = NULL;
+    cJSON* delayObject = NULL;
     /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
@@ -582,7 +589,7 @@ int app_req_linkage(int clientFd, int sn)
 	    }
 	    cJSON_AddItemToObject(devDataObject, "execute", execJsonArray);
     	if(strcmp(exec_type,"scenario") != 0){
-	 	    sprintf(sql_1,"select DISTINCT DEV_ID from link_exec_table where LINK_NAME = \"%s\";", link_name);
+	 	    sprintf(sql_1,"select DISTINCT DEV_ID from link_exec_table where LINK_NAME = \"%s\" order by ID asc;", link_name);
 	 	    printf("sql_1:%s\n", sql_1);
 	    	sqlite3_reset(stmt_1);
 	    	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
@@ -603,12 +610,40 @@ int app_req_linkage(int clientFd, int sn)
 		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 		    	rc = thread_sqlite3_step(&stmt_2, db); 
 				if(rc == SQLITE_ROW){
+					int i;
 				   	ap_id = sqlite3_column_text(stmt_2, 0);
 				   	cJSON_AddStringToObject(execObject, "apId", ap_id);
 				   	printf("apId:%s\n",ap_id);
 				   	delay = sqlite3_column_int(stmt_2, 1);
-				   	cJSON_AddNumberToObject(execObject, "delay", delay);
-				   	printf("delay:%s\n",delay);
+				   	/*设备延时信息数组*/
+				   	delayArrayObject = cJSON_CreateArray();
+				   	if(NULL == delayArrayObject)
+				    {
+				        cJSON_Delete(delayArrayObject);
+				        return M1_PROTOCOL_FAILED;
+				    }
+				    cJSON_AddItemToObject(execObject, "delay", delayArrayObject);
+				    printf("delay:%05d\n",delay);
+				    printf("delay/SCENARIO_DELAY_TOP:%d\n",delay / SCENARIO_DELAY_TOP);
+				    printf("delay \"%\" SCENARIO_DELAY_TOP:%d\n",delay % SCENARIO_DELAY_TOP);
+				   	for(i = 0; i < (delay / SCENARIO_DELAY_TOP); i++){
+						delayObject = cJSON_CreateNumber(SCENARIO_DELAY_TOP);
+					    if(NULL == delayObject)
+					    {
+					        cJSON_Delete(delayObject);
+					        return M1_PROTOCOL_FAILED;
+					    }
+						cJSON_AddItemToArray(delayArrayObject, delayObject);
+				   	}
+				   	if((delay % SCENARIO_DELAY_TOP) > 0){
+				   		delayObject = cJSON_CreateNumber(delay % SCENARIO_DELAY_TOP);
+					    if(NULL == delayObject)
+					    {
+					        cJSON_Delete(delayObject);
+					        return M1_PROTOCOL_FAILED;
+					    }
+						cJSON_AddItemToArray(delayArrayObject, delayObject);
+					}
 			   	}
 			   	/*获取设备名称*/
 			   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	

@@ -9,6 +9,7 @@
 #include "m1_protocol.h"
 #include "socket_server.h"
 
+
 /*场景执行*/
 int scenario_exec(char* data, sqlite3* db)
 {
@@ -18,7 +19,6 @@ int scenario_exec(char* data, sqlite3* db)
     cJSON * devDataObject= NULL;
     cJSON * paramArray = NULL;
     cJSON*  paramObject = NULL;
-
 
 	char sql[200],sql_1[200],sql_2[200],sql_3[200];
 	char*ap_id = NULL,*dev_id = NULL,*status = NULL;
@@ -175,6 +175,7 @@ int scenario_create_handle(payload_t data)
 	cJSON* paramArrayJson = NULL;
 	cJSON* typeJson = NULL;
 	cJSON* valueJson = NULL;
+	cJSON* delayArrayJson = NULL;
 	cJSON* delayJson = NULL;
 	cJSON* hourJson = NULL;
 	cJSON* minutesJson = NULL;
@@ -183,10 +184,10 @@ int scenario_create_handle(payload_t data)
 
 	sqlite3* db = NULL;
 	sqlite3_stmt* stmt = NULL;
-	int id, rc, number1,number2,i,j;
+	int id,id_1,rc, number1,number2,i,j,delay = 0;
 	int row_number = 0;
 	char time[30];
-	char sql_1[200];
+	char sql_1[200],sql_2[200];
 
 	if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
 	getNowTime(time);
@@ -267,8 +268,13 @@ int scenario_create_handle(payload_t data)
     	devJson = cJSON_GetArrayItem(devArrayJson, i);
     	apIdJson = cJSON_GetObjectItem(devJson, "apId");
     	devIdJson = cJSON_GetObjectItem(devJson, "devId");
-    	delayJson = cJSON_GetObjectItem(devJson, "delay");
-    	printf("apId:%s, devId:%s, delay:%d\n",apIdJson->valuestring, devIdJson->valuestring, delayJson->valueint);
+    	delayArrayJson = cJSON_GetObjectItem(devJson, "delay");
+    	number2 = cJSON_GetArraySize(delayArrayJson);
+    	for(j = 0, delay = 0; j < number2; j++){
+    		delayJson = cJSON_GetArrayItem(delayArrayJson, j);
+    		delay += delayJson->valueint;
+    	}
+    	printf("apId:%s, devId:%s, delay:%05d\n",apIdJson->valuestring, devIdJson->valuestring, delayJson->valueint);
     	paramArrayJson = cJSON_GetObjectItem(devJson, "param");
     	number2 = cJSON_GetArraySize(paramArrayJson);
     	for(j = 0; j < number2; j++){
@@ -288,7 +294,7 @@ int scenario_create_handle(payload_t data)
 			sqlite3_bind_text(stmt, 5, devIdJson->valuestring, -1, NULL);
 			sqlite3_bind_int(stmt, 6, typeJson->valueint);
 			sqlite3_bind_int(stmt, 7, valueJson->valueint);
-			sqlite3_bind_int(stmt, 8, delayJson->valueint);
+			sqlite3_bind_int(stmt, 8, delay);
 			sqlite3_bind_text(stmt, 9, time, -1, NULL);
 			id++;
 			rc = thread_sqlite3_step(&stmt, db); 
@@ -394,6 +400,8 @@ int app_req_scenario(int clientFd, int sn)
     cJSON*  deviceArrayObject= NULL;
     cJSON*  paramArrayObject= NULL;
     cJSON*  paramObject= NULL;
+    cJSON*  delayArrayObject= NULL;
+    cJSON*  delayObject= NULL;
     /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
@@ -447,6 +455,7 @@ int app_req_scenario(int clientFd, int sn)
     int hour,minutes;
     /*取场景名称*/
     sql = "select distinct SCEN_NAME from scenario_table;";
+    printf("sql:%s\n",sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
@@ -461,6 +470,7 @@ int app_req_scenario(int clientFd, int sn)
 	    cJSON_AddStringToObject(devDataObject, "scenName", scen_name);
 	    /*根据场景名称选出隶属区域*/
 	    sprintf(sql_1,"select DISTRICT from scenario_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
+	    printf("sql_1:%s\n",sql_1);
 	    sqlite3_reset(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 	    rc = thread_sqlite3_step(&stmt_1, db); 
@@ -479,6 +489,7 @@ int app_req_scenario(int clientFd, int sn)
 	    }
 	    cJSON_AddItemToObject(devDataObject, "alarm", alarmObject);
 	    sprintf(sql_1,"select HOUR, MINUTES, WEEK, STATUS from scen_alarm_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
+	    printf("sql_1:%s\n",sql_1);
 	    sqlite3_reset(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 	    rc = thread_sqlite3_step(&stmt_1, db); 
@@ -505,7 +516,8 @@ int app_req_scenario(int clientFd, int sn)
 	    char* ap_id = NULL, *dev_id = "devId", *dev_name = NULL;
 	    int delay;
 	    /*从场景表scenario_table中选出设备相关信息*/
-	    sprintf(sql_1,"select DISTINCT DEV_ID from scenario_table where SCEN_NAME = \"%s\";",scen_name);
+	    sprintf(sql_1,"select DISTINCT DEV_ID from scenario_table where SCEN_NAME = \"%s\" order by ID asc;",scen_name);
+	    printf("sql_1:%s\n",sql_1);
 	    sqlite3_reset(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 	    while(thread_sqlite3_step(&stmt_1,db) == SQLITE_ROW){
@@ -522,17 +534,48 @@ int app_req_scenario(int clientFd, int sn)
 		   	cJSON_AddStringToObject(deviceObject, "devId", dev_id);
 		   	/*获取AP_ID*/
 			sprintf(sql_2,"select AP_ID, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\" limit 1;",scen_name, dev_id);		   	
+		   	printf("sql_2:%s\n",sql_2);
 		   	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 	    	rc = thread_sqlite3_step(&stmt_2, db); 
 			
 			if(rc == SQLITE_ROW){
+				int i;
 				ap_id = sqlite3_column_text(stmt_2, 0);
 			   	cJSON_AddStringToObject(deviceObject, "apId", ap_id);
 			   	printf("apId:%s\n",ap_id);
 			   	delay = sqlite3_column_int(stmt_2, 1);
-			   	cJSON_AddNumberToObject(deviceObject, "delay", delay);
-			   	printf("delay:%d\n",delay);
+			   	
+			   	/*设备延时信息数组*/
+			   	delayArrayObject = cJSON_CreateArray();
+			   	if(NULL == delayArrayObject)
+			    {
+			        cJSON_Delete(delayArrayObject);
+			        return M1_PROTOCOL_FAILED;
+			    }
+			    cJSON_AddItemToObject(deviceObject, "delay", delayArrayObject);
+			    printf("delay:%05d\n",delay);
+			    printf("delay/SCENARIO_DELAY_TOP:%d\n",delay / SCENARIO_DELAY_TOP);
+			    printf("delay \"%\" SCENARIO_DELAY_TOP:%d\n",delay % SCENARIO_DELAY_TOP);
+			   	for(i = 0; i < (delay / SCENARIO_DELAY_TOP); i++){
+					delayObject = cJSON_CreateNumber(SCENARIO_DELAY_TOP);
+				    if(NULL == delayObject)
+				    {
+				        cJSON_Delete(delayObject);
+				        return M1_PROTOCOL_FAILED;
+				    }
+					cJSON_AddItemToArray(delayArrayObject, delayObject);
+			   	}
+			   	if((delay % SCENARIO_DELAY_TOP) > 0){
+			   		delayObject = cJSON_CreateNumber(delay % SCENARIO_DELAY_TOP);
+				    if(NULL == delayObject)
+				    {
+				        cJSON_Delete(delayObject);
+				        return M1_PROTOCOL_FAILED;
+				    }
+					cJSON_AddItemToArray(delayArrayObject, delayObject);
+				}
+			
 			}
 		   	/*获取设备名称*/
 		   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
