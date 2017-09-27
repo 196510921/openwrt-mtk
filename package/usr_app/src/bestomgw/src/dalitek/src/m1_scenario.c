@@ -188,6 +188,7 @@ int scenario_create_handle(payload_t data)
 	int row_number = 0;
 	char time[30];
 	char sql_1[200],sql_2[200];
+	char* errorMsg = NULL;
 
 	if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
 	getNowTime(time);
@@ -209,98 +210,108 @@ int scenario_create_handle(payload_t data)
 	char* sql = "select ID from scen_alarm_table order by ID desc limit 1";
 	/*获取alarm表中id*/
 	id = sql_id(db, sql);
-	/*获取收到数据包信息*/
-    hourJson = cJSON_GetObjectItem(alarmJson, "hour");
-    printf("hour:%d\n",hourJson->valueint);
-    minutesJson = cJSON_GetObjectItem(alarmJson, "minutes");
-    printf("minutes:%d\n",minutesJson->valueint);
-    weekJson = cJSON_GetObjectItem(alarmJson, "week");
-    printf("week:%s\n",weekJson->valuestring);
-    statusJson = cJSON_GetObjectItem(alarmJson, "status");
-    printf("status:%s\n",statusJson->valuestring);
-   	/*删除原有表scenario_table中的旧scenario*/
-	sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
-	row_number = sql_row_number(db, sql_1);
-	printf("row_number:%d\n",row_number);
-	if(row_number > 0){
-		sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
-		sqlite3_reset(stmt);
-		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW);
-	}
-	
-    sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
-    printf("sql:%s\n",sql);
-    sqlite3_reset(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-	sqlite3_bind_int(stmt, 1, id);
-	sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
-	sqlite3_bind_int(stmt, 3, hourJson->valueint);
-	sqlite3_bind_int(stmt, 4, minutesJson->valueint);
-	sqlite3_bind_text(stmt, 5, weekJson->valuestring, -1, NULL);
-	sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
-	sqlite3_bind_text(stmt, 7, time, -1, NULL);
-	
-	rc = thread_sqlite3_step(&stmt, db); 
-	
-	/*获取联动表 id*/
-	sql = "select ID from scenario_table order by ID desc limit 1";
-	/*linkage_table*/
-	id = sql_id(db, sql);
-   	/*删除原有表scenario_table中的旧scenario*/
-	sprintf(sql_1,"select ID from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
-	row_number = sql_row_number(db, sql_1);
-	printf("row_number:%d\n",row_number);
-	if(row_number > 0){
-		sprintf(sql_1,"delete from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
-		sqlite3_reset(stmt);
-		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
-	}
+	/*事物开启*/
+	if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
+        printf("BEGIN\n");
+		/*获取收到数据包信息*/
+	    hourJson = cJSON_GetObjectItem(alarmJson, "hour");
+	    printf("hour:%d\n",hourJson->valueint);
+	    minutesJson = cJSON_GetObjectItem(alarmJson, "minutes");
+	    printf("minutes:%d\n",minutesJson->valueint);
+	    weekJson = cJSON_GetObjectItem(alarmJson, "week");
+	    printf("week:%s\n",weekJson->valuestring);
+	    statusJson = cJSON_GetObjectItem(alarmJson, "status");
+	    printf("status:%s\n",statusJson->valuestring);
+	   	/*删除原有表scenario_table中的旧scenario*/
+		sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
+		row_number = sql_row_number(db, sql_1);
+		printf("row_number:%d\n",row_number);
+		if(row_number > 0){
+			sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
+			sqlite3_reset(stmt);
+			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+			while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW);
+		}
+		
+	    sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
+	    printf("sql:%s\n",sql);
+	    sqlite3_reset(stmt);
+	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+		sqlite3_bind_int(stmt, 1, id);
+		sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
+		sqlite3_bind_int(stmt, 3, hourJson->valueint);
+		sqlite3_bind_int(stmt, 4, minutesJson->valueint);
+		sqlite3_bind_text(stmt, 5, weekJson->valuestring, -1, NULL);
+		sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
+		sqlite3_bind_text(stmt, 7, time, -1, NULL);
+		
+		rc = thread_sqlite3_step(&stmt, db); 
+		
+		/*获取联动表 id*/
+		sql = "select ID from scenario_table order by ID desc limit 1";
+		/*linkage_table*/
+		id = sql_id(db, sql);
+	   	/*删除原有表scenario_table中的旧scenario*/
+		sprintf(sql_1,"select ID from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
+		row_number = sql_row_number(db, sql_1);
+		printf("row_number:%d\n",row_number);
+		if(row_number > 0){
+			sprintf(sql_1,"delete from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
+			sqlite3_reset(stmt);
+			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+			while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
+		}
 
-    districtJson = cJSON_GetObjectItem(data.pdu, "district");
-    printf("district:%s\n",districtJson->valuestring);
-    devArrayJson = cJSON_GetObjectItem(data.pdu, "device");
-    number1 = cJSON_GetArraySize(devArrayJson);
-    printf("number1:%d\n",number1);
-    /*存取到数据表scenario_table中*/
-    for(i = 0; i < number1; i++){
-    	devJson = cJSON_GetArrayItem(devArrayJson, i);
-    	apIdJson = cJSON_GetObjectItem(devJson, "apId");
-    	devIdJson = cJSON_GetObjectItem(devJson, "devId");
-    	delayArrayJson = cJSON_GetObjectItem(devJson, "delay");
-    	number2 = cJSON_GetArraySize(delayArrayJson);
-    	for(j = 0, delay = 0; j < number2; j++){
-    		delayJson = cJSON_GetArrayItem(delayArrayJson, j);
-    		delay += delayJson->valueint;
-    	}
-    	printf("apId:%s, devId:%s, delay:%05d\n",apIdJson->valuestring, devIdJson->valuestring, delayJson->valueint);
-    	paramArrayJson = cJSON_GetObjectItem(devJson, "param");
-    	number2 = cJSON_GetArraySize(paramArrayJson);
-    	for(j = 0; j < number2; j++){
-    		paramJson = cJSON_GetArrayItem(paramArrayJson, j);
-    		typeJson = cJSON_GetObjectItem(paramJson, "type");
-    		valueJson = cJSON_GetObjectItem(paramJson, "value");
-    		printf("type:%d, value:%d\n",typeJson->valueint, valueJson->valueint);
-    		
-		    sql = "insert into scenario_table(ID, SCEN_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, TIME) values(?,?,?,?,?,?,?,?,?);";
-		    printf("sql:%s\n",sql);
-		    sqlite3_reset(stmt);
-		    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-			sqlite3_bind_int(stmt, 1, id);
-			sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
-			sqlite3_bind_text(stmt, 3, districtJson->valuestring, -1, NULL);
-			sqlite3_bind_text(stmt, 4, apIdJson->valuestring, -1, NULL);
-			sqlite3_bind_text(stmt, 5, devIdJson->valuestring, -1, NULL);
-			sqlite3_bind_int(stmt, 6, typeJson->valueint);
-			sqlite3_bind_int(stmt, 7, valueJson->valueint);
-			sqlite3_bind_int(stmt, 8, delay);
-			sqlite3_bind_text(stmt, 9, time, -1, NULL);
-			id++;
-			rc = thread_sqlite3_step(&stmt, db); 
-	
-    	}	
-    }
+	    districtJson = cJSON_GetObjectItem(data.pdu, "district");
+	    printf("district:%s\n",districtJson->valuestring);
+	    devArrayJson = cJSON_GetObjectItem(data.pdu, "device");
+	    number1 = cJSON_GetArraySize(devArrayJson);
+	    printf("number1:%d\n",number1);
+	    /*存取到数据表scenario_table中*/
+	    for(i = 0; i < number1; i++){
+	    	devJson = cJSON_GetArrayItem(devArrayJson, i);
+	    	apIdJson = cJSON_GetObjectItem(devJson, "apId");
+	    	devIdJson = cJSON_GetObjectItem(devJson, "devId");
+	    	delayArrayJson = cJSON_GetObjectItem(devJson, "delay");
+	    	number2 = cJSON_GetArraySize(delayArrayJson);
+	    	for(j = 0, delay = 0; j < number2; j++){
+	    		delayJson = cJSON_GetArrayItem(delayArrayJson, j);
+	    		delay += delayJson->valueint;
+	    	}
+	    	printf("apId:%s, devId:%s, delay:%05d\n",apIdJson->valuestring, devIdJson->valuestring, delayJson->valueint);
+	    	paramArrayJson = cJSON_GetObjectItem(devJson, "param");
+	    	number2 = cJSON_GetArraySize(paramArrayJson);
+	    	for(j = 0; j < number2; j++){
+	    		paramJson = cJSON_GetArrayItem(paramArrayJson, j);
+	    		typeJson = cJSON_GetObjectItem(paramJson, "type");
+	    		valueJson = cJSON_GetObjectItem(paramJson, "value");
+	    		printf("type:%d, value:%d\n",typeJson->valueint, valueJson->valueint);
+	    		
+			    sql = "insert into scenario_table(ID, SCEN_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, TIME) values(?,?,?,?,?,?,?,?,?);";
+			    printf("sql:%s\n",sql);
+			    sqlite3_reset(stmt);
+			    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+				sqlite3_bind_int(stmt, 1, id);
+				sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt, 3, districtJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt, 4, apIdJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt, 5, devIdJson->valuestring, -1, NULL);
+				sqlite3_bind_int(stmt, 6, typeJson->valueint);
+				sqlite3_bind_int(stmt, 7, valueJson->valueint);
+				sqlite3_bind_int(stmt, 8, delay);
+				sqlite3_bind_text(stmt, 9, time, -1, NULL);
+				id++;
+				rc = thread_sqlite3_step(&stmt, db); 
+		
+	    	}	
+	    }
+	    if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+            printf("END\n");
+        }
+    }else{
+        printf("errorMsg:");
+    }    
+    sqlite3_free(errorMsg);
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);
@@ -323,6 +334,7 @@ int scenario_alarm_create_handle(payload_t data)
 	int row_number = 0;
 	char time[30];
 	char sql_1[200];
+	char* errorMsg = NULL;
 
 	if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
 	getNowTime(time);
@@ -339,43 +351,50 @@ int scenario_alarm_create_handle(payload_t data)
 	char* sql = "select ID from scen_alarm_table order by ID desc limit 1";
 	/*linkage_table*/
 	id = sql_id(db, sql);
-
-	/*获取收到数据包信息*/
-    scenNameJson = cJSON_GetObjectItem(data.pdu, "scenarioName");
-    printf("scenName:%s\n",scenNameJson->valuestring);
-    hourJson = cJSON_GetObjectItem(data.pdu, "hour");
-    printf("hour:%d\n",hourJson->valueint);
-    minutesJson = cJSON_GetObjectItem(data.pdu, "minutes");
-    printf("minutes:%d\n",minutesJson->valueint);
-    weekJson = cJSON_GetObjectItem(data.pdu, "week");
-    printf("week:%s\n",weekJson->valuestring);
-    statusJson = cJSON_GetObjectItem(data.pdu, "status");
-    printf("status:%s\n",statusJson->valuestring);
-   	/*删除原有表scenario_table中的旧scenario*/
-	sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
-	row_number = sql_row_number(db, sql_1);
-	printf("row_number:%d\n",row_number);
-	if(row_number > 0){
-		sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
-		sqlite3_reset(stmt);
-		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
-	}
-	
-    sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
-    printf("sql:%s\n",sql);
-    sqlite3_reset(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-	sqlite3_bind_int(stmt, 1, id);
-	sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
-	sqlite3_bind_int(stmt, 3, hourJson->valueint);
-	sqlite3_bind_int(stmt, 4, minutesJson->valueint);
-	sqlite3_bind_text(stmt, 5, weekJson->valuestring, -1, NULL);
-	sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
-	sqlite3_bind_text(stmt, 7, time, -1, NULL);
-	
-	rc = thread_sqlite3_step(&stmt, db); 
-   
+	if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
+        printf("BEGIN\n");
+		/*获取收到数据包信息*/
+	    scenNameJson = cJSON_GetObjectItem(data.pdu, "scenarioName");
+	    printf("scenName:%s\n",scenNameJson->valuestring);
+	    hourJson = cJSON_GetObjectItem(data.pdu, "hour");
+	    printf("hour:%d\n",hourJson->valueint);
+	    minutesJson = cJSON_GetObjectItem(data.pdu, "minutes");
+	    printf("minutes:%d\n",minutesJson->valueint);
+	    weekJson = cJSON_GetObjectItem(data.pdu, "week");
+	    printf("week:%s\n",weekJson->valuestring);
+	    statusJson = cJSON_GetObjectItem(data.pdu, "status");
+	    printf("status:%s\n",statusJson->valuestring);
+	   	/*删除原有表scenario_table中的旧scenario*/
+		sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
+		row_number = sql_row_number(db, sql_1);
+		printf("row_number:%d\n",row_number);
+		if(row_number > 0){
+			sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
+			sqlite3_reset(stmt);
+			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+			while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
+		}
+		
+	    sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
+	    printf("sql:%s\n",sql);
+	    sqlite3_reset(stmt);
+	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+		sqlite3_bind_int(stmt, 1, id);
+		sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
+		sqlite3_bind_int(stmt, 3, hourJson->valueint);
+		sqlite3_bind_int(stmt, 4, minutesJson->valueint);
+		sqlite3_bind_text(stmt, 5, weekJson->valuestring, -1, NULL);
+		sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
+		sqlite3_bind_text(stmt, 7, time, -1, NULL);
+		
+		rc = thread_sqlite3_step(&stmt, db); 
+		if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+            printf("END\n");
+        }
+    }else{
+        printf("errorMsg:");
+    }
+   	sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
     sqlite3_close(db);
     if(rc == SQLITE_ERROR)
