@@ -1,0 +1,364 @@
+test file
+./bestomgwd -- Sep 27 2017 23:00:42
+Making threadpool with 1 threads
+‡(­ûnumClientFds:1
+zllMain: adding fd 5 to poll()
+zllMain: waiting for poll()
+poll out
+Message from Socket Sever
+pollSocket++, revent: 1
+SRPC_ConnectCB++ 
+connected success !
+free client
+‡(­ûnumClientFds:2
+zllMain: adding fd 5 to poll()
+zllMain: adding fd 6 to poll()
+zllMain: waiting for poll()
+poll out
+Message from Socket Sever
+pollSocket++, revent: 1
+got Rx on fd 6, pakcetCnt=0
+SRPC_RxCB++[6]
+byteToRead:1085
+byteRead:1085
+Adding task to threadpool
+
+SRPC_RxCB--
+free client
+‡(­ûnumClientFds:2
+zllMain: adding fd 5 to poll()
+zllMain: adding fd 6 to poll()
+zllMain: waiting for poll()
+data_handle
+Rx message:{"sn":1,"version":"1.0","netFlag":1,"cmdType":1,"pdu":{"pduType":4098,"devData":[{"devName":"s5","devId":"1234567C","param":[{"type":16392,"value":30},{"type":16404,"value":1},{"type":16388,"value":80}]},{"devName":"s2","devId":"1234567A","param":[{"type":16389,"value":0},{"type":16404,"value":1},{"type":16388,"value":20},{"type":16406,"value":0}]},{"devName":"s13","devId":"1234567D","param":[{"type":16404,"value":1},{"type":32800,"value":0},{"type":32801,"value":0},{"type":8205,"value":1}]},{"devName":"s3","devId":"1234567B","param":[{"type":16393,"value":1},{"type":16404,"value":1},{"type":16394,"value":1},{"type":16395,"value":1},{"type":16396,"value":1},{"type":8226,"value":1}]},{"devName":"s4","devId":"12345679","param":[{"type":16390,"value":20},{"type":16391,"value":90},{"type":16388,"value":90},{"type":16404,"value":1},{"type":8226,"value":1}]},{"devName":"s12","devId":"12345678","param":[{"type":8205,"value":0},{"type":8227,"value":0},{"type":8228,"value":0},{"type":16388,"value":80},{"type":8229,"value":0},{"type":8230,"value":0},{"type":16404,"value":1}]}]}}
+pduType:1002
+AP_report_data_handle
+BEGIN
+sql_id
+step() return SQLITE_ROW
+id:146
+sql:insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);
+number1:6
+devName:s5
+devId:1234567C
+ number2:3
+  type:16392
+  value:30
+trigger_cb
+step() return SQLITE_DONE
+  type:16404
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:16388
+  value:80
+trigger_cb
+step() return SQLITE_DONE
+devName:s2
+devId:1234567A
+ number2:4
+  type:16389
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+  type:16404
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:16388
+  value:20
+trigger_cb
+step() return SQLITE_DONE
+  type:16406
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+devName:s13
+devId:1234567D
+ number2:4
+  type:16404
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:32800
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+  type:32801
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+  type:8205
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+devName:s3
+devId:1234567B
+ number2:6
+  type:16393
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:16404
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:16394
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:16395
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:16396
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:8226
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+devName:s4
+devId:12345679
+ number2:5
+  type:16390
+  value:20
+trigger_cb
+step() return SQLITE_DONE
+  type:16391
+  value:90
+trigger_cb
+step() return SQLITE_DONE
+  type:16388
+  value:90
+trigger_cb
+step() return SQLITE_DONE
+  type:16404
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+  type:8226
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+devName:s12
+devId:12345678
+ number2:7
+  type:8205
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+  type:8227
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+  type:8228
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+  type:16388
+  value:80
+trigger_cb
+step() return SQLITE_DONE
+  type:8229
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+  type:8230
+  value:0
+trigger_cb
+step() return SQLITE_DONE
+  type:16404
+  value:1
+trigger_cb
+step() return SQLITE_DONE
+END
+trigger_cb_handle
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00030, devId:1234567C, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567C" and TYPE = 16392;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567C, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567C" and TYPE = 16404;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00080, devId:1234567C, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567C" and TYPE = 16388;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:1234567A, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567A" and TYPE = 16389;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567A, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567A" and TYPE = 16404;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00020, devId:1234567A, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567A" and TYPE = 16388;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:1234567A, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567A" and TYPE = 16406;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567D, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567D" and TYPE = 16404;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:1234567D, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567D" and TYPE = 32800;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:1234567D, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567D" and TYPE = 32801;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567D, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567D" and TYPE = 08205;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567B, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567B" and TYPE = 16393;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567B, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567B" and TYPE = 16404;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567B, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567B" and TYPE = 16394;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567B, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567B" and TYPE = 16395;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567B, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567B" and TYPE = 16396;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:1234567B, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "1234567B" and TYPE = 08226;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00020, devId:12345679, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345679" and TYPE = 16390;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00090, devId:12345679, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345679" and TYPE = 16391;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00090, devId:12345679, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345679" and TYPE = 16388;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:12345679, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345679" and TYPE = 16404;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:12345679, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345679" and TYPE = 08226;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:12345678, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345678" and TYPE = 08205;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:12345678, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345678" and TYPE = 08227;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:12345678, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345678" and TYPE = 08228;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00080, devId:12345678, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345678" and TYPE = 16388;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:12345678, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345678" and TYPE = 08229;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00000, devId:12345678, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345678" and TYPE = 08230;
+step() return SQLITE_DONE
+sqlite3_prepare_v2 ok
+step() return SQLITE_ROW
+value:00001, devId:12345678, param_type:
+step() return SQLITE_ROW
+sql_1:select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = "12345678" and TYPE = 16404;
+step() return SQLITE_DONE
+ common_rsp
+string:{"sn":1,"version":"1.0","netFlag":1,"cmdType":1,"pdu":{"pduType":32772,"devData":{"sn":1,"pduType":4098,"result":1}}}
+socket_msg_alloc:0
+1.msg:6befe0
+1.msg->data:d4044d10
+Adding task to threadpool
+
+free
+linkage_task
+thread_socketSeverSend
+socketSeverSend++: writing to socket fd 6
+socketSeverSend--
+free

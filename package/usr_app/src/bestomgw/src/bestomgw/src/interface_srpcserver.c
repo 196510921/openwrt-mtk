@@ -375,7 +375,7 @@ static void srpcSendAll(uint8_t* srpcMsg)
 
 void SRPC_ProcessIncoming(uint8_t *pBuf, unsigned int nlen, uint32_t clientFd)
 {
-	printf("SRPC_ProcessIncoming:%s\n",pBuf);
+	fprintf(stdout,"SRPC_ProcessIncoming:%s\n",pBuf);
 	extern threadpool thpool;
 	m1_package_t* package = malloc(sizeof(m1_package_t));
 	package->clientFd = clientFd;

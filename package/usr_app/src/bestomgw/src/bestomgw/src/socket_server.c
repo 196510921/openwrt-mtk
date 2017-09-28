@@ -116,9 +116,9 @@ int createSocketRec(void)
 	newSocket->socketFd = accept(socketRecordHead->socketFd,
 			(struct sockaddr *) &(newSocket->cli_addr), &(newSocket->clilen));
 
-	//printf("connected\n");
+	//fprintf(stdout,"connected\n");
 
-	if (newSocket->socketFd < 0) printf("ERROR on accept");
+	if (newSocket->socketFd < 0) fprintf(stdout,"ERROR on accept");
 
 	// Set the socket option SO_REUSEADDR to reduce the chance of a
 	// "Address Already in Use" error on the bind
@@ -126,7 +126,7 @@ int createSocketRec(void)
 	// Set the fd to none blocking
 	fcntl(newSocket->socketFd, F_SETFL, O_NONBLOCK);
 
-	//printf("New Client Connected fd:%d - IP:%s\n", newSocket->socketFd, inet_ntoa(newSocket->cli_addr.sin_addr));
+	//fprintf(stdout,"New Client Connected fd:%d - IP:%s\n", newSocket->socketFd, inet_ntoa(newSocket->cli_addr.sin_addr));
 
 	newSocket->next = NULL;
 
@@ -169,7 +169,7 @@ void deleteSocketRec(int rmSocketFd)
 
 	if (srchRec->socketFd != rmSocketFd)
 	{
-		printf("deleteSocketRec: record not found\n");
+		fprintf(stdout,"deleteSocketRec: record not found\n");
 		return;
 	}
 
@@ -180,7 +180,7 @@ void deleteSocketRec(int rmSocketFd)
 		if (prevRec == NULL)
 		{
 			//trying to remove first rec, which is always the listining socket
-			printf(
+			fprintf(stdout,
 					"deleteSocketRec: removing first rec, which is always the listining socket\n");
 			return;
 		}
@@ -214,7 +214,7 @@ int32 socketSeverInit(uint32 port)
 		lsSocket->socketFd = socket(AF_INET, SOCK_STREAM, 0);
 		if (lsSocket->socketFd < 0)
 		{
-			printf("ERROR opening socket");
+			fprintf(stdout,"ERROR opening socket");
 			return -1;
 		}
 
@@ -232,7 +232,7 @@ int32 socketSeverInit(uint32 port)
 				sizeof(serv_addr));
 		if (stat < 0)
 		{
-			printf("ERROR on binding: %s\n", strerror(errno));
+			fprintf(stdout,"ERROR on binding: %s\n", strerror(errno));
 			return -1;
 		}
 		//will have 5 pending open client requests
@@ -283,7 +283,7 @@ void socketSeverGetClientFds(int *fds, int maxFds)
 	// Stop when at the end or max is reached
 	while ((srchRec) && (recordCnt < maxFds))
 	{
-		//printf("getClientFds: adding fd%d, to idx:%d \n", srchRec->socketFd, recordCnt);
+		//fprintf(stdout,"getClientFds: adding fd%d, to idx:%d \n", srchRec->socketFd, recordCnt);
 		fds[recordCnt++] = srchRec->socketFd;
 
 		srchRec = srchRec->next;
@@ -313,7 +313,7 @@ uint32 socketSeverGetNumClients(void)
 
 	if (srchRec == NULL)
 	{
-		//printf("socketSeverGetNumClients: socketRecordHead NULL\n");
+		//fprintf(stdout,"socketSeverGetNumClients: socketRecordHead NULL\n");
 		return -1;
 	}
 
@@ -325,7 +325,7 @@ uint32 socketSeverGetNumClients(void)
 		recordCnt++;
 	}
 
-	//printf("socketSeverGetNumClients %d\n", recordCnt);
+	//fprintf(stdout,"socketSeverGetNumClients %d\n", recordCnt);
 	return (recordCnt);
 }
 
@@ -341,7 +341,7 @@ uint32 socketSeverGetNumClients(void)
  */
 void socketSeverPoll(int clinetFd, int revent)
 {
-	printf("pollSocket++, revent: %d\n",revent);
+	fprintf(stdout,"pollSocket++, revent: %d\n",revent);
 
 	//is this a new connection on the listening socket
 	if (clinetFd == socketRecordHead->socketFd)
@@ -360,7 +360,7 @@ void socketSeverPoll(int clinetFd, int revent)
 		{
 			uint32 pakcetCnt = 0;
 			//its a Rx event
-			printf("got Rx on fd %d, pakcetCnt=%d\n", clinetFd, pakcetCnt++);
+			fprintf(stdout,"got Rx on fd %d, pakcetCnt=%d\n", clinetFd, pakcetCnt++);
 			if (socketServerRxCb)
 			{
 				socketServerRxCb(clinetFd);
@@ -369,9 +369,9 @@ void socketSeverPoll(int clinetFd, int revent)
 		}
 		if (revent & POLLRDHUP)
 		{
-			printf("POLLRDHUP\n");
+			fprintf(stdout,"POLLRDHUP\n");
 			//its a shut down close the socket
-			printf("Client fd:%d disconnected\n", clinetFd);
+			fprintf(stdout,"Client fd:%d disconnected\n", clinetFd);
 			//remove the record and close the socket
 			deleteSocketRec(clinetFd);
 		}
@@ -395,34 +395,32 @@ extern threadpool tx_thpool;
 extern fifo_t tx_fifo;
 static void thread_socketSeverSend(void)
 {
-	printf("thread_socketSeverSend\n");
+	fprintf(stdout,"thread_socketSeverSend\n");
 	int rtn;
 	uint32_t* msg = NULL;
 
     if(fifo_read(&tx_fifo, &msg) == 0){
-    	printf("fifo read failed\n");
+    	fprintf(stdout,"fifo read failed\n");
     	return;
     }
-    printf("2.msg:%x\n", msg);
     if(msg == NULL){
-    	printf("msg NULL\n");
+    	fprintf(stdout,"msg NULL\n");
     	return ;
     }
     m1_package_t* package = (m1_package_t*)msg;
-    printf("tx message:%s\n",package->data);
-    printf("socketSeverSend++: writing to socket fd %d\n", package->clientFd);
+    fprintf(stdout,"socketSeverSend++: writing to socket fd %d\n", package->clientFd);
 	if (package->clientFd)
 	{
 		rtn = write(package->clientFd, package->data, package->len);
 		if (rtn < 0)
 		{
-			printf("ERROR writing to socket %d\n", package->clientFd);
+			fprintf(stdout,"ERROR writing to socket %d\n", package->clientFd);
 		}
 	}
 
-	printf("socketSeverSend--\n");		
+	fprintf(stdout,"socketSeverSend--\n");		
 	/*free*/
-    printf("free\n");
+    fprintf(stdout,"free\n");
     free(package->data);
     //free(package);
 }
@@ -437,7 +435,7 @@ static m1_package_t* socket_msg_alloc(void)
 
 	i %= SOCKT_MSG_NUMBER;
 	add = &socket_msg[i];
-	printf("socket_msg_alloc:%d\n",i);
+	fprintf(stdout,"socket_msg_alloc:%d\n",i);
 	i++;
 	return add;
 }
@@ -448,19 +446,19 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	//m1_package_t * msg = (m1_package_t *)malloc(sizeof(m1_package_t));
 	if(msg == NULL)
 	{
-		printf("malloc failed\n");
+		fprintf(stdout,"malloc failed\n");
 		return ;
 	}
-	printf("1.msg:%x\n", msg);
+	fprintf(stdout,"1.msg:%x\n", msg);
 	msg->len = len;
 	msg->clientFd = fdClient;
 	msg->data = (char*)malloc(len);
 	if(msg->data == NULL)
 	{
-		printf("malloc failed\n");
+		fprintf(stdout,"malloc failed\n");
 		return ;
 	}
-	printf("1.msg->data:%x\n", msg->data);
+	fprintf(stdout,"1.msg->data:%x\n", msg->data);
 	memcpy(msg->data, buf, len);
 	fifo_write(&tx_fifo, msg);
 	puts("Adding task to threadpool\n");
@@ -472,7 +470,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	// 	rtn = write(fdClient, buf, len);
 	// 	if (rtn < 0)
 	// 	{
-	// 		printf("ERROR writing to socket %d\n", fdClient);
+	// 		fprintf(stdout,"ERROR writing to socket %d\n", fdClient);
 	// 	}
 	// }
 
@@ -500,12 +498,12 @@ int32 socketSeverSendAllclients(uint8* buf, uint32 len)
 	// Stop when at the end or max is reached
 	while (srchRec)
 	{
-		//printf("SRPC_Send: client %d\n", cnt++);
+		//fprintf(stdout,"SRPC_Send: client %d\n", cnt++);
 		rtn = write(srchRec->socketFd, buf, len);
 		if (rtn < 0)
 		{
-			printf("ERROR writing to socket %d\n", srchRec->socketFd);
-			printf("closing client socket\n");
+			fprintf(stdout,"ERROR writing to socket %d\n", srchRec->socketFd);
+			fprintf(stdout,"closing client socket\n");
 			//remove the record and close the socket
 			deleteSocketRec(srchRec->socketFd);
 
@@ -532,14 +530,14 @@ void socketSeverClose(void)
 
 	while (socketSeverGetNumClients() > 1)
 	{
-		printf("socketSeverClose: Closing socket fd:%d\n", fds[idx]);
+		fprintf(stdout,"socketSeverClose: Closing socket fd:%d\n", fds[idx]);
 		deleteSocketRec(fds[idx++]);
 	}
 
 	//Now remove the listening socket
 	if (fds[0])
 	{
-		printf("socketSeverClose: Closing the listening socket\n");
+		fprintf(stdout,"socketSeverClose: Closing the listening socket\n");
 		close(fds[0]);
 	}
 }
