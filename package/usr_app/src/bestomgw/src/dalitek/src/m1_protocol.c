@@ -302,7 +302,8 @@ static int AP_report_dev_handle(payload_t data)
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         fprintf(stdout,"BEGIN\n");
         id = sql_id(db, sql);
-        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS, TIME) values(?,?,?,?,?,?,?,?,?);";
+        //sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS, TIME) values(?,?,?,?,?,?,?,?,?);";
+        sql = "replace into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS, TIME) values(?,?,?,?,?,?,?,?,?);";
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 
         for(i = 0; i< number; i++){

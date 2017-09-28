@@ -109,9 +109,9 @@ int main(int argc, char* argv[])
 	/*init thread pool*/
 	puts("Making threadpool with 1 threads");
 	/*接收线程*/
-	thpool = thpool_init(1);
+	//thpool = thpool_init(1);
 	/*发送线程*/
-	tx_thpool = thpool_init(2);
+	//tx_thpool = thpool_init(2);
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();

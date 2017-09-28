@@ -1692,7 +1692,8 @@ void SRPC_RxCB(int clientFd)
 			memcpy(msg->data, read_buf, byteRead);
 			fifo_write(&msg_fifo, msg);
 			puts("Adding task to threadpool\n");
-			thpool_add_work(thpool, (void*)data_handle, NULL);
+			//thpool_add_work(thpool, (void*)data_handle, NULL);
+			data_handle();
 		}
 		 // if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail))
 		 // {

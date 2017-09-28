@@ -43,6 +43,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include "thpool.h"
+#include <unistd.h>
 
 #include "zbSocCmd.h"
 #include "interface_devicelist.h"
@@ -71,6 +72,7 @@ uint8_t zclGetHueCb(uint8_t hue, uint16_t nwkAddr, uint8_t endpoint);
 uint8_t zclGetSatCb(uint8_t sat, uint16_t nwkAddr, uint8_t endpoint);
 uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo);
 uint8_t zdoLeaveIndCb(uint16_t nwkAddr);
+static void printf_redirect(void);
 
 static zbSocCallbacks_t zbSocCbs =
 { tlIndicationCb, // pfnTlIndicationCb - TouchLink Indication callback
@@ -90,8 +92,8 @@ static zbSocCallbacks_t zbSocCbs =
 
 void usage(char* exeName)
 {
-	printf("Usage: ./%s <port>\n", exeName);
-	printf("Eample: ./%s /dev/ttyACM0\n", exeName);
+	fprintf(stdout,"Usage: ./%s <port>\n", exeName);
+	fprintf(stdout,"Eample: ./%s /dev/ttyACM0\n", exeName);
 }
 
 int main(int argc, char* argv[])
@@ -100,24 +102,24 @@ int main(int argc, char* argv[])
 	int zbSoc_fd;
 	char dbFilename[MAX_DB_FILENAMR_LEN];
 
-	printf("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
-
+	//printf_redirect();
+	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 	SRPC_Init();
 	m1_protocol_init();
 	/*init thread pool*/
 	puts("Making threadpool with 1 threads");
 	/*接收线程*/
-	thpool = thpool_init(1);
+	//thpool = thpool_init(1);
 	/*发送线程*/
-	tx_thpool = thpool_init(2);
+	//tx_thpool = thpool_init(2);
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
-		printf("numClientFds:%d\n",numClientFds);
+		fprintf(stdout,stdout,"numClientFds:%d\n",numClientFds);
 		//poll on client socket fd's and the ZllSoC serial port for any activity
 		if (numClientFds)
 		{
-			printf("numClientFds:%d\n",numClientFds);
+			fprintf(stdout,"numClientFds:%d\n",numClientFds);
 			int pollFdIdx;
 			int *client_fds = malloc(numClientFds * sizeof(int));
 			//socket client FD's + zllSoC serial port FD
@@ -132,26 +134,26 @@ int main(int argc, char* argv[])
 				{
 					pollFds[pollFdIdx].fd = client_fds[pollFdIdx];
 					pollFds[pollFdIdx].events = POLLIN | POLLRDHUP;
-					printf("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
+					fprintf(stdout,"zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
 				}
 
-				printf("zllMain: waiting for poll()\n");
+				fprintf(stdout,"zllMain: waiting for poll()\n");
 
 				poll(pollFds, (numClientFds), -1);
-				printf("poll out\n");
+				fprintf(stdout,"poll out\n");
 
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
 					if ((pollFds[pollFdIdx].revents))
 					{
-						printf("Message from Socket Sever\n");
+						fprintf(stdout,"Message from Socket Sever\n");
 						socketSeverPoll(pollFds[pollFdIdx].fd, pollFds[pollFdIdx].revents);
 					}
 				}
 
 				free(client_fds);
 				free(pollFds);
-				printf("free client\n");
+				fprintf(stdout,"free client\n");
 
 			}
 		}
@@ -160,6 +162,17 @@ int main(int argc, char* argv[])
 	puts("Killing threadpool");
 	thpool_destroy(thpool);
 	return retval;
+}
+
+static void printf_redirect(void)
+{
+	 fflush(stdout);  
+     setvbuf(stdout,NULL,_IONBF,0);  
+     printf("test stdout\n");  
+     int save_fd = dup(STDOUT_FILENO); 
+     int fd = open("test1.txt",(O_RDWR | O_CREAT), 0644);  
+     dup2(fd,STDOUT_FILENO); 
+     printf("test file\n");  
 }
 
 uint8_t tlIndicationCb(epInfo_t *epInfo)
@@ -189,7 +202,7 @@ uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo)
 	epInfo_t* oldRec;
 	epInfoExtended_t epInfoEx;
 
-	printf("zdoSimpleDescRspCb: NwkAddr:0x%04x\n End:0x%02x ", epInfo->nwkAddr,
+	fprintf(stdout,"zdoSimpleDescRspCb: NwkAddr:0x%04x\n End:0x%02x ", epInfo->nwkAddr,
 			epInfo->endpoint);
 
 	//find the IEEE address. Any ep (0xFF), if the is the first simpleDesc for this nwkAddr
@@ -224,7 +237,7 @@ uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo)
 		epInfoEx.type = EP_INFO_TYPE_NEW;
 	}
 
-	printf("zdoSimpleDescRspCb: NwkAddr:0x%04x Ep:0x%02x Type:0x%02x ", epInfo->nwkAddr,
+	fprintf(stdout,"zdoSimpleDescRspCb: NwkAddr:0x%04x Ep:0x%02x Type:0x%02x ", epInfo->nwkAddr,
 			epInfo->endpoint, epInfoEx.type);
 
 	if (epInfoEx.type != EP_INFO_TYPE_EXISTING)

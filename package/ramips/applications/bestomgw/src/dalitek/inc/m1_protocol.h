@@ -139,6 +139,11 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 /*common response*/
 #define TYPE_COMMON_RSP							 0x8004
 
+
+
+/*self define*/
+#define SCENARIO_DELAY_TOP    3600   //1个小时，单位秒
+
 #endif //_M1_PROTOCOL_H_
 
 

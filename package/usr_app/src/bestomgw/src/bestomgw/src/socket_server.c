@@ -462,7 +462,8 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	memcpy(msg->data, buf, len);
 	fifo_write(&tx_fifo, msg);
 	puts("Adding task to threadpool\n");
-	thpool_add_work(tx_thpool, (void*)thread_socketSeverSend, NULL);
+	thread_socketSeverSend();
+	//thpool_add_work(tx_thpool, (void*)thread_socketSeverSend, NULL);
 
 	// int rtn;
 	// if (fdClient)
