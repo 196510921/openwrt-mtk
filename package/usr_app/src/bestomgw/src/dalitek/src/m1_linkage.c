@@ -306,7 +306,7 @@ int linkage_msg_handle(payload_t data)
 		    	executeArrayJson = cJSON_GetArrayItem(executeJson, i);
 		    	apIdJson = cJSON_GetObjectItem(executeArrayJson, "apId");
 		    	devIdJson = cJSON_GetObjectItem(executeArrayJson, "devId");
-		    	paramJson = cJSON_GetObjectItem(triggerArrayJson, "param");
+		    	paramJson = cJSON_GetObjectItem(executeArrayJson, "param");
 		    	delayArrayJson = cJSON_GetObjectItem(executeArrayJson, "delay");
 		    	number2 = cJSON_GetArraySize(delayArrayJson);
 		    	for(j = 0, delay = 0; j < number2; j++){
@@ -523,7 +523,7 @@ int trigger_cb_handle(void)
 			 		status = linkage_status(condition, threshold, value);
 			 		/*set linkage table*/
 			 		sprintf(sql_2,"update link_trigger_table set STATUS = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d and LINK_NAME = \"%s\" ;",status,devId,param_type,link_name);
-			 		//fprintf(stdout,"sql_2:%s\n",sql_2);
+			 		fprintf(stdout,"sql_2:%s\n",sql_2);
 			 		sqlite3_reset(stmt_2);
 					sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 					rc = thread_sqlite3_step(&stmt_2, db);

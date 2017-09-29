@@ -413,20 +413,18 @@ static int AP_report_ap_handle(payload_t data)
         if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
 
         /*insert sql*/
-        sql = "insert or replace into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS,TIME) values(?,?,?,?,?,?,?,?,?);";
+        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS,TIME) values(?,?,?,?,?,?,?,?,?);";
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
         /*判断该设备是否存在*/
-        sprintf(sql_1,"select ID from all_dev where AP_ID = \"%s\";",apIdJson->valuestring);
+        sprintf(sql_1,"delete from all_dev where DEV_ID = \"%s\";",apIdJson->valuestring);
         /*get id*/
         sqlite3_reset(stmt_1); 
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-        rc = thread_sqlite3_step(&stmt_1, db);
-        if(rc == SQLITE_ROW){
-                id = (sqlite3_column_int(stmt_1, 0));
-        }else{
-            sprintf(sql_1,"select ID from all_dev order by ID desc limit 1");
-            id = sql_id(db, sql_1);
-        }
+        while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW);
+        
+        sprintf(sql_1,"select ID from all_dev order by ID desc limit 1");
+        id = sql_id(db, sql_1);
+        
 
         sqlite3_bind_int(stmt, 1, id);
         sqlite3_bind_text(stmt, 2,  apNameJson->valuestring, -1, NULL);
