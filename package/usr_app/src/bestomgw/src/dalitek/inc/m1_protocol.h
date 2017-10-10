@@ -41,12 +41,7 @@ typedef struct _linkage_status{
 	int threshold;
 } linkage_status_t;
 
-typedef struct _fifo_t {
-    uint32_t* buffer;
-    uint32_t len;
-    uint32_t wptr;
-    uint32_t rptr;
-}fifo_t;
+
 
 //void data_handle(m1_package_t* package);
 void data_handle(void);
@@ -67,9 +62,7 @@ int app_req_scenario_name(int clientFd, int sn);
 int district_create_handle(payload_t data);
 int app_req_district(int clientFd, int sn);
 /*通用API*/
-void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
-void fifo_write(fifo_t* fifo, uint32_t d);
-uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
+
 void m1_protocol_init(void);
 void getNowTime(char* _time);
 int sql_exec(sqlite3* db, char*sql);

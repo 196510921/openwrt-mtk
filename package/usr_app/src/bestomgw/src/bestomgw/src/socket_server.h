@@ -101,6 +101,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient);
  */
 void socketSeverClose(void);
 
+void thread_socketSeverSend(void);
 
 #ifdef __cplusplus
 }

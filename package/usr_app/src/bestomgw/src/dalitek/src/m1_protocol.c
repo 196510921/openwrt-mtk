@@ -10,6 +10,7 @@
 #include "thpool.h"
 #include "m1_protocol.h"
 #include "socket_server.h"
+#include "buf_manage.h"
 
 #define M1_PROTOCOL_DEBUG    1
 
@@ -139,10 +140,6 @@ void data_handle(void)
     }
 
     cJSON_Delete(rootJson);
-    /*free*/
-    fprintf(stdout,"free\n");
-    free(package->data);
-    free(package);
     linkage_task();
 }
 

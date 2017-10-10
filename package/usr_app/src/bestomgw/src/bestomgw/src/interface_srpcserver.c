@@ -61,6 +61,7 @@
 #include "zbSocCmd.h"
 #include "utils.h"
 #include "m1_protocol.h"
+#include "buf_manage.h"
 
 
 void SRPC_RxCB(int clientFd);
@@ -1685,10 +1686,10 @@ void SRPC_RxCB(int clientFd)
 			memcpy(&buffer[tail], read_buf, byteRead);
 			tail += byteRead;
 
-			m1_package_t * msg = (m1_package_t*)malloc(sizeof(m1_package_t));
+			m1_package_t * msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
 			msg->len = byteRead;
 			msg->clientFd = clientFd;
-			msg->data = (char*)malloc(byteRead);
+			msg->data = (char*)mem_poll_malloc(byteRead);
 			memcpy(msg->data, read_buf, byteRead);
 			fifo_write(&msg_fifo, msg);
 			puts("Adding task to threadpool\n");
