@@ -1538,14 +1538,13 @@ void delay_send_task(void)
             if(head.next->item.prio <= 0){
                 Pop(&head, &item);
                 p = cJSON_PrintUnformatted(item.data);
-                printf("delay_send_task data:%s\n",p);
+                printf("delay_send_task data:%s, addr:%x\n",p, item.data);
                 socketSeverSend((uint8*)p, strlen(p), item.clientFd);
                 cJSON_Delete(item.data);
             }
         }
         usleep(100000);
         count++;
-        //printf("count:%d\n",count);
         if(count >= 10){
             count = 0;
             Queue_delay_decrease(&head);

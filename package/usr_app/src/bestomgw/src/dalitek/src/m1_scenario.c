@@ -107,7 +107,7 @@ int scenario_exec(char* data, sqlite3* db)
 		            cJSON_Delete(devDataObject);
 		            return M1_PROTOCOL_FAILED;
 		        }
-		        cJSON_DetachItemFromArray(devDataJsonArray, 1);
+		        cJSON_DetachItemFromArray(devDataJsonArray, 0);
 		        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 		    	//cJSON_ReplaceItemInArray(devDataJsonArray, 1, devDataObject);
 		    	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
@@ -162,7 +162,7 @@ int scenario_exec(char* data, sqlite3* db)
 					clientFd = sqlite3_column_int(stmt_3,0);
 				}		
 		    	
-		    	//fprintf(stdout,"string:%s\n",p);
+		    	fprintf(stdout,"add msg to delay send\n");
 		    	delay_send(dup_data, delay, clientFd);
 		    }
 		}

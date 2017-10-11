@@ -1,3 +1,4 @@
+#include <malloc.h>
 #include "buf_manage.h"
 
 /*宏定义*******************************************************************************************************/
@@ -51,9 +52,9 @@ uint32_t mem_poll_malloc(uint32_t len)
 //初始化队列
 void Init_PQueue(PQueue pQueue)
 {
-	printf("Init_PQueue\n");
 	if (NULL == pQueue)
 	return;
+	printf("Init_PQueue\n");
 	pQueue->next = NULL;
 }
 
