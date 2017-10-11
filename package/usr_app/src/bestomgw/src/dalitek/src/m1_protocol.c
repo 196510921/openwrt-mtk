@@ -38,6 +38,8 @@ fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
 fifo_t msg_fifo;
 fifo_t tx_fifo;
+/*优先级队列*/
+PNode head;
 static uint32_t dev_data_buf[256];
 static uint32_t link_exec_buf[256];
 static uint32_t msg_buf[256];
@@ -50,6 +52,7 @@ void m1_protocol_init(void)
     fifo_init(&link_exec_fifo, link_exec_buf, 256);
     fifo_init(&msg_fifo, msg_buf, 256);
     fifo_init(&tx_fifo, tx_buf, 256);
+    Init_PQueue(&head);
 }
 
 //void data_handle(m1_package_t* package)
@@ -1513,7 +1516,43 @@ void getNowTime(char* _time)
     sprintf(_time, "%04d%02d%02d%02d%02d%02d", nowTime.tm_year + 1900, nowTime.tm_mon+1, nowTime.tm_mday, 
       nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
 }
-  
+
+void delay_send(cJSON* d, int delay, int clientFd)
+{
+    printf("delay_send\n");
+    Item item;
+
+    item.data = d;
+    item.prio = delay;
+    item.clientFd = clientFd;
+    Push(&head, item);
+}
+
+void delay_send_task(void)
+{
+    static uint32_t count = 0;
+    Item item;
+    char * p = NULL;
+    while(1){
+        if(!IsEmpty(&head)){
+            if(head.next->item.prio <= 0){
+                Pop(&head, &item);
+                p = cJSON_PrintUnformatted(item.data);
+                printf("delay_send_task data:%s\n",p);
+                socketSeverSend((uint8*)p, strlen(p), item.clientFd);
+                cJSON_Delete(item.data);
+            }
+        }
+        usleep(100000);
+        count++;
+        //printf("count:%d\n",count);
+        if(count >= 10){
+            count = 0;
+            Queue_delay_decrease(&head);
+        }
+    }
+}
+
 int sql_id(sqlite3* db, char* sql)
 {
     fprintf(stdout,"sql_id\n");

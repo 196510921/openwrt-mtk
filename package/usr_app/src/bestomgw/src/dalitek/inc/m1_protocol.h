@@ -62,13 +62,15 @@ int app_req_scenario_name(int clientFd, int sn);
 int district_create_handle(payload_t data);
 int app_req_district(int clientFd, int sn);
 /*通用API*/
-
 void m1_protocol_init(void);
 void getNowTime(char* _time);
 int sql_exec(sqlite3* db, char*sql);
 int sql_id(sqlite3* db, char* sql);
 int sql_row_number(sqlite3* db, char*sql);
 void create_sql_trigger(void);
+/*delay send*/
+void delay_send_task(void);
+void delay_send(cJSON* d, int delay, int clientFd);
 /*数据库*/
 int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 /*Download*********************************************************************/
