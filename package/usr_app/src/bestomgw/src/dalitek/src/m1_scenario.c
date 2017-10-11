@@ -83,7 +83,7 @@ int scenario_exec(char* data, sqlite3* db)
   //           cJSON_Delete(devDataObject);
   //           return M1_PROTOCOL_FAILED;
   //       }
-  //       cJSON_AddItemToArray(devDataJsonArray, devDataObject);
+        //cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 		while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 			dev_id = sqlite3_column_text(stmt_1,0);
 			/*检查设备启/停状态*/
@@ -107,9 +107,10 @@ int scenario_exec(char* data, sqlite3* db)
 		            cJSON_Delete(devDataObject);
 		            return M1_PROTOCOL_FAILED;
 		        }
+		        cJSON_DetachItemFromArray(devDataJsonArray, 1);
 		        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-		    	cJSON_AddItemToObject(devDataObject,"devId",dev_id);
-		       	//cJSON_ReplaceItemInObject(devDataObject,"devId",dev_id);
+		    	//cJSON_ReplaceItemInArray(devDataJsonArray, 1, devDataObject);
+		    	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
 		        /*create param array*/
 			    paramArray = cJSON_CreateArray();
 			    if(NULL == paramArray)
@@ -118,10 +119,8 @@ int scenario_exec(char* data, sqlite3* db)
 			        cJSON_Delete(paramArray);
 			        return M1_PROTOCOL_FAILED;
 			    }
-			    printf("1\n");
 			    cJSON_AddItemToObject(devDataObject,"param", paramArray);
 				//cJSON_ReplaceItemInObject(devDataObject, "param", paramArray);
-				printf("2\n");
 				sprintf(sql_2,"select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",data, dev_id);
 				fprintf(stdout,"sql_2:%s\n",sql_2);
 				sqlite3_reset(stmt_2);
@@ -139,15 +138,19 @@ int scenario_exec(char* data, sqlite3* db)
 		                cJSON_Delete(paramObject);
 		                return M1_PROTOCOL_FAILED;
 		            }
-		            printf("3\n");
 		            cJSON_AddItemToArray(paramArray, paramObject);
-		            printf("4\n");
 		            cJSON_AddNumberToObject(paramObject, "type", type);
-		            printf("5\n");
 		            cJSON_AddNumberToObject(paramObject, "value", value);
-
 	        	}
 	        	cJSON* dup_data = cJSON_Duplicate(pJsonRoot, 1);
+	         	char* p = cJSON_PrintUnformatted(dup_data);
+  			 	if(NULL == p)
+  			 	{    
+  			 		fprintf(stdout,"p NULL\n");
+  			     	cJSON_Delete(dup_data);
+  			     	return M1_PROTOCOL_FAILED;
+  			 	}
+  			 	printf("p:%s\n",p);
 		    	/*get clientfd*/
 		    	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
 		    	fprintf(stdout,"sql_3:%s\n", sql_3);
@@ -162,7 +165,6 @@ int scenario_exec(char* data, sqlite3* db)
 		    	//fprintf(stdout,"string:%s\n",p);
 		    	delay_send(dup_data, delay, clientFd);
 		    }
-			printf("7\n");
 		}
   //   	p = cJSON_PrintUnformatted(pJsonRoot);
   //   	if(NULL == p)
@@ -186,7 +188,6 @@ int scenario_exec(char* data, sqlite3* db)
   //   	socketSeverSend((uint8*)p, strlen(p), clientFd);
     	
 	}
-	printf("8\n");
 	sqlite3_finalize(stmt);
 	sqlite3_finalize(stmt_1);
    	sqlite3_finalize(stmt_2);
