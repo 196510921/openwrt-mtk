@@ -42,6 +42,13 @@ typedef struct _linkage_status{
 } linkage_status_t;
 
 
+typedef struct _scen_alarm_t{
+ char* status;
+ char* week;
+ char* scen_name;
+ int hour;
+ int minutes;
+}scen_alarm_t;
 
 //void data_handle(m1_package_t* package);
 void data_handle(void);
@@ -58,6 +65,7 @@ int scenario_create_handle(payload_t data);
 int scenario_alarm_create_handle(payload_t data);
 int app_req_scenario(int clientFd, int sn);
 int app_req_scenario_name(int clientFd, int sn);
+void scenario_alarm_select(void);
 /*区域相关API*/
 int district_create_handle(payload_t data);
 int app_req_district(int clientFd, int sn);

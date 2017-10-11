@@ -101,7 +101,7 @@ static void socket_poll(void);
 int main(int argc, char* argv[])
 {
 	int retval = 0;
-	pthread_t t1,t2,t3;
+	pthread_t t1,t2,t3,t4;
 	//int zbSoc_fd;
 	//char dbFilename[MAX_DB_FILENAMR_LEN];
 
@@ -109,15 +109,15 @@ int main(int argc, char* argv[])
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 	SRPC_Init();
 	m1_protocol_init();
-	printf("1\n");
-	int i;
 
 	pthread_create(&t1,NULL,socket_poll,NULL);
 	pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
+	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
+	pthread_join(t4, NULL);
 
 	/*init thread pool*/
 	//puts("Making threadpool with 1 threads");
@@ -136,7 +136,7 @@ static void socket_poll(void)
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
-		fprintf(stdout,stdout,"numClientFds:%d\n",numClientFds);
+		//fprintf(stdout,"numClientFds:%d\n",numClientFds);
 		//poll on client socket fd's and the ZllSoC serial port for any activity
 		if (numClientFds)
 		{

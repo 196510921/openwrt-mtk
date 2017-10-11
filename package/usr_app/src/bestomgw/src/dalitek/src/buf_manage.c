@@ -126,11 +126,8 @@ void Queue_delay_decrease(PQueue pQueue)
 	{
 		/*1s自减*/
 		pCur->item.prio--;
-		//printf("优先级：%d\n", pCur->item.prio);
-		//printf("数据：%s\n", pCur->item.data);
 		pCur = pCur->next;
 	}
-	printf("\n");
 }
 
 //队列为空则返回true
