@@ -1517,6 +1517,26 @@ void getNowTime(char* _time)
       nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
 }
 
+void setLocalTime(char* time)
+{
+    struct tm local_tm, *time_1;
+    struct timeval tv;
+    int clock;
+
+    clock = atoi(time);
+    printf("setLocalTime,clock:%05d\n",clock);
+    local_tm.tm_year = 2017 - 1900;
+    local_tm.tm_mon = 10-1;
+    local_tm.tm_mday = 12;
+    local_tm.tm_hour = (clock / 100 ) - 1;
+    printf("2\n");
+    local_tm.tm_min = clock - ((local_tm.tm_hour + 1)*100);
+    local_tm.tm_sec = 30;
+    tv.tv_sec = mktime(&local_tm);
+    tv.tv_usec = 0;
+    settimeofday(&tv, NULL);
+}
+
 void delay_send(cJSON* d, int delay, int clientFd)
 {
     printf("delay_send\n");
@@ -1533,6 +1553,7 @@ void delay_send_task(void)
     static uint32_t count = 0;
     Item item;
     char * p = NULL;
+    char str[20];
     while(1){
         if(!IsEmpty(&head)){
             if(head.next->item.prio <= 0){
@@ -1549,6 +1570,9 @@ void delay_send_task(void)
             count = 0;
             Queue_delay_decrease(&head);
         }
+        // if(gets(str) != NULL){
+        //     setLocalTime(str);
+        // }
     }
 }
 

@@ -658,7 +658,7 @@ int app_req_scenario(int clientFd, int sn)
 		        cJSON_Delete(paramArrayObject);
 		        return M1_PROTOCOL_FAILED;
 		    }
-		    cJSON_AddItemToObject(deviceObject, "device", paramArrayObject);
+		    cJSON_AddItemToObject(deviceObject, "param", paramArrayObject);
 			
 			sprintf(sql_2,"select TYPE, VALUE from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",scen_name, dev_id);
 	    	sqlite3_reset(stmt_2);
@@ -827,8 +827,8 @@ int app_req_scenario_name(int clientFd, int sn)
 	     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 	     	alarm.scen_name = sqlite3_column_text(stmt, 0);
 	     	alarm.hour = sqlite3_column_int(stmt, 1);
-	     	alarm.minutes = sqlite3_column_int(stmt, 2);
 	     	alarm.week = sqlite3_column_text(stmt, 3);
+	     	alarm.minutes = sqlite3_column_int(stmt, 2);
 	     	alarm.status = sqlite3_column_text(stmt, 4);
 	     	rc = scenario_alarm_check(alarm);
 	     	if(rc)
@@ -846,9 +846,12 @@ int app_req_scenario_name(int clientFd, int sn)
  	int on_time_flag = 0;
  	char* week = NULL;
  	struct tm nowTime;
-     struct timespec time;
-     clock_gettime(CLOCK_REALTIME, &time);  //获取相对于1970到现在的秒数
-     localtime_r(&time.tv_sec, &nowTime);
+    struct timespec time;
+ 	
+    clock_gettime(CLOCK_REALTIME, &time);  //获取相对于1970到现在的秒数
+    localtime_r(&time.tv_sec, &nowTime);
+    printf("%04d-%02d-%02d %02d:%02d:%02d\n",nowTime.tm_year + 1900, nowTime.tm_mon + 1, nowTime.tm_mday,
+        nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
      if(strcmp(alarm_time.status,"on") == 0){
      	switch(nowTime.tm_wday){
      		case 0: week = "sunday";break;
@@ -878,3 +881,4 @@ int app_req_scenario_name(int clientFd, int sn)
      //on_time_flag = 1;
      return on_time_flag;
  }
+

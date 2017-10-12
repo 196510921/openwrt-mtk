@@ -76,6 +76,7 @@ int sql_exec(sqlite3* db, char*sql);
 int sql_id(sqlite3* db, char* sql);
 int sql_row_number(sqlite3* db, char*sql);
 void create_sql_trigger(void);
+void setLocalTime(char* time);
 /*delay send*/
 void delay_send_task(void);
 void delay_send(cJSON* d, int delay, int clientFd);
