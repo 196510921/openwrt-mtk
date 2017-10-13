@@ -258,9 +258,9 @@ static int AP_report_dev_handle(payload_t data)
     int i, number, rc;
     char time[30];
     char* errorMsg = NULL;
-    cJSON* portJson = NULL;
     cJSON* apIdJson = NULL;
     cJSON* apNameJson = NULL;
+    cJSON* pIdJson = NULL;
     cJSON* devJson = NULL;
     cJSON* paramDataJson = NULL;    
     cJSON* idJson = NULL;    
@@ -293,8 +293,6 @@ static int AP_report_dev_handle(payload_t data)
         fprintf(stderr, "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
     }
 
-    portJson = cJSON_GetObjectItem(data.pdu,"port");
-    fprintf(stdout,"port:%d\n",portJson->valueint);
     apIdJson = cJSON_GetObjectItem(data.pdu,"apId");
     fprintf(stdout,"APId:%s\n",apIdJson->valuestring);
     apNameJson = cJSON_GetObjectItem(data.pdu,"apName");
@@ -305,7 +303,7 @@ static int AP_report_dev_handle(payload_t data)
     /*事物开始*/
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         fprintf(stdout,"BEGIN\n");
-        sql = "insert or replace into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS, TIME) values(?,?,?,?,?,?,?,?,?);";
+        sql = "insert or replace into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, TIME) values(?,?,?,?,?,?,?,?,?);";
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 
         for(i = 0; i< number; i++){
@@ -314,6 +312,8 @@ static int AP_report_dev_handle(payload_t data)
             fprintf(stdout,"devId:%s\n", idJson->valuestring);
             nameJson = cJSON_GetObjectItem(paramDataJson, "devName");
             fprintf(stdout,"devName:%s\n", nameJson->valuestring);
+            pIdJson = cJSON_GetObjectItem(paramDataJson, "pId");
+            fprintf(stdout,"pId:%05d\n", pIdJson->valueint);
             /*判断该设备是否存在*/
             sprintf(sql_1,"select ID from all_dev where DEV_ID = \"%s\";",idJson->valuestring);
             /*get id*/
@@ -332,7 +332,7 @@ static int AP_report_dev_handle(payload_t data)
             sqlite3_bind_text(stmt, 2,  nameJson->valuestring, -1, NULL);
             sqlite3_bind_text(stmt, 3, idJson->valuestring, -1, NULL);
             sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
-            sqlite3_bind_int(stmt, 5, portJson->valueint);
+            sqlite3_bind_int(stmt, 5, pIdJson->valueint);
             sqlite3_bind_int(stmt, 6, 0);
             sqlite3_bind_int(stmt, 7, 1);
             sqlite3_bind_text(stmt, 8,"ON", -1, NULL);
@@ -360,7 +360,7 @@ static int AP_report_ap_handle(payload_t data)
     int rc;
     char time[30];
     char* errorMsg = NULL;
-    cJSON* portJson = NULL;
+    cJSON* pIdJson = NULL;
     cJSON* apIdJson = NULL;
     cJSON* apNameJson = NULL;
     sqlite3* db = NULL;
@@ -389,8 +389,8 @@ static int AP_report_ap_handle(payload_t data)
         fprintf(stderr, "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
     }
 
-    portJson = cJSON_GetObjectItem(data.pdu,"port");
-    fprintf(stdout,"port:%d\n",portJson->valueint);
+    pIdJson = cJSON_GetObjectItem(data.pdu,"pId");
+    fprintf(stdout,"pId:%05d\n",pIdJson->valueint);
     apIdJson = cJSON_GetObjectItem(data.pdu,"apId");
     fprintf(stdout,"APId:%s\n",apIdJson->valuestring);
     apNameJson = cJSON_GetObjectItem(data.pdu,"apName");
@@ -415,7 +415,7 @@ static int AP_report_ap_handle(payload_t data)
         if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
 
         /*insert sql*/
-        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PORT, ADDED, NET, STATUS,TIME) values(?,?,?,?,?,?,?,?,?);";
+        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS,TIME) values(?,?,?,?,?,?,?,?,?);";
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
         /*判断该设备是否存在*/
         sprintf(sql_1,"delete from all_dev where DEV_ID = \"%s\";",apIdJson->valuestring);
@@ -432,7 +432,7 @@ static int AP_report_ap_handle(payload_t data)
         sqlite3_bind_text(stmt, 2,  apNameJson->valuestring, -1, NULL);
         sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
         sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
-        sqlite3_bind_int(stmt, 5, portJson->valueint);
+        sqlite3_bind_int(stmt, 5, pIdJson->valueint);
         sqlite3_bind_int(stmt, 6, 0);
         sqlite3_bind_int(stmt, 7, 1);
         sqlite3_bind_text(stmt, 8,  "ON", -1, NULL);
