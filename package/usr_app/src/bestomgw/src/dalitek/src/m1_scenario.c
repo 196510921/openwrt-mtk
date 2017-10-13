@@ -576,7 +576,7 @@ int app_req_scenario(int clientFd, int sn)
 	    cJSON_AddItemToObject(devDataObject, "device", deviceArrayObject);
 	    /*设备*/
 	    char* ap_id = NULL, *dev_id = "devId", *dev_name = NULL;
-	    int delay;
+	    int delay, pId;
 	    /*从场景表scenario_table中选出设备相关信息*/
 	    sprintf(sql_1,"select DISTINCT DEV_ID from scenario_table where SCEN_NAME = \"%s\" order by ID asc;",scen_name);
 	    fprintf(stdout,"sql_1:%s\n",sql_1);
@@ -640,15 +640,17 @@ int app_req_scenario(int clientFd, int sn)
 			
 			}
 		   	/*获取设备名称*/
-		   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
+		   	sprintf(sql_2,"select DEV_NAME, PID from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 		   	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 	    	rc = thread_sqlite3_step(&stmt_2, db); 
 
 			if(rc == SQLITE_ROW){
 				dev_name = sqlite3_column_text(stmt_2, 0);
-		   		fprintf(stdout,"dev_name:%s\n",dev_name);
-		   		cJSON_AddStringToObject(deviceObject, "devName", dev_name);	
+				pId = sqlite3_column_int(stmt_2, 1);
+		   		fprintf(stdout,"dev_name:%s, pId:%05d\n",dev_name, pId);
+		   		cJSON_AddStringToObject(deviceObject, "devName", dev_name);
+		   		cJSON_AddNumberToObject(deviceObject, "pId", pId);	
 			}
 		   	
 		   	/*设备参数信息*/

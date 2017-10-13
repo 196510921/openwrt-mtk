@@ -133,6 +133,8 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 #define TYPE_M1_REPORT_DISTRICT_INFO             0x100A
 /*M1上报场景名称到APP*/
 #define TYPE_M1_REPORT_SCEN_NAME_INFO            0x100B
+/*AP上报心跳信息*/
+#define TYPE_AP_HEARTBEAT_INFO            		 0x100C
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005

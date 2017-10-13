@@ -31,6 +31,7 @@ static int AP_report_dev_handle(payload_t data);
 static int AP_report_ap_handle(payload_t data);
 static int common_operate(payload_t data);
 static int common_rsp(rsp_data_t data);
+static int ap_heartbeat_handle(payload_t data);
 static int common_rsp_handle(payload_t data);
 
 char* db_path = "dev_info.db";
@@ -130,6 +131,7 @@ void data_handle(void)
         case TYPE_REQ_LINK_INFO: rc = app_req_linkage(rspData.clientFd, rspData.sn);break;
         case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(rspData.clientFd, rspData.sn); break;
         case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(rspData.clientFd, rspData.sn);break;
+        case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
 
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -556,7 +558,16 @@ static int APP_read_handle(payload_t data, int sn)
             if(rc == SQLITE_ROW){
                 cJSON_AddStringToObject(devDataObject, "devName", (const char*)sqlite3_column_text(stmt,0));
             }
-            
+            /*添加PID*/
+            sprintf(sql, "select PID from all_dev where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
+            fprintf(stdout,"%s\n", sql);
+            sqlite3_reset(stmt);
+            sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+            rc = thread_sqlite3_step(&stmt, db);
+            if(rc == SQLITE_ROW){
+                cJSON_AddStringToObject(devDataObject, "pId", (const char*)sqlite3_column_text(stmt,0));
+            }
+
             devArray = cJSON_CreateArray();
             if(NULL == devArray)
             {
@@ -944,7 +955,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
             }
             cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 
-            cJSON_AddNumberToObject(devDataObject, "port", sqlite3_column_int(stmt_1, 4));
+            cJSON_AddNumberToObject(devDataObject, "pId", sqlite3_column_int(stmt_1, 4));
             cJSON_AddStringToObject(devDataObject, "apId",  (const char*)sqlite3_column_text(stmt_1, 3));
             cJSON_AddStringToObject(devDataObject, "apName", (const char*)sqlite3_column_text(stmt_1, 2));
             
@@ -975,6 +986,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
                         return M1_PROTOCOL_FAILED;
                     }
                     cJSON_AddItemToArray(devArray, devObject); 
+                    cJSON_AddNumberToObject(devObject, "pId", sqlite3_column_int(stmt_2, 4));
                     cJSON_AddStringToObject(devObject, "devId", (const char*)sqlite3_column_text(stmt_2, 1));
                     cJSON_AddStringToObject(devObject, "devName", (const char*)sqlite3_column_text(stmt_2, 2));
                 }
@@ -1172,7 +1184,7 @@ static int M1_report_ap_info(int clientFd, int sn)
             }
             cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 
-            cJSON_AddNumberToObject(devDataObject, "port", sqlite3_column_int(stmt, 4));
+            cJSON_AddNumberToObject(devDataObject, "pId", sqlite3_column_int(stmt, 4));
             cJSON_AddStringToObject(devDataObject, "apId", (const char*)sqlite3_column_text(stmt, 3));
             cJSON_AddStringToObject(devDataObject, "apName", (const char*)sqlite3_column_text(stmt, 2));
             
@@ -1203,7 +1215,7 @@ static int M1_report_dev_info(payload_t data, int sn)
 {
      fprintf(stdout," M1_report_dev_info\n");
     /*cJSON*/
-    int pduType = TYPE_AP_REPORT_DEV_INFO;
+    int pduType = TYPE_M1_REPORT_DEV_INFO;
     char* ap = NULL;
 
     ap = data.pdu->valuestring;
@@ -1282,7 +1294,7 @@ static int M1_report_dev_info(payload_t data, int sn)
             }
             cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 
-            cJSON_AddNumberToObject(devDataObject, "port", sqlite3_column_int(stmt, 4));
+            cJSON_AddNumberToObject(devDataObject, "pId", sqlite3_column_int(stmt, 4));
             cJSON_AddStringToObject(devDataObject, "devId", (const char*)sqlite3_column_text(stmt, 1));
             cJSON_AddStringToObject(devDataObject, "devName", (const char*)sqlite3_column_text(stmt, 2));
             
@@ -1440,6 +1452,11 @@ static int common_operate(payload_t data)
      return M1_PROTOCOL_OK;
 }
 
+static int ap_heartbeat_handle(payload_t data)
+{
+    return M1_PROTOCOL_OK;
+}
+
 static int common_rsp(rsp_data_t data)
 {
     fprintf(stdout," common_rsp\n");
@@ -1521,20 +1538,24 @@ void setLocalTime(char* time)
 {
     struct tm local_tm, *time_1;
     struct timeval tv;
-    int clock;
+    struct timezone tz;
+    int mon, day,hour,min;
 
-    clock = atoi(time);
-    printf("setLocalTime,clock:%05d\n",clock);
+    gettimeofday(&tv, &tz);
+    mon = atoi(time) / 1000000 - 1;
+    day = atoi(&time[2]) / 10000;
+    hour = atoi(&time[4]) / 100; 
+    min = atoi(&time[6]);
+    printf("setLocalTime,time:%02d-%02d %02d:%02d\n",mon+1,day,hour,min);
     local_tm.tm_year = 2017 - 1900;
-    local_tm.tm_mon = 10-1;
-    local_tm.tm_mday = 12;
-    local_tm.tm_hour = (clock / 100 ) - 1;
-    printf("2\n");
-    local_tm.tm_min = clock - ((local_tm.tm_hour + 1)*100);
+    local_tm.tm_mon = mon;
+    local_tm.tm_mday = day;
+    local_tm.tm_hour = hour;
+    local_tm.tm_min = min;
     local_tm.tm_sec = 30;
     tv.tv_sec = mktime(&local_tm);
     tv.tv_usec = 0;
-    settimeofday(&tv, NULL);
+    settimeofday(&tv, &tz);
 }
 
 void delay_send(cJSON* d, int delay, int clientFd)
@@ -1570,9 +1591,7 @@ void delay_send_task(void)
             count = 0;
             Queue_delay_decrease(&head);
         }
-        // if(gets(str) != NULL){
-        //     setLocalTime(str);
-        // }
+
     }
 }
 

@@ -154,6 +154,7 @@ int app_req_district(int clientFd, int sn)
     } 
     /*取区域名称*/
     char* dist_name = NULL, *ap_id = NULL, *ap_name = NULL;
+    int pId;
     sql = "select distinct DIS_NAME from district_table;";
    	fprintf(stdout,"sql:%s\n", sql);
     sqlite3_reset(stmt);
@@ -193,7 +194,7 @@ int app_req_district(int clientFd, int sn)
 		    cJSON_AddItemToArray(apInfoArrayObject, apInfoObject);
 		    cJSON_AddStringToObject(apInfoObject, "apId", ap_id);
 		    /*取出apName*/
-		    sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" ;",ap_id);
+		    sprintf(sql_2,"select DEV_NAME,pId from all_dev where DEV_ID = \"%s\" ;",ap_id);
 		    fprintf(stdout,"sql_2:%s\n", sql_2);
 		    sqlite3_reset(stmt_2);
 		    sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
@@ -201,8 +202,10 @@ int app_req_district(int clientFd, int sn)
 			fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
 			if(rc == SQLITE_ROW){
 				ap_name = sqlite3_column_text(stmt_2,0);
-				fprintf(stdout,"ap_name:%s\n",ap_name);
+                pId = sqlite3_column_int(stmt_2,1);
+				fprintf(stdout,"ap_name:%s\n, pId:%05d\n",ap_name, pId);
 				cJSON_AddStringToObject(apInfoObject, "apName", ap_name);
+                cJSON_AddNumberToObject(apInfoObject, "pId", pId);
 			}
 	    }
     }
