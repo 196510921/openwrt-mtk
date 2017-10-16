@@ -423,8 +423,6 @@ void thread_socketSeverSend(void)
 
 }
 
-
-
 int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 {
 	//m1_package_t * msg = socket_msg_alloc();

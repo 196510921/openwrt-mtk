@@ -111,6 +111,12 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 #define TYPE_REQ_DISTRICT_INFO                   0x0012
 /*APP 请求场景名称信息 */
 #define TYPE_REQ_SCEN_NAME_INFO                  0x0013
+/*APP 请求用户账户信息*/
+#define TYPE_REQ_ACCOUNT_INFO                    0x0014
+/*APP 请求用户配置信息*/
+#define TYPE_REQ_ACCOUNT_CONFIG_INFO             0x0015
+/*APP 下发用户配置信息*/
+#define TYPE_SEND_ACCOUNT_CONFIG_INFO            0x0016
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
@@ -135,6 +141,10 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 #define TYPE_M1_REPORT_SCEN_NAME_INFO            0x100B
 /*AP上报心跳信息*/
 #define TYPE_AP_HEARTBEAT_INFO            		 0x100C
+/*M1 上报用户账户信息*/
+#define TYPE_M1_REPORT_ACCOUNT_INFO              0x100D
+/*M1 上报永辉配置信息*/
+#define TYPE_M1_REPORT_ACCOUNT_CONFIG_INFO       0x100E
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005
