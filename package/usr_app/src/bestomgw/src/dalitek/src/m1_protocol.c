@@ -131,6 +131,7 @@ void data_handle(void)
         case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(rspData.clientFd, rspData.sn);break;
         case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
         case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu, rspData.sn);break;
+        case TYPE_M1_REPORT_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu, rspData.sn);break;
 
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
