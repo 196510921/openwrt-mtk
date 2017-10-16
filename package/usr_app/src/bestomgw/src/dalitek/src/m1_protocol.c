@@ -7,7 +7,6 @@
 #include <string.h>
 #include <malloc.h>
 
-#include "thpool.h"
 #include "m1_protocol.h"
 #include "socket_server.h"
 #include "buf_manage.h"
@@ -16,7 +15,6 @@
 
 #define HEAD_LEN    3
 
-extern threadpool thpool;
 
 static int AP_report_data_handle(payload_t data);
 static int APP_read_handle(payload_t data, int sn);

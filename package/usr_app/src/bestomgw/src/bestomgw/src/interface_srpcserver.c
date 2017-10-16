@@ -54,7 +54,7 @@
 #include "interface_devicelist.h"
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
-#include "thpool.h"
+//#include "thpool.h"
 
 #include "hal_defs.h"
 
@@ -377,13 +377,13 @@ static void srpcSendAll(uint8_t* srpcMsg)
 void SRPC_ProcessIncoming(uint8_t *pBuf, unsigned int nlen, uint32_t clientFd)
 {
 	fprintf(stdout,"SRPC_ProcessIncoming:%s\n",pBuf);
-	extern threadpool thpool;
-	m1_package_t* package = malloc(sizeof(m1_package_t));
-	package->clientFd = clientFd;
-	package->data = malloc(nlen);
+	//extern threadpool thpool;
+	//m1_package_t* package = malloc(sizeof(m1_package_t));
+	//package->clientFd = clientFd;
+	//package->data = malloc(nlen);
 	
-	puts("Adding task to threadpool\n");
-	thpool_add_work(thpool, (void*)data_handle, (void*)&package);
+	//puts("Adding task to threadpool\n");
+	//thpool_add_work(thpool, (void*)data_handle, (void*)&package);
 
 	//data_handle(package);
 }
@@ -1654,7 +1654,7 @@ void SRPC_ConnectCB(int clientFd)
  * @return  Status
  ***************************************************************************************************/
 extern fifo_t msg_fifo;
-extern threadpool thpool;
+//extern threadpool thpool;
 void SRPC_RxCB(int clientFd)
 {
 	int byteToRead;

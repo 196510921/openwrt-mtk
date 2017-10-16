@@ -56,7 +56,7 @@
 #include <errno.h>
 #include <malloc.h>
 
-#include "thpool.h"
+//#include "thpool.h"
 #include "socket_server.h"
 #include "m1_protocol.h"
 #include "buf_manage.h"
@@ -392,7 +392,6 @@ void socketSeverPoll(int clinetFd, int revent)
  *
  * @return  Status
  */
-extern threadpool tx_thpool;
 extern fifo_t tx_fifo;
 void thread_socketSeverSend(void)
 {
@@ -421,26 +420,10 @@ void thread_socketSeverSend(void)
 		}
 		fprintf(stdout,"socketSeverSend--\n");		
 	}
-	/*free*/
-    //fprintf(stdout,"free\n");
-    //free(package->data);
-    //free(package);
+
 }
 
-/*分配tx message地址*/
-// #define SOCKT_MSG_NUMBER    100
-// static m1_package_t socket_msg[SOCKT_MSG_NUMBER];
-// static m1_package_t* socket_msg_alloc(void)
-// {
-// 	static uint32_t i = 0;
-// 	m1_package_t* add = NULL;
 
-// 	i %= SOCKT_MSG_NUMBER;
-// 	add = &socket_msg[i];
-// 	fprintf(stdout,"socket_msg_alloc:%d\n",i);
-// 	i++;
-// 	return add;
-// }
 
 int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 {
