@@ -255,7 +255,7 @@ int linkage_msg_handle(payload_t data)
 		sqlite3_bind_text(stmt, 5,  scenNameJson->valuestring, -1, NULL);
 
 		sqlite3_bind_text(stmt, 6,  "OFF", -1, NULL);
-		sqlite3_bind_text(stmt, 7,  "ON", -1, NULL);
+		sqlite3_bind_text(stmt, 7,  "on", -1, NULL);
 		sqlite3_bind_text(stmt, 8,  time, -1, NULL);
 		rc = thread_sqlite3_step(&stmt, db);
 
@@ -884,6 +884,44 @@ int app_req_linkage(int clientFd, int sn)
 
 }
 
+int app_linkage_enable(payload_t data)
+{
+	fprintf(stdout, "app_linkage_enable\n");
+	cJSON* linkObject = NULL;
+	cJSON* enableObject = NULL;
+	char sql[200];
 
+	/*sqlite3*/
+	sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    int rc;
+    rc = sqlite3_open("dev_info.db", &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    } 
+
+	linkObject = cJSON_GetObjectItem(data.pdu, "linkName");
+	if(linkObject == NULL)
+		return M1_PROTOCOL_FAILED;
+	fprintf(stdout,"link_name:%s\n",linkObject->valuestring);
+	enableObject = cJSON_GetObjectItem(data.pdu, "enable");
+	if(enableObject == NULL)
+		return M1_PROTOCOL_FAILED;
+	fprintf(stdout,"enable:%s\n",enableObject->valuestring);
+
+	sprintf(sql,"update linkage_table set ENABLE = \"%s\" where LINK_NAME = \"%s\";",enableObject->valuestring,linkObject->valuestring);
+	fprintf(stdout,"sql_2:%s\n", sql);
+  	sqlite3_reset(stmt);
+  	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+  	while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
+
+  	sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    return M1_PROTOCOL_OK;
+}
 
 

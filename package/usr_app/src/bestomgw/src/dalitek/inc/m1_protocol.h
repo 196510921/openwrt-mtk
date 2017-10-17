@@ -59,6 +59,7 @@ int trigger_cb_handle(void);
 int linkage_task(void);
 int linkage_msg_handle(payload_t data);
 int app_req_linkage(int clientFd, int sn);
+int app_linkage_enable(payload_t data);
 /*场景相关API*/
 int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
@@ -117,6 +118,8 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 #define TYPE_REQ_ACCOUNT_CONFIG_INFO             0x0015
 /*APP 下发用户配置信息*/
 #define TYPE_SEND_ACCOUNT_CONFIG_INFO            0x0016
+/*APP 使能联动状态*/
+#define TYPE_LINK_ENABLE_SET            		 0x0017
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
