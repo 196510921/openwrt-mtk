@@ -131,7 +131,7 @@ void data_handle(void)
         case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(rspData.clientFd, rspData.sn);break;
         case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
         case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu, rspData.sn);break;
-        case TYPE_M1_REPORT_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu, rspData.sn);break;
+        case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu, rspData.sn);break;
 
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -308,11 +308,19 @@ static int AP_report_dev_handle(payload_t data)
 
         for(i = 0; i< number; i++){
             paramDataJson = cJSON_GetArrayItem(devJson, i);
+            if(paramDataJson == NULL)
+                return M1_PROTOCOL_FAILED;
             idJson = cJSON_GetObjectItem(paramDataJson, "devId");
+            if(idJson == NULL)
+                return M1_PROTOCOL_FAILED;
             fprintf(stdout,"devId:%s\n", idJson->valuestring);
             nameJson = cJSON_GetObjectItem(paramDataJson, "devName");
+            if(nameJson == NULL)
+                return M1_PROTOCOL_FAILED;
             fprintf(stdout,"devName:%s\n", nameJson->valuestring);
             pIdJson = cJSON_GetObjectItem(paramDataJson, "pId");
+            if(pIdJson == NULL)
+                return M1_PROTOCOL_FAILED;
             fprintf(stdout,"pId:%05d\n", pIdJson->valueint);
             /*判断该设备是否存在*/
             sprintf(sql_1,"select ID from all_dev where DEV_ID = \"%s\";",idJson->valuestring);

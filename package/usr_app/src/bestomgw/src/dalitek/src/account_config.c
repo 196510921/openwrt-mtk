@@ -113,6 +113,8 @@ int app_req_account_config_handle(payload_t data, int sn)
 	cJSON* districtJson = NULL;
 	cJSON* scenArray = NULL;
 	cJSON* scenJson = NULL;
+	cJSON* devArray = NULL;
+	cJSON* devObject = NULL;
 
 	char* account = NULL;
 	int pduType = TYPE_M1_REPORT_ACCOUNT_CONFIG_INFO;
@@ -164,9 +166,11 @@ int app_req_account_config_handle(payload_t data, int sn)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataObject);
     /*获取账户名*/
-    char *key = NULL, *key_auth = NULL, *remote_auth = NULL, *district = NULL,*scenario = NULL;
-    accountJson = cJSON_GetObjectItem(data.pdu, "devData");
-    sprintf(sql,"select KEY,KEY_AUTH,REMOTE_AUTH from account_table where ACCOUNT = %s", accountJson->valuestring);
+    char *key = NULL, *key_auth = NULL, *remote_auth = NULL, *district = NULL,*scenario = NULL,
+    *dev_name = NULL,*dev_id = NULL;
+    int pId;
+    accountJson = data.pdu;//cJSON_GetObjectItem(data.pdu, "devData");
+    sprintf(sql,"select KEY,KEY_AUTH,REMOTE_AUTH from account_table where ACCOUNT = \"%s\";", accountJson->valuestring);
     fprintf(stdout,"%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
@@ -189,7 +193,7 @@ int app_req_account_config_handle(payload_t data, int sn)
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(devDataObject, "district", districtArray);
-    sprintf(sql,"select DIS_NAME from district_table where ACCOUNT = %s", accountJson->valuestring);
+    sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";", accountJson->valuestring);
     fprintf(stdout,"%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
@@ -214,8 +218,8 @@ int app_req_account_config_handle(payload_t data, int sn)
         return M1_PROTOCOL_FAILED;
     }
     /*add devData array to pdu pbject*/
-    cJSON_AddItemToObject(devDataObject, "district", scenArray);
-    sprintf(sql,"select SCEN_NAME from scenario_table where ACCOUNT = %s", accountJson->valuestring);
+    cJSON_AddItemToObject(devDataObject, "scenario", scenArray);
+    sprintf(sql,"select distinct SCEN_NAME from scenario_table where ACCOUNT = \"%s\";", accountJson->valuestring);
     fprintf(stdout,"%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
@@ -230,12 +234,38 @@ int app_req_account_config_handle(payload_t data, int sn)
 	        cJSON_Delete(scenJson);
 	        return M1_PROTOCOL_FAILED;
 	    }
-	    cJSON_AddItemToArray(districtArray, scenJson);
+	    cJSON_AddItemToArray(scenArray, scenJson);
 	}
 	/*获取设备信息*/
-
-	
-
+	devArray = cJSON_CreateArray();
+    if(NULL == devArray)
+    {
+        cJSON_Delete(devArray);
+        return M1_PROTOCOL_FAILED;
+    }
+    cJSON_AddItemToObject(devDataObject, "device", devArray);
+    sprintf(sql,"select PID, DEV_NAME, DEV_ID from all_dev where ACCOUNT = \"%s\";", accountJson->valuestring);
+    fprintf(stdout,"%s\n", sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+	    /*添加区域信息*/	    
+	    pId = sqlite3_column_int(stmt,0);
+	    dev_name = sqlite3_column_text(stmt,1);
+	    dev_id = sqlite3_column_text(stmt,2);
+	   	fprintf(stdout,"pid:%05d,dev_name:%s, dev_id:%s\n", pId, dev_name,dev_id);
+	    devObject = cJSON_CreateObject();
+	    if(NULL == devObject)
+	    {
+	        // create object faild, exit
+	        cJSON_Delete(devObject);
+	        return M1_PROTOCOL_FAILED;
+	    }
+	    cJSON_AddNumberToObject(devObject, "pId", pId);
+	    cJSON_AddStringToObject(devObject, "devName", dev_name);
+	    cJSON_AddStringToObject(devObject, "devId", dev_id);
+	    cJSON_AddItemToArray(devArray, devObject);
+	}
 
 	sqlite3_finalize(stmt);
     sqlite3_close(db);

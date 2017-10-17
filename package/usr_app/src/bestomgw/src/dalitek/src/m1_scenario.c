@@ -852,8 +852,8 @@ int app_req_scenario_name(int clientFd, int sn)
  	
     clock_gettime(CLOCK_REALTIME, &time);  //获取相对于1970到现在的秒数
     localtime_r(&time.tv_sec, &nowTime);
-    printf("%04d-%02d-%02d %02d:%02d:%02d\n",nowTime.tm_year + 1900, nowTime.tm_mon + 1, nowTime.tm_mday,
-        nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
+    //printf("%04d-%02d-%02d %02d:%02d:%02d\n",nowTime.tm_year + 1900, nowTime.tm_mon + 1, nowTime.tm_mday,
+    //    nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
      if(strcmp(alarm_time.status,"on") == 0){
      	switch(nowTime.tm_wday){
      		case 0: week = "sunday";break;
