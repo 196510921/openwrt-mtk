@@ -243,7 +243,7 @@ int linkage_msg_handle(payload_t data)
 		char* sql = "select ID from linkage_table order by ID desc limit 1";
 	    /*linkage_table*/
 	    id = sql_id(db, sql);
-	    sql = "insert into linkage_table(ID, LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, STATUS, TIME) values(?,?,?,?,?,?,?);";
+	    sql = "insert into linkage_table(ID, LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, STATUS, ENABLE,TIME) values(?,?,?,?,?,?,?,?);";
 	    fprintf(stdout,"sql:%s\n",sql);
 	    sqlite3_reset(stmt);
 	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -255,7 +255,8 @@ int linkage_msg_handle(payload_t data)
 		sqlite3_bind_text(stmt, 5,  scenNameJson->valuestring, -1, NULL);
 
 		sqlite3_bind_text(stmt, 6,  "OFF", -1, NULL);
-		sqlite3_bind_text(stmt, 7,  time, -1, NULL);
+		sqlite3_bind_text(stmt, 7,  "ON", -1, NULL);
+		sqlite3_bind_text(stmt, 8,  time, -1, NULL);
 		rc = thread_sqlite3_step(&stmt, db);
 
 	    /*link_trigger_table*/
