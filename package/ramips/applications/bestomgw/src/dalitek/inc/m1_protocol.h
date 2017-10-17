@@ -41,12 +41,14 @@ typedef struct _linkage_status{
 	int threshold;
 } linkage_status_t;
 
-typedef struct _fifo_t {
-    uint32_t* buffer;
-    uint32_t len;
-    uint32_t wptr;
-    uint32_t rptr;
-}fifo_t;
+
+typedef struct _scen_alarm_t{
+ char* status;
+ char* week;
+ char* scen_name;
+ int hour;
+ int minutes;
+}scen_alarm_t;
 
 //void data_handle(m1_package_t* package);
 void data_handle(void);
@@ -63,19 +65,21 @@ int scenario_create_handle(payload_t data);
 int scenario_alarm_create_handle(payload_t data);
 int app_req_scenario(int clientFd, int sn);
 int app_req_scenario_name(int clientFd, int sn);
+void scenario_alarm_select(void);
 /*区域相关API*/
 int district_create_handle(payload_t data);
 int app_req_district(int clientFd, int sn);
 /*通用API*/
-void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
-void fifo_write(fifo_t* fifo, uint32_t d);
-uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
 void m1_protocol_init(void);
 void getNowTime(char* _time);
 int sql_exec(sqlite3* db, char*sql);
 int sql_id(sqlite3* db, char* sql);
 int sql_row_number(sqlite3* db, char*sql);
 void create_sql_trigger(void);
+void setLocalTime(char* time);
+/*delay send*/
+void delay_send_task(void);
+void delay_send(cJSON* d, int delay, int clientFd);
 /*数据库*/
 int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 /*Download*********************************************************************/
@@ -129,6 +133,8 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 #define TYPE_M1_REPORT_DISTRICT_INFO             0x100A
 /*M1上报场景名称到APP*/
 #define TYPE_M1_REPORT_SCEN_NAME_INFO            0x100B
+/*AP上报心跳信息*/
+#define TYPE_AP_HEARTBEAT_INFO            		 0x100C
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005

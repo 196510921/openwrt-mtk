@@ -8,6 +8,7 @@
 
 #include "m1_protocol.h"
 #include "socket_server.h"
+#include "buf_manage.h"
 
 extern fifo_t dev_data_fifo;
 extern fifo_t link_exec_fifo;
@@ -623,7 +624,7 @@ int app_req_linkage(int clientFd, int sn)
 
     char* link_name = NULL, *district = NULL, *logical = NULL, *exec_type = NULL, *exec_id = NULL,
     *ap_id = NULL, *dev_id = NULL, *condition = NULL, *dev_name = NULL;
-    int type, value, delay;
+    int type, value, delay, pId;
     sql = "select LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID from linkage_table;";
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -686,13 +687,15 @@ int app_req_linkage(int clientFd, int sn)
 			   	fprintf(stdout,"apId:%s\n",ap_id);
 		   	}
 		   	/*获取设备名称*/
-		   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
+		   	sprintf(sql_2,"select DEV_NAME, PID from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 		   	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 	    	rc = thread_sqlite3_step(&stmt_2, db); 
 			if(rc == SQLITE_ROW){ 
 			   	dev_name = sqlite3_column_text(stmt_2, 0);
+			   	pId = sqlite3_column_int(stmt_2, 1);
 			   	cJSON_AddStringToObject(triggerObject, "devName", dev_name);
+			   	cJSON_AddNumberToObject(triggerObject, "pId", pId);
 		   	}
     		/*获取参数*/
     		paramJsonArray = cJSON_CreateArray();
@@ -792,13 +795,15 @@ int app_req_linkage(int clientFd, int sn)
 					}
 			   	}
 			   	/*获取设备名称*/
-			   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
+			   	sprintf(sql_2,"select DEV_NAME, PID from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 			   	sqlite3_reset(stmt_2);
 		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 		    	rc = thread_sqlite3_step(&stmt_2,db); 
 				if(rc == SQLITE_ROW){
 				   	dev_name = sqlite3_column_text(stmt_2, 0);
 				   	cJSON_AddStringToObject(execObject, "devName", dev_name);
+				   	pId = sqlite3_column_int(stmt_2, 1);
+				   	cJSON_AddNumberToObject(execObject, "pId", pId);
 				}
 	    		/*获取参数*/
 	    		paramJsonArray = cJSON_CreateArray();
@@ -867,28 +872,6 @@ int app_req_linkage(int clientFd, int sn)
 
 }
 
-void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len)
-{
-    fifo->buffer = buffer;
-    fifo->len = len;
-    fifo->wptr = fifo->rptr = 0;
-}
-
-void fifo_write(fifo_t* fifo, uint32_t d)
-{
-    fifo->buffer[fifo->wptr] = d;
-    fifo->wptr = (fifo->wptr + 1) % fifo->len;
-}
-
-uint32_t fifo_read(fifo_t* fifo, uint32_t* d)
-{
-    if (fifo->wptr == fifo->rptr) return 0;
-    
-    *d = fifo->buffer[fifo->rptr];
-    fifo->rptr = (fifo->rptr + 1) % fifo->len;
-    
-    return 1;
-}
 
 
 

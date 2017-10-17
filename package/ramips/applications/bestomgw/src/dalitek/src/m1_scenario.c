@@ -9,6 +9,8 @@
 #include "m1_protocol.h"
 #include "socket_server.h"
 
+/*函数定义*************************************************************************************/
+static int scenario_alarm_check(scen_alarm_t alarm_time);
 
 /*场景执行*/
 int scenario_exec(char* data, sqlite3* db)
@@ -28,7 +30,7 @@ int scenario_exec(char* data, sqlite3* db)
  	fprintf(stdout,"scenario_exec\n");
     int rc;
     int clientFd;
-    char * p = NULL;
+    //char * p = NULL;
     int pduType = TYPE_DEV_WRITE;
 
     pJsonRoot = cJSON_CreateObject();
@@ -74,17 +76,29 @@ int scenario_exec(char* data, sqlite3* db)
 		sprintf(sql_1,"select distinct DEV_ID from scenario_table where SCEN_NAME = \"%s\" and AP_ID = \"%s\";",data, ap_id);	
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 		fprintf(stdout,"sql_1:%s\n",sql_1);
+		// /*单个子设备数据*/
+		// devDataObject = cJSON_CreateObject();
+		// if(NULL == devDataObject)
+  //       {
+  //           // create object faild, exit
+  //           fprintf(stdout,"devDataObject NULL\n");
+  //           cJSON_Delete(devDataObject);
+  //           return M1_PROTOCOL_FAILED;
+  //       }
+        //cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 		while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 			dev_id = sqlite3_column_text(stmt_1,0);
 			/*检查设备启/停状态*/
 		 	sprintf(sql_2,"select STATUS from all_dev where DEV_ID = \"%s\";",dev_id);
+		 	printf("sql_2:%s\n",sql_2);
 		 	sqlite3_reset(stmt_2);
 		 	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-		 	rc = thread_sqlite3_step(&stmt_1,db);
+		 	rc = thread_sqlite3_step(&stmt_2,db);
 	
 		   	if(rc == SQLITE_ROW){
 				status = sqlite3_column_text(stmt_2,0);
-			}		
+			}
+			printf("status:%s\n",status);		
 		    if(strcmp(status,"ON") == 0){
 				/*create device data object*/
 				devDataObject = cJSON_CreateObject();
@@ -95,8 +109,10 @@ int scenario_exec(char* data, sqlite3* db)
 		            cJSON_Delete(devDataObject);
 		            return M1_PROTOCOL_FAILED;
 		        }
+		        cJSON_DetachItemFromArray(devDataJsonArray, 0);
 		        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-		       	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
+		    	//cJSON_ReplaceItemInArray(devDataJsonArray, 1, devDataObject);
+		    	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
 		        /*create param array*/
 			    paramArray = cJSON_CreateArray();
 			    if(NULL == paramArray)
@@ -105,7 +121,8 @@ int scenario_exec(char* data, sqlite3* db)
 			        cJSON_Delete(paramArray);
 			        return M1_PROTOCOL_FAILED;
 			    }
-				cJSON_AddItemToObject(devDataObject, "param", paramArray);
+			    cJSON_AddItemToObject(devDataObject,"param", paramArray);
+				//cJSON_ReplaceItemInObject(devDataObject, "param", paramArray);
 				sprintf(sql_2,"select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",data, dev_id);
 				fprintf(stdout,"sql_2:%s\n",sql_2);
 				sqlite3_reset(stmt_2);
@@ -126,33 +143,53 @@ int scenario_exec(char* data, sqlite3* db)
 		            cJSON_AddItemToArray(paramArray, paramObject);
 		            cJSON_AddNumberToObject(paramObject, "type", type);
 		            cJSON_AddNumberToObject(paramObject, "value", value);
-
 	        	}
-        	}
+	        	cJSON* dup_data = cJSON_Duplicate(pJsonRoot, 1);
+	         	char* p = cJSON_PrintUnformatted(dup_data);
+  			 	if(NULL == p)
+  			 	{    
+  			 		fprintf(stdout,"p NULL\n");
+  			     	cJSON_Delete(dup_data);
+  			     	return M1_PROTOCOL_FAILED;
+  			 	}
+  			 	printf("p:%s\n",p);
+		    	/*get clientfd*/
+		    	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
+		    	fprintf(stdout,"sql_3:%s\n", sql_3);
+		    	sqlite3_reset(stmt_3);
+		    	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+		    	rc = thread_sqlite3_step(&stmt_3,db);
+		    
+		    	if(rc == SQLITE_ROW){
+					clientFd = sqlite3_column_int(stmt_3,0);
+				}		
+		    	
+		    	fprintf(stdout,"add msg to delay send\n");
+		    	delay_send(dup_data, delay, clientFd);
+		    }
 		}
-    	p = cJSON_PrintUnformatted(pJsonRoot);
-    	if(NULL == p)
-    	{    
-    		fprintf(stdout,"p NULL\n");
-        	cJSON_Delete(pJsonRoot);
-        	return M1_PROTOCOL_FAILED;
-    	}
-    	/*get clientfd*/
-    	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
-    	fprintf(stdout,"sql_3:%s\n", sql_3);
-    	sqlite3_reset(stmt_3);
-    	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
-    	rc = thread_sqlite3_step(&stmt_3,db);
+  //   	p = cJSON_PrintUnformatted(pJsonRoot);
+  //   	if(NULL == p)
+  //   	{    
+  //   		fprintf(stdout,"p NULL\n");
+  //       	cJSON_Delete(pJsonRoot);
+  //       	return M1_PROTOCOL_FAILED;
+  //   	}
+  //   	/*get clientfd*/
+  //   	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
+  //   	fprintf(stdout,"sql_3:%s\n", sql_3);
+  //   	sqlite3_reset(stmt_3);
+  //   	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+  //   	rc = thread_sqlite3_step(&stmt_3,db);
     
-    	if(rc == SQLITE_ROW){
-			clientFd = sqlite3_column_int(stmt_3,0);
-		}		
+  //   	if(rc == SQLITE_ROW){
+		// 	clientFd = sqlite3_column_int(stmt_3,0);
+		// }		
     	
-    	fprintf(stdout,"string:%s\n",p);
-    	socketSeverSend((uint8*)p, strlen(p), clientFd);
+  //   	fprintf(stdout,"string:%s\n",p);
+  //   	socketSeverSend((uint8*)p, strlen(p), clientFd);
     	
 	}
-
 	sqlite3_finalize(stmt);
 	sqlite3_finalize(stmt_1);
    	sqlite3_finalize(stmt_2);
@@ -205,6 +242,7 @@ int scenario_create_handle(payload_t data)
     fprintf(stdout,"scenName:%s\n",scenNameJson->valuestring);
 	/*获取数据包中的alarm信息*/
 	alarmJson = cJSON_GetObjectItem(data.pdu, "alarm");
+
 	/*将alarm信息存入alarm表中*/
 	/*获取table id*/
 	char* sql = "select ID from scen_alarm_table order by ID desc limit 1";
@@ -213,39 +251,44 @@ int scenario_create_handle(payload_t data)
 	/*事物开启*/
 	if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         fprintf(stdout,"BEGIN\n");
-		/*获取收到数据包信息*/
-	    hourJson = cJSON_GetObjectItem(alarmJson, "hour");
-	    fprintf(stdout,"hour:%d\n",hourJson->valueint);
-	    minutesJson = cJSON_GetObjectItem(alarmJson, "minutes");
-	    fprintf(stdout,"minutes:%d\n",minutesJson->valueint);
-	    weekJson = cJSON_GetObjectItem(alarmJson, "week");
-	    fprintf(stdout,"week:%s\n",weekJson->valuestring);
-	    statusJson = cJSON_GetObjectItem(alarmJson, "status");
-	    fprintf(stdout,"status:%s\n",statusJson->valuestring);
 	   	/*删除原有表scenario_table中的旧scenario*/
-		sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
-		row_number = sql_row_number(db, sql_1);
-		fprintf(stdout,"row_number:%d\n",row_number);
-		if(row_number > 0){
-			sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
-			sqlite3_reset(stmt);
-			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-			while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW);
+	   	if(scenNameJson != NULL){
+			sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
+			row_number = sql_row_number(db, sql_1);
+			fprintf(stdout,"row_number:%d\n",row_number);
+			if(row_number > 0){
+				sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
+				sqlite3_reset(stmt);
+				sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+				while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW);
+			}
 		}
+		if(alarmJson != NULL){	
+			/*获取收到数据包信息*/
+		   	hourJson = cJSON_GetObjectItem(alarmJson, "hour");
+		    fprintf(stdout,"hour:%d\n",hourJson->valueint);
+		    minutesJson = cJSON_GetObjectItem(alarmJson, "minutes");
+		    fprintf(stdout,"minutes:%d\n",minutesJson->valueint);
+		    weekJson = cJSON_GetObjectItem(alarmJson, "week");
+		    fprintf(stdout,"week:%s\n",weekJson->valuestring);
+		    statusJson = cJSON_GetObjectItem(alarmJson, "status");
+		    fprintf(stdout,"status:%s\n",statusJson->valuestring);
 		
-	    sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
-	    fprintf(stdout,"sql:%s\n",sql);
-	    sqlite3_reset(stmt);
-	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-		sqlite3_bind_int(stmt, 1, id);
-		sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
-		sqlite3_bind_int(stmt, 3, hourJson->valueint);
-		sqlite3_bind_int(stmt, 4, minutesJson->valueint);
-		sqlite3_bind_text(stmt, 5, weekJson->valuestring, -1, NULL);
-		sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
-		sqlite3_bind_text(stmt, 7, time, -1, NULL);
-		
-		rc = thread_sqlite3_step(&stmt, db); 
+
+		    sql = "insert into scen_alarm_table(ID, SCEN_NAME, HOUR, MINUTES, WEEK, STATUS, TIME) values(?,?,?,?,?,?,?);";
+		    fprintf(stdout,"sql:%s\n",sql);
+		    sqlite3_reset(stmt);
+		    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+			sqlite3_bind_int(stmt, 1, id);
+			sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
+			sqlite3_bind_int(stmt, 3, hourJson->valueint);
+			sqlite3_bind_int(stmt, 4, minutesJson->valueint);
+			sqlite3_bind_text(stmt, 5, weekJson->valuestring, -1, NULL);
+			sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
+			sqlite3_bind_text(stmt, 7, time, -1, NULL);
+			
+			rc = thread_sqlite3_step(&stmt, db); 
+		}
 		
 		/*获取联动表 id*/
 		sql = "select ID from scenario_table order by ID desc limit 1";
@@ -278,7 +321,7 @@ int scenario_create_handle(payload_t data)
 	    		delayJson = cJSON_GetArrayItem(delayArrayJson, j);
 	    		delay += delayJson->valueint;
 	    	}
-	    	fprintf(stdout,"apId:%s, devId:%s, delay:%05d\n",apIdJson->valuestring, devIdJson->valuestring, delayJson->valueint);
+	    	fprintf(stdout,"apId:%s, devId:%s\n",apIdJson->valuestring, devIdJson->valuestring);
 	    	paramArrayJson = cJSON_GetObjectItem(devJson, "param");
 	    	number2 = cJSON_GetArraySize(paramArrayJson);
 	    	for(j = 0; j < number2; j++){
@@ -533,7 +576,7 @@ int app_req_scenario(int clientFd, int sn)
 	    cJSON_AddItemToObject(devDataObject, "device", deviceArrayObject);
 	    /*设备*/
 	    char* ap_id = NULL, *dev_id = "devId", *dev_name = NULL;
-	    int delay;
+	    int delay, pId;
 	    /*从场景表scenario_table中选出设备相关信息*/
 	    sprintf(sql_1,"select DISTINCT DEV_ID from scenario_table where SCEN_NAME = \"%s\" order by ID asc;",scen_name);
 	    fprintf(stdout,"sql_1:%s\n",sql_1);
@@ -597,15 +640,17 @@ int app_req_scenario(int clientFd, int sn)
 			
 			}
 		   	/*获取设备名称*/
-		   	sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
+		   	sprintf(sql_2,"select DEV_NAME, PID from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 		   	sqlite3_reset(stmt_2);
 	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 	    	rc = thread_sqlite3_step(&stmt_2, db); 
 
 			if(rc == SQLITE_ROW){
 				dev_name = sqlite3_column_text(stmt_2, 0);
-		   		fprintf(stdout,"dev_name:%s\n",dev_name);
-		   		cJSON_AddStringToObject(deviceObject, "devName", dev_name);	
+				pId = sqlite3_column_int(stmt_2, 1);
+		   		fprintf(stdout,"dev_name:%s, pId:%05d\n",dev_name, pId);
+		   		cJSON_AddStringToObject(deviceObject, "devName", dev_name);
+		   		cJSON_AddNumberToObject(deviceObject, "pId", pId);	
 			}
 		   	
 		   	/*设备参数信息*/
@@ -615,7 +660,7 @@ int app_req_scenario(int clientFd, int sn)
 		        cJSON_Delete(paramArrayObject);
 		        return M1_PROTOCOL_FAILED;
 		    }
-		    cJSON_AddItemToObject(deviceObject, "device", paramArrayObject);
+		    cJSON_AddItemToObject(deviceObject, "param", paramArrayObject);
 			
 			sprintf(sql_2,"select TYPE, VALUE from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\";",scen_name, dev_id);
 	    	sqlite3_reset(stmt_2);
@@ -761,3 +806,81 @@ int app_req_scenario_name(int clientFd, int sn)
     return M1_PROTOCOL_OK;
 
 }
+
+/*定时执行场景检查*/
+ void scenario_alarm_select(void)
+ {
+ 	printf("scenario_alarm_select\n");
+ 	int rc;
+ 	char * sql = NULL;
+ 	scen_alarm_t alarm;
+ 	while(1){
+ 		sqlite3_stmt* stmt = NULL;
+ 		sqlite3* db = NULL;
+	 	rc = sqlite3_open("dev_info.db", &db);  
+	     if( rc ){  
+	         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+	         return M1_PROTOCOL_FAILED;  
+	     }else{  
+	         fprintf(stderr, "Opened database successfully\n");  
+	     }
+	     char* sql = "select SCEN_NAME, HOUR, MINUTES, WEEK, STATUS from scen_alarm_table;";
+	     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+	     	alarm.scen_name = sqlite3_column_text(stmt, 0);
+	     	alarm.hour = sqlite3_column_int(stmt, 1);
+	     	alarm.week = sqlite3_column_text(stmt, 3);
+	     	alarm.minutes = sqlite3_column_int(stmt, 2);
+	     	alarm.status = sqlite3_column_text(stmt, 4);
+	     	rc = scenario_alarm_check(alarm);
+	     	if(rc)
+	     		scenario_exec(alarm.scen_name, db);
+	     }
+	     sqlite3_finalize(stmt);
+	     sqlite3_close(db);
+
+	     sleep(60);
+ 	}
+ }
+
+ static int scenario_alarm_check(scen_alarm_t alarm_time)
+ {
+ 	int on_time_flag = 0;
+ 	char* week = NULL;
+ 	struct tm nowTime;
+    struct timespec time;
+ 	
+    clock_gettime(CLOCK_REALTIME, &time);  //获取相对于1970到现在的秒数
+    localtime_r(&time.tv_sec, &nowTime);
+    printf("%04d-%02d-%02d %02d:%02d:%02d\n",nowTime.tm_year + 1900, nowTime.tm_mon + 1, nowTime.tm_mday,
+        nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
+     if(strcmp(alarm_time.status,"on") == 0){
+     	switch(nowTime.tm_wday){
+     		case 0: week = "sunday";break;
+     		case 1: week = "monday";break;
+     		case 2: week = "tuesday";break;
+     		case 3: week = "wednessday";break;
+     		case 4: week = "thursday";break;
+     		case 5: week = "friday";break;
+     		case 6: week = "saturday";break;	
+     	}
+     	/*周一到周日*/
+     	if((strcmp(alarm_time.week, week) == 0) || (strcmp(alarm_time.week, "all") == 0)){
+     		on_time_flag = 1;
+     	}else if((nowTime.tm_wday != 6) && (nowTime.tm_wday != 0) && (strcmp(alarm_time.week, "workDay") == 0)){               //周一到周五
+     		on_time_flag = 1;
+     	}else{
+     		on_time_flag = 0;
+     	}
+     	/*小时、分钟*/
+     	if((alarm_time.hour == nowTime.tm_hour) && (alarm_time.minutes == nowTime.tm_min) && on_time_flag){
+     		on_time_flag = 1;
+     	}else{
+     		on_time_flag = 0;
+     	}
+     	
+     }
+     //on_time_flag = 1;
+     return on_time_flag;
+ }
+
