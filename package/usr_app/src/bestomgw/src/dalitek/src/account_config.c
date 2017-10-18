@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "cJSON.h"
+#include "sqlite3.h"
 #include "account_config.h"
 
 
@@ -30,7 +32,6 @@ int app_req_account_info_handle(payload_t data, int sn)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     }
-
 
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
@@ -286,4 +287,69 @@ int app_req_account_config_handle(payload_t data, int sn)
     return M1_PROTOCOL_OK;
 
 }
+
+int user_login_handle(payload_t data)
+{
+	fprintf(stdout,"user_load_handle\n");
+	cJSON* accountJson = NULL;
+	cJSON* keyJson = NULL;
+	char* account = NULL,*key = NULL;
+	sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    int rc,id;
+    char sql[200];
+
+    accountJson = cJSON_GetObjectItem(data.pdu, "account");
+    fprintf(stdout,"account:%s\n",accountJson->valuestring);
+    keyJson = cJSON_GetObjectItem(data.pdu, "key");
+    fprintf(stdout,"key:%s\n",keyJson->valuestring);
+
+    rc = sqlite3_open("dev_info.db", &db);  
+    if(rc){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
+    /*验证用户信息*/
+    sprintf(sql,"select KEY from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
+    sqlite3_reset(stmt);
+	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+		key = sqlite3_column_text(stmt, 0);
+	}else{
+		return M1_PROTOCOL_FAILED;  
+	}
+	if(strcmp(key,keyJson->valuestring) != 0)
+		return M1_PROTOCOL_FAILED;  	
+
+	char* sql_1 = "select ID from account_info order by ID desc limit 1;";
+	id = sql_id(db, sql_1);
+	/*删除重复用户信息*/
+    sprintf(sql,"delete from account_info where ACCOUNT = \"%s\";",accountJson->valuestring);
+    fprintf(stdout,"sql:%s\n",sql);
+    sqlite3_reset(stmt);
+	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+		account = sqlite3_column_text(stmt, 0);
+	}
+	/*插入用户信息*/	
+	sql_1 = "insert into account_info(ID,ACCOUNT,CLIENT_FD)values(?,?,?);";
+    fprintf(stdout,"sql_1:%s\n",sql_1);
+    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+	sqlite3_reset(stmt);
+	sqlite3_bind_int(stmt, 1, id);
+    sqlite3_bind_text(stmt, 2,  accountJson->valuestring, -1, NULL);
+    sqlite3_bind_int(stmt, 3, data.clientFd);
+    rc = thread_sqlite3_step(&stmt,db);
+    if(rc == SQLITE_ERROR)
+    	return M1_PROTOCOL_FAILED;
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+	return 	M1_PROTOCOL_OK;
+}
+
 

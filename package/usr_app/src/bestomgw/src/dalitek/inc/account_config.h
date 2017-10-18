@@ -5,6 +5,7 @@
 
 int app_req_account_info_handle(payload_t data, int sn);
 int app_req_account_config_handle(payload_t data, int sn);
+int user_login_handle(payload_t data);
 
 
 #endif //_ACCOUNT_CONFIG_H_

@@ -65,7 +65,7 @@ int district_create_handle(payload_t data)
     		apIdJson = cJSON_GetArrayItem(apIdArrayJson, i);
     		fprintf(stdout,"apId:%s\n",apIdJson->valuestring);
 
-    		sql = "insert into district_table(ID, DIS_NAME, AP_ID, TIME) values(?,?,?,?);";
+    		sql = "insert into district_table(ID, DIS_NAME, AP_ID, ACCOUNT,TIME) values(?,?,?,?,?);";
     		fprintf(stdout,"sql:%s\n",sql);
     		sqlite3_reset(stmt);
     		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -73,7 +73,8 @@ int district_create_handle(payload_t data)
     		id++;
     		sqlite3_bind_text(stmt, 2, districtNameJson->valuestring, -1, NULL);
     		sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
-    		sqlite3_bind_text(stmt, 4, time, -1, NULL);
+    		sqlite3_bind_text(stmt, 4, "Dalitek", -1, NULL);
+            sqlite3_bind_text(stmt, 5, time, -1, NULL);
     		rc = thread_sqlite3_step(&stmt, db); 
     		fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
         }
@@ -107,7 +108,7 @@ int app_req_district(int clientFd, int sn)
     /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
-    char* sql = NULL;
+    char sql[200];
     char sql_1[200],sql_2[200];
 
     pJsonRoot = cJSON_CreateObject();
@@ -152,10 +153,22 @@ int app_req_district(int clientFd, int sn)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     } 
+
+    /*获取用户账户信息*/
+    user_account_t account_info;
+    account_info.db = db;
+    account_info.clientFd = clientFd;
+    if(get_account_info(account_info) != M1_PROTOCOL_OK){
+        fprintf(stderr, "user account do not exist\n");    
+        return M1_PROTOCOL_FAILED;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",account_info.clientFd, account_info.account);
+    }
+
     /*取区域名称*/
     char* dist_name = NULL, *ap_id = NULL, *ap_name = NULL;
     int pId;
-    sql = "select distinct DIS_NAME from district_table;";
+    sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account_info.account);
    	fprintf(stdout,"sql:%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);

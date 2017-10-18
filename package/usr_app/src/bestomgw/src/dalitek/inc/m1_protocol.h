@@ -41,6 +41,11 @@ typedef struct _linkage_status{
 	int threshold;
 } linkage_status_t;
 
+typedef struct _user_account_info{
+	int clientFd;
+	sqlite3* db;
+	char* account;
+} user_account_t;
 
 typedef struct _scen_alarm_t{
  char* status;
@@ -83,6 +88,8 @@ void delay_send_task(void);
 void delay_send(cJSON* d, int delay, int clientFd);
 /*数据库*/
 int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
+/*用户信息*/
+int get_account_info(user_account_t data);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003
@@ -120,6 +127,8 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 #define TYPE_SEND_ACCOUNT_CONFIG_INFO            0x0016
 /*APP 使能联动状态*/
 #define TYPE_LINK_ENABLE_SET            		 0x0017
+/*APP 验证登录信息*/
+#define TYPE_APP_LOGIN                           0x0018
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/

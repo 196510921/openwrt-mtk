@@ -168,26 +168,6 @@ int scenario_exec(char* data, sqlite3* db)
 		    	delay_send(dup_data, delay, clientFd);
 		    }
 		}
-  //   	p = cJSON_PrintUnformatted(pJsonRoot);
-  //   	if(NULL == p)
-  //   	{    
-  //   		fprintf(stdout,"p NULL\n");
-  //       	cJSON_Delete(pJsonRoot);
-  //       	return M1_PROTOCOL_FAILED;
-  //   	}
-  //   	/*get clientfd*/
-  //   	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
-  //   	fprintf(stdout,"sql_3:%s\n", sql_3);
-  //   	sqlite3_reset(stmt_3);
-  //   	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
-  //   	rc = thread_sqlite3_step(&stmt_3,db);
-    
-  //   	if(rc == SQLITE_ROW){
-		// 	clientFd = sqlite3_column_int(stmt_3,0);
-		// }		
-    	
-  //   	fprintf(stdout,"string:%s\n",p);
-  //   	socketSeverSend((uint8*)p, strlen(p), clientFd);
     	
 	}
 	sqlite3_finalize(stmt);
@@ -237,6 +217,7 @@ int scenario_create_handle(payload_t data)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     }
+
     /*获取场景名称*/
     scenNameJson = cJSON_GetObjectItem(data.pdu, "scenName");
     fprintf(stdout,"scenName:%s\n",scenNameJson->valuestring);
@@ -330,7 +311,7 @@ int scenario_create_handle(payload_t data)
 	    		valueJson = cJSON_GetObjectItem(paramJson, "value");
 	    		fprintf(stdout,"type:%d, value:%d\n",typeJson->valueint, valueJson->valueint);
 	    		
-			    sql = "insert into scenario_table(ID, SCEN_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, TIME) values(?,?,?,?,?,?,?,?,?);";
+			    sql = "insert into scenario_table(ID, SCEN_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
 			    fprintf(stdout,"sql:%s\n",sql);
 			    sqlite3_reset(stmt);
 			    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -342,7 +323,8 @@ int scenario_create_handle(payload_t data)
 				sqlite3_bind_int(stmt, 6, typeJson->valueint);
 				sqlite3_bind_int(stmt, 7, valueJson->valueint);
 				sqlite3_bind_int(stmt, 8, delay);
-				sqlite3_bind_text(stmt, 9, time, -1, NULL);
+				sqlite3_bind_text(stmt, 9, "Dalitek",-1,NULL);
+				sqlite3_bind_text(stmt, 10, time, -1, NULL);
 				id++;
 				rc = thread_sqlite3_step(&stmt, db); 
 		
@@ -467,7 +449,7 @@ int app_req_scenario(int clientFd, int sn)
     /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
-    char* sql = NULL;
+    char sql[200];
     char sql_1[200],sql_2[200];
 
     pJsonRoot = cJSON_CreateObject();
@@ -513,10 +495,20 @@ int app_req_scenario(int clientFd, int sn)
         fprintf(stderr, "Opened database successfully\n");  
     } 
 
+    user_account_t account_info;
+    account_info.db = db;
+    account_info.clientFd = clientFd;
+    if(get_account_info(account_info) != M1_PROTOCOL_OK){
+        fprintf(stderr, "user account do not exist\n");    
+        return M1_PROTOCOL_FAILED;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",account_info.clientFd, account_info.account);
+    }
+
     char* scen_name = NULL,*district = NULL,*week = NULL, *alarm_status = NULL;
     int hour,minutes;
     /*取场景名称*/
-    sql = "select distinct SCEN_NAME from scenario_table;";
+    sprintf(sql,"select distinct SCEN_NAME from scenario_table where ACCOUNT = \"%s\";", account_info.account);
     fprintf(stdout,"sql:%s\n",sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);

@@ -133,6 +133,7 @@ void data_handle(void)
         case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu, rspData.sn);break;
         case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu, rspData.sn);break;
         case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
+        case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
 
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -304,7 +305,7 @@ static int AP_report_dev_handle(payload_t data)
     /*事物开始*/
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         fprintf(stdout,"BEGIN\n");
-        sql = "insert or replace into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, TIME) values(?,?,?,?,?,?,?,?,?);";
+        sql = "insert or replace into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 
         for(i = 0; i< number; i++){
@@ -345,7 +346,8 @@ static int AP_report_dev_handle(payload_t data)
             sqlite3_bind_int(stmt, 6, 0);
             sqlite3_bind_int(stmt, 7, 1);
             sqlite3_bind_text(stmt, 8,"ON", -1, NULL);
-            sqlite3_bind_text(stmt, 9,  time, -1, NULL);
+            sqlite3_bind_text(stmt, 9,  "Dalitek", -1, NULL);
+            sqlite3_bind_text(stmt, 10,  time, -1, NULL);
             rc = thread_sqlite3_step(&stmt,db);
         }
 
@@ -424,7 +426,7 @@ static int AP_report_ap_handle(payload_t data)
         if(rc == SQLITE_ERROR) return M1_PROTOCOL_FAILED;
 
         /*insert sql*/
-        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS,TIME) values(?,?,?,?,?,?,?,?,?);";
+        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
         /*判断该设备是否存在*/
         sprintf(sql_1,"delete from all_dev where DEV_ID = \"%s\";",apIdJson->valuestring);
@@ -445,7 +447,8 @@ static int AP_report_ap_handle(payload_t data)
         sqlite3_bind_int(stmt, 6, 0);
         sqlite3_bind_int(stmt, 7, 1);
         sqlite3_bind_text(stmt, 8,  "ON", -1, NULL);
-        sqlite3_bind_text(stmt, 9,  time, -1, NULL);
+        sqlite3_bind_text(stmt, 9,  "Dalitek", -1, NULL);
+        sqlite3_bind_text(stmt, 10,  time, -1, NULL);
         rc = thread_sqlite3_step(&stmt,db);
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
            fprintf(stdout,"END\n");
@@ -1124,7 +1127,7 @@ static int M1_report_ap_info(int clientFd, int sn)
     /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-    char* sql = NULL;
+    char sql[200];
 
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -1171,11 +1174,21 @@ static int M1_report_ap_info(int clientFd, int sn)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     } 
+    /*获取用户账户信息*/
+    user_account_t account_info;
+    account_info.db = db;
+    account_info.clientFd = clientFd;
+    if(get_account_info(account_info) != M1_PROTOCOL_OK){
+        fprintf(stderr, "user account do not exist\n");    
+        return M1_PROTOCOL_FAILED;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",account_info.clientFd, account_info.account);
+    }
 
     int row_n;
     cJSON*  devDataObject= NULL;
 
-    sql = "select * from all_dev where DEV_ID  = AP_ID";
+    sprintf(sql,"select * from all_dev where DEV_ID  = AP_ID and ACCOUNT = \"%s\";",account_info.account);
     row_n = sql_row_number(db, sql);
     fprintf(stdout,"row_n:%d\n",row_n);
     if(row_n > 0){ 
@@ -1281,10 +1294,21 @@ static int M1_report_dev_info(payload_t data, int sn)
         fprintf(stderr, "Opened database successfully\n");  
     } 
 
+     /*获取用户账户信息*/
+    user_account_t account_info;
+    account_info.db = db;
+    account_info.clientFd = data.clientFd;
+    if(get_account_info(account_info) != M1_PROTOCOL_OK){
+        fprintf(stderr, "user account do not exist\n");    
+        return M1_PROTOCOL_FAILED;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",account_info.clientFd, account_info.account);
+    }
+
     int row_n;
     cJSON*  devDataObject= NULL;
 
-    sprintf(sql,"select * from all_dev where AP_ID != DEV_ID and AP_ID = \"%s\";", ap);
+    sprintf(sql,"select * from all_dev where AP_ID != DEV_ID and AP_ID = \"%s\" and  ACCOUNT = \"%s\";", ap, account_info.account);
     fprintf(stdout,"string:%s\n",sql);
     row_n = sql_row_number(db, sql);
     fprintf(stdout,"row_n:%d\n",row_n);
@@ -1526,6 +1550,23 @@ static int common_rsp(rsp_data_t data)
     /*response to client*/
     socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     cJSON_Delete(pJsonRoot);
+
+    return M1_PROTOCOL_OK;
+}
+
+int get_account_info(user_account_t data)
+{
+    char sql[200];
+    sqlite3_stmt* stmt = NULL;
+    /*获取用户信息*/
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d;",data.clientFd);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(data.db, sql, strlen(sql), &stmt, NULL);
+    if(thread_sqlite3_step(&stmt, data.db) == SQLITE_ROW){
+        data.account = sqlite3_column_text(stmt, 0);
+    }else{
+        return M1_PROTOCOL_FAILED;  
+    }
 
     return M1_PROTOCOL_OK;
 }
