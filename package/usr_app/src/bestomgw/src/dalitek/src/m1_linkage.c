@@ -763,7 +763,7 @@ int app_req_linkage(int clientFd, int sn)
 	    		dev_id = sqlite3_column_text(stmt_1, 0);
 	    		cJSON_AddStringToObject(execObject, "devId", dev_id);
 	    		/*获取AP_ID*/
-				sprintf(sql_2,"select AP_ID DELAY from link_exec_table where LINK_NAME = \"%s\" and DEV_ID = \"%s\" limit 1;",link_name, dev_id);		   	
+				sprintf(sql_2,"select AP_ID,DELAY from link_exec_table where LINK_NAME = \"%s\" and DEV_ID = \"%s\" limit 1;",link_name, dev_id);		   	
 			   	fprintf(stdout,"sql_2:%s\n", sql_2);
 			   	sqlite3_reset(stmt_2);
 		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
