@@ -89,7 +89,8 @@ void delay_send(cJSON* d, int delay, int clientFd);
 /*数据库*/
 int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 /*用户信息*/
-int get_account_info(user_account_t data);
+char* get_account_info(user_account_t data);
+void delete_account_conn_info(int clientFd);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003

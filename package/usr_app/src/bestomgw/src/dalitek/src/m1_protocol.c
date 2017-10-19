@@ -134,6 +134,7 @@ void data_handle(void)
         case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu, rspData.sn);break;
         case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
         case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
+        case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
 
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -1178,7 +1179,8 @@ static int M1_report_ap_info(int clientFd, int sn)
     user_account_t account_info;
     account_info.db = db;
     account_info.clientFd = clientFd;
-    if(get_account_info(account_info) != M1_PROTOCOL_OK){
+    account_info.account = get_account_info(account_info);
+    if(account_info.account == NULL){
         fprintf(stderr, "user account do not exist\n");    
         return M1_PROTOCOL_FAILED;
     }else{
@@ -1298,7 +1300,8 @@ static int M1_report_dev_info(payload_t data, int sn)
     user_account_t account_info;
     account_info.db = db;
     account_info.clientFd = data.clientFd;
-    if(get_account_info(account_info) != M1_PROTOCOL_OK){
+    account_info.account = get_account_info(account_info);
+    if(account_info.account == NULL){
         fprintf(stderr, "user account do not exist\n");    
         return M1_PROTOCOL_FAILED;
     }else{
@@ -1554,21 +1557,45 @@ static int common_rsp(rsp_data_t data)
     return M1_PROTOCOL_OK;
 }
 
-int get_account_info(user_account_t data)
+char* get_account_info(user_account_t data)
 {
     char sql[200];
     sqlite3_stmt* stmt = NULL;
     /*获取用户信息*/
-    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d;",data.clientFd);
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
+    fprintf(stdout, "%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(data.db, sql, strlen(sql), &stmt, NULL);
     if(thread_sqlite3_step(&stmt, data.db) == SQLITE_ROW){
-        data.account = sqlite3_column_text(stmt, 0);
+        return sqlite3_column_text(stmt, 0);
     }else{
-        return M1_PROTOCOL_FAILED;  
+        return NULL;  
     }
 
-    return M1_PROTOCOL_OK;
+    sqlite3_finalize(stmt);
+}
+
+void delete_account_conn_info(int clientFd)
+{
+    int rc;
+    char sql[200];
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+
+    sprintf(sql,"delete from account_info where CLIENT_FD = %03d;",clientFd);
+    fprintf(stdout,"string:%s\n",sql);
+    rc = sqlite3_open("dev_info.db", &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    thread_sqlite3_step(&stmt, db);
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
 }
 
 void getNowTime(char* _time)

@@ -498,7 +498,8 @@ int app_req_scenario(int clientFd, int sn)
     user_account_t account_info;
     account_info.db = db;
     account_info.clientFd = clientFd;
-    if(get_account_info(account_info) != M1_PROTOCOL_OK){
+    account_info.account = get_account_info(account_info);
+    if(account_info.account == NULL){
         fprintf(stderr, "user account do not exist\n");    
         return M1_PROTOCOL_FAILED;
     }else{
