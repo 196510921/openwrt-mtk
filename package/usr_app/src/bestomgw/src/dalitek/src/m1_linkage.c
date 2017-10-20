@@ -333,7 +333,8 @@ int linkage_msg_handle(payload_t data)
 				   	sqlite3_bind_text(stmt_1, 5,  devIdJson->valuestring, -1, NULL);
 				   	sqlite3_bind_int(stmt_1, 6,  typeJson->valueint);
 				   	sqlite3_bind_int(stmt_1, 7,  valueJson->valueint);
-				   	sqlite3_bind_int(stmt_1, 8,  delayJson->valueint);
+				   	//sqlite3_bind_int(stmt_1, 8,  delayJson->valueint);
+				   	sqlite3_bind_int(stmt_1, 8,  delay);
 				   	sqlite3_bind_text(stmt_1, 9,  time, -1, NULL);
 				   	rc = thread_sqlite3_step(&stmt_1, db);
 		    	}

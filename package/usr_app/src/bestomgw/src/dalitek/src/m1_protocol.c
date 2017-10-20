@@ -834,16 +834,23 @@ static int APP_echo_dev_info_handle(payload_t data)
     if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
     /*sqlite3*/
     sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
     char* err_msg = NULL;
     char sql_1[200];
     char* errorMsg = NULL;
 
-    sqlite3_open(db_path,&db);
+    rc = sqlite3_open(db_path, &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
 
     number = cJSON_GetArraySize(data.pdu);
     fprintf(stdout,"number:%d\n",number);
-    if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
-        fprintf(stdout,"BEGIN\n");    
+    //if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
+    //    fprintf(stdout,"BEGIN\n");    
         for(i = 0; i < number; i++){
             devdataArrayJson = cJSON_GetArrayItem(data.pdu, i);
             APIdJson = cJSON_GetObjectItem(devdataArrayJson, "apId");
@@ -852,12 +859,9 @@ static int APP_echo_dev_info_handle(payload_t data)
 
             sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
             fprintf(stdout,"sql_1:%s\n",sql_1);
-            rc = sqlite3_exec(db, sql_1, NULL, 0, &err_msg);
-            if(rc != SQLITE_OK){
-                fprintf(stdout,"SQL error:%s\n",err_msg);
-                sqlite3_free(err_msg);
-                return M1_PROTOCOL_FAILED;
-            }
+            sqlite3_reset(stmt);
+            sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt, NULL);
+            thread_sqlite3_step(&stmt, db);
 
             if(devDataJson != NULL){
                 number_1 = cJSON_GetArraySize(devDataJson);
@@ -868,21 +872,20 @@ static int APP_echo_dev_info_handle(payload_t data)
 
                     sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",devArrayJson->valuestring,APIdJson->valuestring);
                     fprintf(stdout,"sql_1:%s\n",sql_1);
-                    rc = sqlite3_exec(db, sql_1, NULL, 0, &err_msg);
-                    if(rc != SQLITE_OK){
-                        fprintf(stdout,"SQL error:%s\n",err_msg);
-                        sqlite3_free(err_msg);
-                        return M1_PROTOCOL_FAILED;
-                    }
+                    sqlite3_reset(stmt);
+                    sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt, NULL);
+                    thread_sqlite3_step(&stmt, db);
                 }
             }
         }
-        if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
-            fprintf(stdout,"END\n");
-        }
-    }else{
-        fprintf(stdout,"errorMsg:");
-    }    
+        //if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+        //    fprintf(stdout,"END\n");
+        //}
+    //}else{
+    //    fprintf(stdout,"errorMsg:");
+    //}    
+
+    sqlite3_finalize(stmt);
     sqlite3_close(db);
 
     return M1_PROTOCOL_OK;
