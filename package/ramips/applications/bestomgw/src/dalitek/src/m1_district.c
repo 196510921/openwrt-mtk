@@ -65,7 +65,7 @@ int district_create_handle(payload_t data)
     		apIdJson = cJSON_GetArrayItem(apIdArrayJson, i);
     		fprintf(stdout,"apId:%s\n",apIdJson->valuestring);
 
-    		sql = "insert into district_table(ID, DIS_NAME, AP_ID, TIME) values(?,?,?,?);";
+    		sql = "insert into district_table(ID, DIS_NAME, AP_ID, ACCOUNT,TIME) values(?,?,?,?,?);";
     		fprintf(stdout,"sql:%s\n",sql);
     		sqlite3_reset(stmt);
     		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -73,7 +73,8 @@ int district_create_handle(payload_t data)
     		id++;
     		sqlite3_bind_text(stmt, 2, districtNameJson->valuestring, -1, NULL);
     		sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
-    		sqlite3_bind_text(stmt, 4, time, -1, NULL);
+    		sqlite3_bind_text(stmt, 4, "Dalitek", -1, NULL);
+            sqlite3_bind_text(stmt, 5, time, -1, NULL);
     		rc = thread_sqlite3_step(&stmt, db); 
     		fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
         }
@@ -107,7 +108,7 @@ int app_req_district(int clientFd, int sn)
     /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
-    char* sql = NULL;
+    char sql[200];
     char sql_1[200],sql_2[200];
 
     pJsonRoot = cJSON_CreateObject();
@@ -152,9 +153,28 @@ int app_req_district(int clientFd, int sn)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     } 
+
+    /*获取用户账户信息*/
+    /*获取用户账户信息*/
+    char* account = NULL;
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",clientFd);
+    fprintf(stdout, "%s\n", sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt, 0);
+    }
+    if(account == NULL){
+        fprintf(stderr, "user account do not exist\n");    
+        return M1_PROTOCOL_FAILED;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",clientFd, account);
+    }
+
     /*取区域名称*/
     char* dist_name = NULL, *ap_id = NULL, *ap_name = NULL;
-    sql = "select distinct DIS_NAME from district_table;";
+    int pId;
+    sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account);
    	fprintf(stdout,"sql:%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -193,7 +213,7 @@ int app_req_district(int clientFd, int sn)
 		    cJSON_AddItemToArray(apInfoArrayObject, apInfoObject);
 		    cJSON_AddStringToObject(apInfoObject, "apId", ap_id);
 		    /*取出apName*/
-		    sprintf(sql_2,"select DEV_NAME from all_dev where DEV_ID = \"%s\" ;",ap_id);
+		    sprintf(sql_2,"select DEV_NAME,pId from all_dev where DEV_ID = \"%s\" ;",ap_id);
 		    fprintf(stdout,"sql_2:%s\n", sql_2);
 		    sqlite3_reset(stmt_2);
 		    sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
@@ -201,8 +221,10 @@ int app_req_district(int clientFd, int sn)
 			fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
 			if(rc == SQLITE_ROW){
 				ap_name = sqlite3_column_text(stmt_2,0);
-				fprintf(stdout,"ap_name:%s\n",ap_name);
+                pId = sqlite3_column_int(stmt_2,1);
+				fprintf(stdout,"ap_name:%s\n, pId:%05d\n",ap_name, pId);
 				cJSON_AddStringToObject(apInfoObject, "apName", ap_name);
+                cJSON_AddNumberToObject(apInfoObject, "pId", pId);
 			}
 	    }
     }

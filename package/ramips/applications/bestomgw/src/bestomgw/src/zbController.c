@@ -42,80 +42,54 @@
 #include <stdlib.h>
 #include <poll.h>
 #include <pthread.h>
-#include "thpool.h"
+//#include "thpool.h"
 #include <unistd.h>
 
 #include "zbSocCmd.h"
 #include "interface_devicelist.h"
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
+#include "m1_protocol.h"
 
 #define MAX_DB_FILENAMR_LEN 255
 
 //全局变量	
-threadpool thpool;//线程池
-threadpool tx_thpool;//线程池
-//int fdserwrite, fdread; //串口 写,读
- long MAXLEN = 10*1024;//10KB
- char sexepath[PATH_MAX];
- char slogpath[PATH_MAX]; //log 文件路径
- char sdbpath[PATH_MAX]; //db 文件路径
- char sinipath[PATH_MAX]; //db 文件路径 
+//threadpool thpool;//线程池
+//threadpool tx_thpool;//线程池
 
- sqlite3 *gdb=NULL;
- 	
-uint8_t tlIndicationCb(epInfo_t *epInfo);
-uint8_t newDevIndicationCb(epInfo_t *epInfo);
-uint8_t zclGetStateCb(uint8_t state, uint16_t nwkAddr, uint8_t endpoint);
-uint8_t zclGetLevelCb(uint8_t level, uint16_t nwkAddr, uint8_t endpoint);
-uint8_t zclGetHueCb(uint8_t hue, uint16_t nwkAddr, uint8_t endpoint);
-uint8_t zclGetSatCb(uint8_t sat, uint16_t nwkAddr, uint8_t endpoint);
-uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo);
-uint8_t zdoLeaveIndCb(uint16_t nwkAddr);
 static void printf_redirect(void);
-
-static zbSocCallbacks_t zbSocCbs =
-{ tlIndicationCb, // pfnTlIndicationCb - TouchLink Indication callback
-		newDevIndicationCb, // pfnNewDevIndicationCb - New Device Indication callback
-		zclGetStateCb, //pfnZclGetStateCb - ZCL response callback for get State
-		zclGetLevelCb, //pfnZclGetLevelCb_t - ZCL response callback for get Level
-		zclGetHueCb, // pfnZclGetHueCb - ZCL response callback for get Hue
-		zclGetSatCb, //pfnZclGetSatCb - ZCL response callback for get Sat
-		zdoSimpleDescRspCb, //pfnzdoSimpleDescRspCb - ZDO simple desc rsp
-		zdoLeaveIndCb, // pfnZdoLeaveIndCb - ZDO Leave indication
-		NULL,
-		NULL
-		};
+static void socket_poll(void);
 
 #include "interface_srpcserver.h"
 #include "socket_server.h"
 
-void usage(char* exeName)
-{
-	fprintf(stdout,"Usage: ./%s <port>\n", exeName);
-	fprintf(stdout,"Eample: ./%s /dev/ttyACM0\n", exeName);
-}
-
 int main(int argc, char* argv[])
 {
 	int retval = 0;
-	int zbSoc_fd;
-	char dbFilename[MAX_DB_FILENAMR_LEN];
+	pthread_t t1,t2,t3,t4;
 
-	//printf_redirect();
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 	SRPC_Init();
 	m1_protocol_init();
-	/*init thread pool*/
-	puts("Making threadpool with 1 threads");
-	/*接收线程*/
-	//thpool = thpool_init(1);
-	/*发送线程*/
-	//tx_thpool = thpool_init(2);
+
+	pthread_create(&t1,NULL,socket_poll,NULL);
+	pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
+	pthread_create(&t3,NULL,delay_send_task,NULL);
+	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
+	pthread_join(t1,NULL);
+	pthread_join(t2,NULL);
+	pthread_join(t3, NULL);
+	pthread_join(t4, NULL);
+	
+	return retval;
+}
+
+static void socket_poll(void)
+{
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
-		fprintf(stdout,stdout,"numClientFds:%d\n",numClientFds);
+		//fprintf(stdout,"numClientFds:%d\n",numClientFds);
 		//poll on client socket fd's and the ZllSoC serial port for any activity
 		if (numClientFds)
 		{
@@ -159,9 +133,6 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	puts("Killing threadpool");
-	thpool_destroy(thpool);
-	return retval;
 }
 
 static void printf_redirect(void)

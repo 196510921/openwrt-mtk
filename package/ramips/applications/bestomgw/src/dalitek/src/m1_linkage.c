@@ -243,7 +243,7 @@ int linkage_msg_handle(payload_t data)
 		char* sql = "select ID from linkage_table order by ID desc limit 1";
 	    /*linkage_table*/
 	    id = sql_id(db, sql);
-	    sql = "insert into linkage_table(ID, LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, STATUS, TIME) values(?,?,?,?,?,?,?);";
+	    sql = "insert into linkage_table(ID, LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, STATUS, ENABLE,TIME) values(?,?,?,?,?,?,?,?);";
 	    fprintf(stdout,"sql:%s\n",sql);
 	    sqlite3_reset(stmt);
 	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -255,7 +255,8 @@ int linkage_msg_handle(payload_t data)
 		sqlite3_bind_text(stmt, 5,  scenNameJson->valuestring, -1, NULL);
 
 		sqlite3_bind_text(stmt, 6,  "OFF", -1, NULL);
-		sqlite3_bind_text(stmt, 7,  time, -1, NULL);
+		sqlite3_bind_text(stmt, 7,  "on", -1, NULL);
+		sqlite3_bind_text(stmt, 8,  time, -1, NULL);
 		rc = thread_sqlite3_step(&stmt, db);
 
 	    /*link_trigger_table*/
@@ -332,7 +333,8 @@ int linkage_msg_handle(payload_t data)
 				   	sqlite3_bind_text(stmt_1, 5,  devIdJson->valuestring, -1, NULL);
 				   	sqlite3_bind_int(stmt_1, 6,  typeJson->valueint);
 				   	sqlite3_bind_int(stmt_1, 7,  valueJson->valueint);
-				   	sqlite3_bind_int(stmt_1, 8,  delayJson->valueint);
+				   	//sqlite3_bind_int(stmt_1, 8,  delayJson->valueint);
+				   	sqlite3_bind_int(stmt_1, 8,  delay);
 				   	sqlite3_bind_text(stmt_1, 9,  time, -1, NULL);
 				   	rc = thread_sqlite3_step(&stmt_1, db);
 		    	}
@@ -762,7 +764,7 @@ int app_req_linkage(int clientFd, int sn)
 	    		dev_id = sqlite3_column_text(stmt_1, 0);
 	    		cJSON_AddStringToObject(execObject, "devId", dev_id);
 	    		/*获取AP_ID*/
-				sprintf(sql_2,"select AP_ID DELAY from link_exec_table where LINK_NAME = \"%s\" and DEV_ID = \"%s\" limit 1;",link_name, dev_id);		   	
+				sprintf(sql_2,"select AP_ID,DELAY from link_exec_table where LINK_NAME = \"%s\" and DEV_ID = \"%s\" limit 1;",link_name, dev_id);		   	
 			   	fprintf(stdout,"sql_2:%s\n", sql_2);
 			   	sqlite3_reset(stmt_2);
 		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
@@ -883,6 +885,44 @@ int app_req_linkage(int clientFd, int sn)
 
 }
 
+int app_linkage_enable(payload_t data)
+{
+	fprintf(stdout, "app_linkage_enable\n");
+	cJSON* linkObject = NULL;
+	cJSON* enableObject = NULL;
+	char sql[200];
 
+	/*sqlite3*/
+	sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    int rc;
+    rc = sqlite3_open("dev_info.db", &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    } 
+
+	linkObject = cJSON_GetObjectItem(data.pdu, "linkName");
+	if(linkObject == NULL)
+		return M1_PROTOCOL_FAILED;
+	fprintf(stdout,"link_name:%s\n",linkObject->valuestring);
+	enableObject = cJSON_GetObjectItem(data.pdu, "enable");
+	if(enableObject == NULL)
+		return M1_PROTOCOL_FAILED;
+	fprintf(stdout,"enable:%s\n",enableObject->valuestring);
+
+	sprintf(sql,"update linkage_table set ENABLE = \"%s\" where LINK_NAME = \"%s\";",enableObject->valuestring,linkObject->valuestring);
+	fprintf(stdout,"sql_2:%s\n", sql);
+  	sqlite3_reset(stmt);
+  	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+  	while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
+
+  	sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    return M1_PROTOCOL_OK;
+}
 
 

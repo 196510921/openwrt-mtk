@@ -155,21 +155,26 @@ int app_req_district(int clientFd, int sn)
     } 
 
     /*获取用户账户信息*/
-    user_account_t account_info;
-    account_info.db = db;
-    account_info.clientFd = clientFd;
-    account_info.account = get_account_info(account_info);
-    if(account_info.account == NULL){
+    /*获取用户账户信息*/
+    char* account = NULL;
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",clientFd);
+    fprintf(stdout, "%s\n", sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt, 0);
+    }
+    if(account == NULL){
         fprintf(stderr, "user account do not exist\n");    
         return M1_PROTOCOL_FAILED;
     }else{
-        fprintf(stdout,"clientFd:%03d,account:%s\n",account_info.clientFd, account_info.account);
+        fprintf(stdout,"clientFd:%03d,account:%s\n",clientFd, account);
     }
 
     /*取区域名称*/
     char* dist_name = NULL, *ap_id = NULL, *ap_name = NULL;
     int pId;
-    sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account_info.account);
+    sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account);
    	fprintf(stdout,"sql:%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);

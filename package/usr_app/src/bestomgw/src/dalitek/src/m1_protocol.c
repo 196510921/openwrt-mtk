@@ -857,13 +857,16 @@ static int APP_echo_dev_info_handle(payload_t data)
             devdataArrayJson = cJSON_GetArrayItem(data.pdu, i);
             APIdJson = cJSON_GetObjectItem(devdataArrayJson, "apId");
             devDataJson = cJSON_GetObjectItem(devdataArrayJson,"devId");
-            fprintf(stdout,"AP_ID:%s\n",APIdJson->valuestring);
-
+            fprintf(stdout,"AP_ID:%s\n",APIdJson->valuestring);            
             sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
             fprintf(stdout,"sql_1:%s\n",sql_1);
-            sqlite3_reset(stmt);
-            sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt, NULL);
-            thread_sqlite3_step(&stmt, db);
+            //sqlite3_reset(stmt);
+            //sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt, NULL);
+            //thread_sqlite3_step(&stmt, db);
+            rc = sqlite3_exec(db, sql_1, NULL, NULL, &errorMsg);
+                if(rc != SQLITE_OK){
+                fprintf(stderr,"update all_dev fail: %s\n",errorMsg);
+            }
 
             if(devDataJson != NULL){
                 number_1 = cJSON_GetArraySize(devDataJson);
@@ -1175,30 +1178,39 @@ static int M1_report_ap_info(int clientFd, int sn)
 
     rc = sqlite3_open(db_path, &db);  
     if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db)); 
+        sqlite3_finalize(stmt);
+        sqlite3_close(db); 
         return M1_PROTOCOL_FAILED;  
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     } 
     /*获取用户账户信息*/
-    user_account_t account_info;
-    account_info.db = db;
-    account_info.clientFd = clientFd;
-    account_info.account = get_account_info(account_info);
-    if(account_info.account == NULL){
+    char* account = NULL;
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",clientFd);
+    fprintf(stdout, "%s\n", sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt, 0);
+    }
+    if(account == NULL){
         fprintf(stderr, "user account do not exist\n");    
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
         return M1_PROTOCOL_FAILED;
     }else{
-        fprintf(stdout,"clientFd:%03d,account:%s\n",account_info.clientFd, account_info.account);
+        fprintf(stdout,"clientFd:%03d,account:%s\n",clientFd, account);
     }
 
     int row_n;
     cJSON*  devDataObject= NULL;
 
-    sprintf(sql,"select * from all_dev where DEV_ID  = AP_ID and ACCOUNT = \"%s\";",account_info.account);
+    sprintf(sql,"select * from all_dev where DEV_ID  = AP_ID and ACCOUNT = \"%s\";",account);
     row_n = sql_row_number(db, sql);
     fprintf(stdout,"row_n:%d\n",row_n);
     if(row_n > 0){ 
+        sqlite3_reset(stmt);
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
         while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
             /*add ap infomation: port,ap_id,ap_name,time */
@@ -1209,6 +1221,8 @@ static int M1_report_ap_info(int clientFd, int sn)
                 // create object faild, exit
                 fprintf(stdout,"devDataObject NULL\n");
                 cJSON_Delete(devDataObject);
+                sqlite3_finalize(stmt);
+                sqlite3_close(db);
                 return M1_PROTOCOL_FAILED;
             }
             cJSON_AddItemToArray(devDataJsonArray, devDataObject);
@@ -1216,7 +1230,6 @@ static int M1_report_ap_info(int clientFd, int sn)
             cJSON_AddNumberToObject(devDataObject, "pId", sqlite3_column_int(stmt, 4));
             cJSON_AddStringToObject(devDataObject, "apId", (const char*)sqlite3_column_text(stmt, 3));
             cJSON_AddStringToObject(devDataObject, "apName", (const char*)sqlite3_column_text(stmt, 2));
-            
             
         }
     }
@@ -1302,25 +1315,30 @@ static int M1_report_dev_info(payload_t data, int sn)
     } 
 
      /*获取用户账户信息*/
-    user_account_t account_info;
-    account_info.db = db;
-    account_info.clientFd = data.clientFd;
-    account_info.account = get_account_info(account_info);
-    if(account_info.account == NULL){
+    char* account = NULL;
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
+    fprintf(stdout, "%s\n", sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt, 0);
+    }
+    if(account == NULL){
         fprintf(stderr, "user account do not exist\n");    
         return M1_PROTOCOL_FAILED;
     }else{
-        fprintf(stdout,"clientFd:%03d,account:%s\n",account_info.clientFd, account_info.account);
+        fprintf(stdout,"clientFd:%03d,account:%s\n",data.clientFd, account);
     }
 
     int row_n;
     cJSON*  devDataObject= NULL;
 
-    sprintf(sql,"select * from all_dev where AP_ID != DEV_ID and AP_ID = \"%s\" and  ACCOUNT = \"%s\";", ap, account_info.account);
+    sprintf(sql,"select * from all_dev where AP_ID != DEV_ID and AP_ID = \"%s\" and  ACCOUNT = \"%s\";", ap, account);
     fprintf(stdout,"string:%s\n",sql);
     row_n = sql_row_number(db, sql);
     fprintf(stdout,"row_n:%d\n",row_n);
     if(row_n > 0){ 
+        sqlite3_reset(stmt);
         sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
         while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW){
             /*add ap infomation: port,ap_id,ap_name,time */
@@ -1562,23 +1580,24 @@ static int common_rsp(rsp_data_t data)
     return M1_PROTOCOL_OK;
 }
 
-char* get_account_info(user_account_t data)
-{
-    char sql[200];
-    sqlite3_stmt* stmt = NULL;
-    /*获取用户信息*/
-    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
-    fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
-    sqlite3_prepare_v2(data.db, sql, strlen(sql), &stmt, NULL);
-    if(thread_sqlite3_step(&stmt, data.db) == SQLITE_ROW){
-        return sqlite3_column_text(stmt, 0);
-    }else{
-        return NULL;  
-    }
+// char* get_account_info(user_account_t data)
+// {
+//     char* account = NULL;
+//     char sql[200];
+//     sqlite3_stmt* stmt = NULL;
+//     /*获取用户信息*/
+//     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
+//     fprintf(stdout, "%s\n", sql);
+//     sqlite3_reset(stmt);
+//     sqlite3_prepare_v2(data.db, sql, strlen(sql), &stmt, NULL);
+//     if(thread_sqlite3_step(&stmt, data.db) == SQLITE_ROW){
+        
+//         account =  sqlite3_column_text(stmt, 0);
+//     }
 
-    sqlite3_finalize(stmt);
-}
+//     sqlite3_finalize(stmt);
+//     return account;
+// }
 
 void delete_account_conn_info(int clientFd)
 {
@@ -1701,10 +1720,10 @@ int sql_row_number(sqlite3* db, char*sql)
     char* errmsg;
     int n_row, n_col, rc;
     /*sqlite3 lock*/
-    sqlite3_mutex_enter(sqlite3_db_mutex(db));
+    //sqlite3_mutex_enter(sqlite3_db_mutex(db));
     rc = sqlite3_get_table(db, sql, &p_result,&n_row, &n_col, &errmsg);
     /*sqlite3 unlock*/
-    sqlite3_mutex_leave(sqlite3_db_mutex(db));
+    //sqlite3_mutex_leave(sqlite3_db_mutex(db));
     fprintf(stdout,"n_row:%d\n",n_row);
 
     sqlite3_free(errmsg);
@@ -1731,14 +1750,9 @@ int sql_exec(sqlite3* db, char*sql)
 int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 {
     int rc;
-    /*sqlite3 lock*/
-    //sqlite3_mutex_enter(sqlite3_db_mutex(db));
-    //do{
-        rc = sqlite3_step(*stmt);   
-    //}while(rc == SQLITE_BUSY);
-    /*sqlite3 unlock*/
-    //sqlite3_mutex_leave(sqlite3_db_mutex(db));
-    fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+
+    rc = sqlite3_step(*stmt);   
+    fprintf(stdout,"step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
     return rc;
 }
 
@@ -1840,6 +1854,13 @@ static int create_sql_table(void)
         fprintf(stderr,"insert into account_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
+    /*test*/
+    // sprintf(sql,"update all_dev set ADDED = 1 where DEV_ID = \"11111111\" and AP_ID = \"11111111\";");
+    // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+    //     if(rc != SQLITE_OK){
+    //     fprintf(stderr,"update all_dev fail: %s\n",errmsg);
+    // }
+    // sqlite3_free(errmsg);
 
     sqlite3_close(db);
 
