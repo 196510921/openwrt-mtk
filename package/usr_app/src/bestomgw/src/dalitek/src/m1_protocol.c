@@ -31,6 +31,7 @@ static int common_operate(payload_t data);
 static int common_rsp(rsp_data_t data);
 static int ap_heartbeat_handle(payload_t data);
 static int common_rsp_handle(payload_t data);
+static int create_sql_table(void);
 
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
@@ -46,6 +47,7 @@ static uint32_t tx_buf[256];
 
 void m1_protocol_init(void)
 {
+    create_sql_table();
     sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
     fifo_init(&dev_data_fifo, dev_data_buf, 256);
     fifo_init(&link_exec_fifo, link_exec_buf, 256);
@@ -1739,3 +1741,110 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
     fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
     return rc;
 }
+
+static int create_sql_table(void)
+{
+    char sql[300];
+    int rc;
+    char* errmsg = NULL;
+
+    sqlite3* db = 0;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+    /*account_info*/
+    sprintf(sql,"create table account_info(ID INT PRIMARY KEY NOT NULL, ACCOUNT TEXT NOT NULL, CLIENT_FD TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create account_info fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*account_table*/
+    sprintf(sql,"create table account_table(ID INT PRIMARY KEY NOT NULL, ACCOUNT TEXT NOT NULL, KEY TEXT NOT NULL,KEY_AUTH TEXT NOT NULL,REMOTE_AUTH TEXT NOT NULL,TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create account_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*all_dev*/
+    sprintf(sql,"create table all_dev(ID INT PRIMARY KEY NOT NULL, DEV_ID TEXT NOT NULL, DEV_NAME TEXT NOT NULL,AP_ID TEXT NOT NULL,PID INT NOT NULL,ADDED INT NOT NULL,NET INT NOT NULL, STATUS TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create all_dev fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*conn_info*/
+    sprintf(sql,"create table conn_info(ID INT PRIMARY KEY NOT NULL, AP_ID TEXT NOT NULL, CLIENT_FD INT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create conn_info fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*district_table*/
+    sprintf(sql,"CREATE TABLE district_table(ID INT PRIMARY KEY NOT NULL, DIS_NAME TEXT NOT NULL, AP_ID TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create district_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*link_exec_table*/
+    sprintf(sql,"CREATE TABLE link_exec_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, DELAY INT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create link_exec_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*link_trigger_table*/
+    sprintf(sql,"CREATE TABLE link_trigger_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL,DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, THRESHOLD INT NOT NULL,CONDITION TEXT NOT NULL, LOGICAL TEXT NOT NULL, STATUS TEXT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create link_trigger_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*linkage_table*/
+    sprintf(sql,"CREATE TABLE linkage_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, EXEC_TYPE TEXT NOT NULL, EXEC_ID TEXT NOT NULL, STATUS TEXT NOT NULL, ENABLE TEXT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create linkage_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*param_table*/
+    sprintf(sql,"CREATE TABLE param_table(ID INT PRIMARY KEY NOT NULL, DEV_ID TEXT NOT NULL, DEV_NAME TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create param_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*scen_alarm_table*/
+    sprintf(sql,"CREATE TABLE scen_alarm_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, HOUR INT NOT NULL,MINUTES INT NOT NULL, WEEK TEXT NOT NULL, STATUS TEXT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create scen_alarm_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*scenario_table*/
+    sprintf(sql,"CREATE TABLE scenario_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, DELAY INT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create scenario_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*插入Dalitek账户*/
+    sprintf(sql,"insert into account_table(ID, ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH, TIME)values(1,\"Dalitek\",\"root\",\"on\",\"on\",\"20171023110000\");");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"insert into account_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+
+    sqlite3_close(db);
+
+
+}
+
+
+
