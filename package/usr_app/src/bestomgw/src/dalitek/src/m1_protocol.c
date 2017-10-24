@@ -1495,6 +1495,25 @@ static int common_operate(payload_t data)
                 fprintf(stdout,"sql_1:%s\n",sql_1);
                 sql_exec(db, sql_1); 
             }
+        }else if(strcmp(typeJson->valuestring, "account") == 0){
+            if(strcmp(operateJson->valuestring, "delete") == 0){
+                /*删除account_table中的信息*/
+                sprintf(sql_1,"delete from account_table where ACCOUNT = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除all_dev中的信息*/
+                sprintf(sql_1,"delete from all_dev where ACCOUNT = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除district_table中的信息*/
+                sprintf(sql_1,"delete from district_table where ACCOUNT = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除scenario_table中的信息*/
+                sprintf(sql_1,"delete from scenario_table where ACCOUNT = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+            }
         }else if(strcmp(typeJson->valuestring, "ap") == 0){
 
         }
