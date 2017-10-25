@@ -10,6 +10,7 @@
 #include "m1_protocol.h"
 #include "socket_server.h"
 #include "buf_manage.h"
+#include "m1_project.h"
 
 #define M1_PROTOCOL_DEBUG    1
 
@@ -137,6 +138,10 @@ void data_handle(void)
         case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
         case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
         case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
+        case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(rspData.clientFd, rspData.sn); break;
+        case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu, rspData.sn); break;
+        case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu, rspData.sn); break;
+        case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu, rspData.sn); break;
 
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -1599,25 +1604,6 @@ static int common_rsp(rsp_data_t data)
     return M1_PROTOCOL_OK;
 }
 
-// char* get_account_info(user_account_t data)
-// {
-//     char* account = NULL;
-//     char sql[200];
-//     sqlite3_stmt* stmt = NULL;
-//     /*获取用户信息*/
-//     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
-//     fprintf(stdout, "%s\n", sql);
-//     sqlite3_reset(stmt);
-//     sqlite3_prepare_v2(data.db, sql, strlen(sql), &stmt, NULL);
-//     if(thread_sqlite3_step(&stmt, data.db) == SQLITE_ROW){
-        
-//         account =  sqlite3_column_text(stmt, 0);
-//     }
-
-//     sqlite3_finalize(stmt);
-//     return account;
-// }
-
 void delete_account_conn_info(int clientFd)
 {
     int rc;
@@ -1866,6 +1852,13 @@ static int create_sql_table(void)
         fprintf(stderr,"create scenario_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
+    /*project_table*/
+    sprintf(sql,"CREATE TABLE project_table(ID INT PRIMARY KEY NOT NULL, P_NAME TEXT NOT NULL, P_NUMBER TEXT NOT NULL, P_CREATOR TEXT NOT NULL, P_MANAGER TEXT NOT NULL, P_TEL TEXT NOT NULL, P_ADD TEXT NOT NULL, P_BRIEF TEXT NOT NULL, P_KEY TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"create project_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
     /*插入Dalitek账户*/
     sprintf(sql,"insert into account_table(ID, ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH, TIME)values(1,\"Dalitek\",\"root\",\"on\",\"on\",\"20171023110000\");");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
@@ -1873,13 +1866,6 @@ static int create_sql_table(void)
         fprintf(stderr,"insert into account_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
-    /*test*/
-    // sprintf(sql,"update all_dev set ADDED = 1 where DEV_ID = \"11111111\" and AP_ID = \"11111111\";");
-    // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    //     if(rc != SQLITE_OK){
-    //     fprintf(stderr,"update all_dev fail: %s\n",errmsg);
-    // }
-    // sqlite3_free(errmsg);
 
     sqlite3_close(db);
 

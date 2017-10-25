@@ -130,6 +130,24 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_LINK_ENABLE_SET            		 0x0017
 /*APP 验证登录信息*/
 #define TYPE_APP_LOGIN                           0x0018
+/*APP 获取项目编码*/
+#define TYPE_GET_PORJECT_NUMBER                  0x0019
+/*APP 验证项目信息*/
+#define TYPE_APP_CONFIRM_PROJECT                 0x001A
+/*APP 新建项目信息*/
+#define TYPE_APP_CREATE_PROJECT                  0x001B
+/*APP 项目密码修改*/
+#define TYPE_PROJECT_KEY_CHANGE                  0x001C
+/*APP 获取项目设置信息*/
+#define TYPE_GET_PROJECT_INFO                    0x001D
+/*APP 修改项目信息*/
+#define TYPE_PROJECT_INFO_CHANGE                 0x001E
+/*APP 请求区域下场景名称*/
+#define TYPE_REQ_DIS_SCEN_NAME                   0x001F
+/*APP 请求区域名称*/
+#define TYPE_REQ_DIS_NAME                   	 0x0020
+/*APP 请求区域下设备*/
+#define TYPE_REQ_DIS_DEV                   0x0021
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
@@ -156,8 +174,18 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_AP_HEARTBEAT_INFO            		 0x100C
 /*M1 上报用户账户信息*/
 #define TYPE_M1_REPORT_ACCOUNT_INFO              0x100D
-/*M1 上报永辉配置信息*/
+/*M1 上报用户配置信息*/
 #define TYPE_M1_REPORT_ACCOUNT_CONFIG_INFO       0x100E
+/*M1 上报项目编码到APP*/
+#define TYPE_M1_REPORT_PROJECT_NUMBER       	 0x100F
+/*M1 上报项目信息到APP*/
+#define TYPE_M1_REPORT_PROJECT_INFO		       	 0x1010
+/*M1 上报区域下场景名称到APP*/
+#define TYPE_M1_REPORT_DIS_SCEN_NAME	       	 0x1011
+/*M1 上报区域名称到APP*/
+#define TYPE_M1_REPORT_DIS_NAME	       	 		 0x1012
+/*M1 上报区域下设备到APP*/
+#define TYPE_M1_REPORT_DIS_DEV	       	 		 0x1013
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005
