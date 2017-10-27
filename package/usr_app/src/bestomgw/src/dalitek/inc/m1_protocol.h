@@ -147,7 +147,7 @@ void delete_account_conn_info(int clientFd);
 /*APP 请求区域名称*/
 #define TYPE_REQ_DIS_NAME                   	 0x0020
 /*APP 请求区域下设备*/
-#define TYPE_REQ_DIS_DEV                   0x0021
+#define TYPE_REQ_DIS_DEV                         0x0021
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
@@ -179,7 +179,7 @@ void delete_account_conn_info(int clientFd);
 /*M1 上报项目编码到APP*/
 #define TYPE_M1_REPORT_PROJECT_NUMBER       	 0x100F
 /*M1 上报项目信息到APP*/
-#define TYPE_M1_REPORT_PROJECT_INFO		       	 0x1010
+#define TYPE_M1_REPORT_PROJECT_CONFIG_INFO		 0x1010
 /*M1 上报区域下场景名称到APP*/
 #define TYPE_M1_REPORT_DIS_SCEN_NAME	       	 0x1011
 /*M1 上报区域名称到APP*/

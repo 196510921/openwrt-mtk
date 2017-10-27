@@ -195,9 +195,10 @@ int app_req_account_config_handle(payload_t data, int sn)
 	    key_auth = sqlite3_column_text(stmt,1);
 	    remote_auth = sqlite3_column_text(stmt,2);
 	    fprintf(stdout,"key:%s,key_auth:%s, remote_auth:%s\n",key, key_auth, remote_auth);
-	    cJSON_AddStringToObject(devDataObject, "key", key);
-	    cJSON_AddStringToObject(devDataObject, "key_auth", key_auth);
-	    cJSON_AddStringToObject(devDataObject, "remote_auth", remote_auth);
+	    cJSON_AddStringToObject(devDataObject, "account", accountJson->valuestring);
+        cJSON_AddStringToObject(devDataObject, "key", key);
+	    cJSON_AddStringToObject(devDataObject, "keyAuthority", key_auth);
+	    cJSON_AddStringToObject(devDataObject, "remoteAuthority", remote_auth);
 	}
     /*获取区域信息*/
 	userDataArray = cJSON_CreateArray();
@@ -264,7 +265,7 @@ int app_req_account_config_handle(payload_t data, int sn)
             goto Finish;
         }
         cJSON_AddItemToObject(userDataObject, "device", devArray);
-        sprintf(sql_1,"select PID, DEV_NAME, DEV_ID from all_dev where ACCOUNT = \"%s\" and DISTRICT = \"%s\" ;", accountJson->valuestring,district);
+        sprintf(sql_1,"select PID, DEV_NAME, DEV_ID from all_dev where ACCOUNT = \"%s\";", accountJson->valuestring);
         fprintf(stdout,"%s\n", sql_1);
         sqlite3_reset(stmt_1);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
@@ -330,6 +331,7 @@ int app_account_config_handle(payload_t data)
     cJSON* scenObject = NULL;
     cJSON* devArray = NULL;
     cJSON* devObject = NULL;
+    cJSON* devIdObject = NULL;
     cJSON* accountJson = NULL;
     cJSON* keyJson = NULL;
     cJSON* keyAuthJson = NULL;
@@ -501,8 +503,8 @@ int app_account_config_handle(payload_t data)
     number = cJSON_GetArraySize(devArray);
     for(i = 0; i < number; i++){
         devObject = cJSON_GetArrayItem(devArray, i);
-        fprintf(stdout,"device:%s\n",devObject->valuestring);
-        sprintf(sql_1,"select DEV_NAME,AP_ID,PID,ADDED,NET,STATUS from all_dev where DEV_ID = \"%s\" and ACCOUNT = \"Dalitek\";",devObject->valuestring);
+        devIdObject = cJSON_GetObjectItem(devObject, "devId");
+        sprintf(sql_1,"select DEV_NAME,AP_ID,PID,ADDED,NET,STATUS from all_dev where DEV_ID = \"%s\" and ACCOUNT = \"Dalitek\";",devIdObject->valuestring);
         fprintf(stdout,"sql:%s\n",sql_1);
         sqlite3_reset(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
@@ -520,7 +522,7 @@ int app_account_config_handle(payload_t data)
             sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
 
             sqlite3_bind_int(stmt_1, 1, id);
-            sqlite3_bind_text(stmt_1, 2,  devObject->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt_1, 2,  devIdObject->valuestring, -1, NULL);
             sqlite3_bind_text(stmt_1, 3,  dev_name, -1, NULL);
             sqlite3_bind_text(stmt_1, 4,  ap_id, -1, NULL);
             sqlite3_bind_int(stmt_1, 5, pid);
@@ -910,15 +912,6 @@ int app_req_dis_dev(payload_t data, int sn)
             sqlite3_reset(stmt_2);
             sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
             while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
-                pId = sqlite3_column_text(stmt_2, 0);
-                if(pId != NULL)
-                    cJSON_AddStringToObject(devObject, "pId", pId);
-                devName = sqlite3_column_text(stmt_2, 1);
-                if(devName != NULL)
-                    cJSON_AddStringToObject(devObject, "devName", devName);
-                devId = sqlite3_column_text(stmt_2, 2);
-                if(devId != NULL)
-                    cJSON_AddStringToObject(devObject, "devId", devId);
                 /*添加设备*/
                 devObject = cJSON_CreateObject();
                 if(NULL == devObject)
@@ -930,6 +923,15 @@ int app_req_dis_dev(payload_t data, int sn)
                     goto Finish;
                 }
                 cJSON_AddItemToArray(devArray, devObject);
+                pId = sqlite3_column_text(stmt_2, 0);
+                if(pId != NULL)
+                    cJSON_AddStringToObject(devObject, "pId", pId);
+                devName = sqlite3_column_text(stmt_2, 1);
+                if(devName != NULL)
+                    cJSON_AddStringToObject(devObject, "devName", devName);
+                devId = sqlite3_column_text(stmt_2, 2);
+                if(devId != NULL)
+                    cJSON_AddStringToObject(devObject, "devId", devId);
                 }
 
         }

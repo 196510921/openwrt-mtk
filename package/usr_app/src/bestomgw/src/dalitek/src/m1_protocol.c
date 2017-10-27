@@ -142,6 +142,11 @@ void data_handle(void)
         case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu, rspData.sn); break;
         case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu, rspData.sn); break;
         case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu, rspData.sn); break;
+        case TYPE_APP_CREATE_PROJECT: rc = app_create_project(pdu);break;
+        case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
+        case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(rspData.clientFd, rspData.sn);break;
+        case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
+        case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
 
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -1763,7 +1768,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 
 static int create_sql_table(void)
 {
-    char sql[300];
+    char sql[400];
     int rc;
     char* errmsg = NULL;
 
@@ -1853,7 +1858,7 @@ static int create_sql_table(void)
     }
     sqlite3_free(errmsg);
     /*project_table*/
-    sprintf(sql,"CREATE TABLE project_table(ID INT PRIMARY KEY NOT NULL, P_NAME TEXT NOT NULL, P_NUMBER TEXT NOT NULL, P_CREATOR TEXT NOT NULL, P_MANAGER TEXT NOT NULL, P_TEL TEXT NOT NULL, P_ADD TEXT NOT NULL, P_BRIEF TEXT NOT NULL, P_KEY TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
+    sprintf(sql,"CREATE TABLE project_table(ID INT PRIMARY KEY NOT NULL, P_NAME TEXT NOT NULL, P_NUMBER TEXT NOT NULL, P_CREATOR TEXT NOT NULL, P_MANAGER TEXT NOT NULL, P_EDITOR TEXT NOT NULL, P_TEL TEXT NOT NULL, P_ADD TEXT NOT NULL, P_BRIEF TEXT NOT NULL, P_KEY TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK){
         fprintf(stderr,"create project_table fail: %s\n",errmsg);
