@@ -860,45 +860,34 @@ static int APP_echo_dev_info_handle(payload_t data)
     }
 
     number = cJSON_GetArraySize(data.pdu);
-    fprintf(stdout,"number:%d\n",number);
-    //if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
-    //    fprintf(stdout,"BEGIN\n");    
-        for(i = 0; i < number; i++){
-            devdataArrayJson = cJSON_GetArrayItem(data.pdu, i);
-            APIdJson = cJSON_GetObjectItem(devdataArrayJson, "apId");
-            devDataJson = cJSON_GetObjectItem(devdataArrayJson,"devId");
-            fprintf(stdout,"AP_ID:%s\n",APIdJson->valuestring);            
-            sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
-            fprintf(stdout,"sql_1:%s\n",sql_1);
-            //sqlite3_reset(stmt);
-            //sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt, NULL);
-            //thread_sqlite3_step(&stmt, db);
-            rc = sqlite3_exec(db, sql_1, NULL, NULL, &errorMsg);
-                if(rc != SQLITE_OK){
-                fprintf(stderr,"update all_dev fail: %s\n",errorMsg);
-            }
+    fprintf(stdout,"number:%d\n",number);  
+    for(i = 0; i < number; i++){
+        devdataArrayJson = cJSON_GetArrayItem(data.pdu, i);
+        APIdJson = cJSON_GetObjectItem(devdataArrayJson, "apId");
+        devDataJson = cJSON_GetObjectItem(devdataArrayJson,"devId");
+        fprintf(stdout,"AP_ID:%s\n",APIdJson->valuestring);            
+        sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
+        fprintf(stdout,"sql_1:%s\n",sql_1);
+        rc = sqlite3_exec(db, sql_1, NULL, NULL, &errorMsg);
+            if(rc != SQLITE_OK){
+            fprintf(stderr,"update all_dev fail: %s\n",errorMsg);
+        }
 
-            if(devDataJson != NULL){
-                number_1 = cJSON_GetArraySize(devDataJson);
-                fprintf(stdout,"number_1:%d\n",number_1);
-                for(j = 0; j < number_1; j++){
-                    devArrayJson = cJSON_GetArrayItem(devDataJson, j);
-                    fprintf(stdout,"  devId:%s\n",devArrayJson->valuestring);
+        if(devDataJson != NULL){
+            number_1 = cJSON_GetArraySize(devDataJson);
+            fprintf(stdout,"number_1:%d\n",number_1);
+            for(j = 0; j < number_1; j++){
+                devArrayJson = cJSON_GetArrayItem(devDataJson, j);
+                fprintf(stdout,"  devId:%s\n",devArrayJson->valuestring);
 
-                    sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",devArrayJson->valuestring,APIdJson->valuestring);
-                    fprintf(stdout,"sql_1:%s\n",sql_1);
-                    sqlite3_reset(stmt);
-                    sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt, NULL);
-                    thread_sqlite3_step(&stmt, db);
-                }
+                sprintf(sql_1, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",devArrayJson->valuestring,APIdJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sqlite3_reset(stmt);
+                sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt, NULL);
+                thread_sqlite3_step(&stmt, db);
             }
         }
-        //if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
-        //    fprintf(stdout,"END\n");
-        //}
-    //}else{
-    //    fprintf(stdout,"errorMsg:");
-    //}    
+    }  
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);
@@ -913,8 +902,9 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
     cJSON * pJsonRoot = NULL;
     /*sqlite3*/
     sqlite3* db = NULL;
-    sqlite3_stmt* stmt_1 = NULL,*stmt_2 = NULL;
-    char* sql_1 = NULL;
+    sqlite3_stmt *stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
+    char sql[200];
+    char* sql_1[200];
     char sql_2[200];
 
     fprintf(stdout,"APP_req_added_dev_info_handle\n");
@@ -962,13 +952,30 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     } 
+    /*获取当前账户*/
+    char* account = NULL;
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",clientFd);
+    fprintf(stdout, "%s\n", sql);
+    sqlite3_reset(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt, 0);
+    }
+    if(account == NULL){
+        fprintf(stderr, "user account do not exist\n");    
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return M1_PROTOCOL_FAILED;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",clientFd, account);
+    }
 
     int row_n;
     cJSON*  devDataObject= NULL;
     cJSON * devArray = NULL;
     cJSON*  devObject = NULL;
 
-    sql_1 = "select * from all_dev where DEV_ID  = AP_ID and ADDED = 1;";
+    sprintf(sql_1,"select * from all_dev where DEV_ID  = AP_ID and ADDED = 1 and ACCOUNT = \"%s\";",account);
     row_n = sql_row_number(db, sql_1);
     fprintf(stdout,"row_n:%d\n",row_n);
     if(row_n > 0){ 
@@ -1001,7 +1008,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
             /*add devData array to pdu pbject*/
             cJSON_AddItemToObject(devDataObject, "dev", devArray);
             /*sqlite3*/
-            sprintf(sql_2,"select * from all_dev where AP_ID  = \"%s\" and AP_ID != DEV_ID and ADDED = 1;",sqlite3_column_text(stmt_1, 3));
+            sprintf(sql_2,"select * from all_dev where AP_ID  = \"%s\" and AP_ID != DEV_ID and ADDED = 1 and ACCOUNT = \"%s\";",sqlite3_column_text(stmt_1, 3),account);
             fprintf(stdout,"sql_2:%s\n",sql_2);
             row_n = sql_row_number(db, sql_1);
             fprintf(stdout,"row_n:%d\n",row_n);
@@ -1025,6 +1032,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
 
         }
     }
+    sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
     sqlite3_close(db);
@@ -1433,6 +1441,18 @@ static int common_operate(payload_t data)
                 sprintf(sql_1,"delete from all_dev where DEV_ID = \"%s\";",idJson->valuestring);
                 fprintf(stdout,"sql_1:%s\n",sql_1);
                 sql_exec(db, sql_1);
+                /*删除scenario_table中的子设备*/
+                sprintf(sql_1,"delete from scenario_table where DEV_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除link_trigger_table中的子设备*/
+                sprintf(sql_1,"delete from link_trigger_table where DEV_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除link_exec_table中的子设备*/
+                sprintf(sql_1,"delete from link_exec_table where DEV_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
             }else if(strcmp(operateJson->valuestring, "on") == 0){
                 sprintf(sql_1,"update all_dev set STATUS = \"ON\" where DEV_ID = \"%s\";",idJson->valuestring);
                 fprintf(stdout,"sql_1:%s\n",sql_1);
@@ -1506,6 +1526,9 @@ static int common_operate(payload_t data)
                 sql_exec(db, sql_1); 
             }
         }else if(strcmp(typeJson->valuestring, "account") == 0){
+            if(strcmp(idJson->valuestring,"Dalitek") == 0){
+                goto Finish;
+            }
             if(strcmp(operateJson->valuestring, "delete") == 0){
                 /*删除account_table中的信息*/
                 sprintf(sql_1,"delete from account_table where ACCOUNT = \"%s\";",idJson->valuestring);
@@ -1525,14 +1548,45 @@ static int common_operate(payload_t data)
                 sql_exec(db, sql_1);
             }
         }else if(strcmp(typeJson->valuestring, "ap") == 0){
-
+            /*删除all_dev中设备*/
+            if(strcmp(operateJson->valuestring, "delete") == 0){
+                /*删除all_dev中的子设备*/
+                sprintf(sql_1,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除scenario_table中的子设备*/
+                sprintf(sql_1,"delete from scenario_table where AP_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除link_trigger_table中的子设备*/
+                sprintf(sql_1,"delete from link_trigger_table where AP_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除link_exec_table中的子设备*/
+                sprintf(sql_1,"delete from link_exec_table where AP_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+                /*删除district_table中的子设备*/
+                sprintf(sql_1,"delete from district_table where AP_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+            }else if(strcmp(operateJson->valuestring, "on") == 0){
+                sprintf(sql_1,"update all_dev set STATUS = \"ON\" where AP_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+            }else if(strcmp(operateJson->valuestring, "off") == 0){
+                sprintf(sql_1,"update all_dev set STATUS = \"OFF\" where AP_ID = \"%s\";",idJson->valuestring);
+                fprintf(stdout,"sql_1:%s\n",sql_1);
+                sql_exec(db, sql_1);
+            }
         }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
             fprintf(stdout,"END\n");
         }
     }else{
         fprintf(stdout,"errorMsg:");
-    }    
+    }
+    Finish:    
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
     sqlite3_close(db);

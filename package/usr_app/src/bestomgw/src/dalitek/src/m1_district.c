@@ -188,7 +188,6 @@ int app_req_district(int clientFd, int sn)
 	    }
 	    cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 	    cJSON_AddStringToObject(devDataObject, "district", dist_name);
-
 	    /*创建ap_info数组*/
 	    apInfoArrayObject = cJSON_CreateArray();
 	    if(NULL == apInfoArrayObject)
