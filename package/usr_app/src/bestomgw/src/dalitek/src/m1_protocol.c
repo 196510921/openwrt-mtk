@@ -1781,7 +1781,7 @@ static int create_sql_table(void)
         fprintf(stderr, "Opened database successfully\n");  
     }
     /*account_info*/
-    sprintf(sql,"create table account_info(ID INT PRIMARY KEY NOT NULL, ACCOUNT TEXT NOT NULL, CLIENT_FD TEXT NOT NULL);");
+    sprintf(sql,"create table account_info(ID INT PRIMARY KEY NOT NULL, ACCOUNT TEXT NOT NULL, CLIENT_FD INT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK){
         fprintf(stderr,"create account_info fail: %s\n",errmsg);
