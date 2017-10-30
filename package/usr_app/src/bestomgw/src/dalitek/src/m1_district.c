@@ -107,7 +107,7 @@ int app_req_district(int clientFd, int sn)
     
     /*sqlite3*/
     sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
+    sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
     char sql[200];
     char sql_1[200],sql_2[200];
 
@@ -159,10 +159,10 @@ int app_req_district(int clientFd, int sn)
     char* account = NULL;
     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",clientFd);
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-    if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
-        account =  sqlite3_column_text(stmt, 0);
+    sqlite3_reset(stmt_3);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_3, NULL);
+    if(thread_sqlite3_step(&stmt_3, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt_3, 0);
     }
     if(account == NULL){
         fprintf(stderr, "user account do not exist\n");    
@@ -197,7 +197,7 @@ int app_req_district(int clientFd, int sn)
 	        return M1_PROTOCOL_FAILED;
 	    }
 	    cJSON_AddItemToObject(devDataObject, "apInfo", apInfoArrayObject);
-	    sprintf(sql_1,"select AP_ID from district_table where DIS_NAME = \"%s\" ;",dist_name);
+	    sprintf(sql_1,"select AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"%s\";",dist_name,account);
 	    fprintf(stdout,"sql_1:%s\n", sql_1);
 	    sqlite3_reset(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
@@ -232,6 +232,7 @@ int app_req_district(int clientFd, int sn)
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
 	sqlite3_finalize(stmt_2);
+    sqlite3_finalize(stmt_3);
     sqlite3_close(db);
 
     char * p = cJSON_PrintUnformatted(pJsonRoot);
