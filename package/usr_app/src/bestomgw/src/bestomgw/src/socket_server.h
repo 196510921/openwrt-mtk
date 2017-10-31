@@ -103,6 +103,9 @@ void socketSeverClose(void);
 
 void thread_socketSeverSend(void);
 
+/*udp广播本地IP*/
+int udp_broadcast_server(void);
+
 #ifdef __cplusplus
 }
 #endif

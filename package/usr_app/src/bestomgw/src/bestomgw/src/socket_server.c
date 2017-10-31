@@ -49,6 +49,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <fcntl.h>
 #include <sys/signal.h>
 #include <sys/ioctl.h>
@@ -88,6 +89,7 @@ socketServerCb_t socketServerConnectCb;
 //static void deleteSocketRec(int rmSocketFd);
 static int createSocketRec(void);
 static void deleteSocketRec(int rmSocketFd);
+static int set_udp_broadcast_add(char* d);
 
 /*********************************************************************
  * FUNCTIONS
@@ -445,22 +447,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	fprintf(stdout,"1.msg->data:%x\n", msg->data);
 	memcpy(msg->data, buf, len);
 	fifo_write(&tx_fifo, msg);
-	puts("Adding task to threadpool\n");
-	//thread_socketSeverSend();
-	//thpool_add_work(tx_thpool, (void*)thread_socketSeverSend, NULL);
-
-	// int rtn;
-	// if (fdClient)
-	// {
-	// 	rtn = write(fdClient, buf, len);
-	// 	if (rtn < 0)
-	// 	{
-	// 		fprintf(stdout,"ERROR writing to socket %d\n", fdClient);
-	// 	}
-	// }
-
-	//printf("socketSeverSend--\n");	
-
+	puts("Adding msg to tx fifo\n");	
 	return 0;
 }
 
@@ -526,4 +513,100 @@ void socketSeverClose(void)
 		close(fds[0]);
 	}
 }
+
+/*获取本地ip*/
+static int get_local_ip(char *ip)  
+{  
+    struct ifaddrs * ifAddrStruct=NULL;  
+    void * tmpAddrPtr=NULL;  
+  
+    getifaddrs(&ifAddrStruct);  
+  
+    while (ifAddrStruct!=NULL)   
+    {  
+        if (ifAddrStruct->ifa_addr->sa_family==AF_INET)  
+        {   // check it is IP4  
+            // is a valid IP4 Address  
+            tmpAddrPtr = &((struct sockaddr_in *)ifAddrStruct->ifa_addr)->sin_addr;    
+            inet_ntop(AF_INET, tmpAddrPtr, ip, INET_ADDRSTRLEN);  
+            fprintf(stdout,"%s IPV4 Address %s\n", ifAddrStruct->ifa_name, ip);   
+        }  
+        // else if (ifAddrStruct->ifa_addr->sa_family==AF_INET6)  
+        // {   // check it is IP6  
+        //     // is a valid IP6 Address  
+        //     tmpAddrPtr=&((struct sockaddr_in *)ifAddrStruct->ifa_addr)->sin_addr;  
+        //     char addressBuffer[INET6_ADDRSTRLEN];  
+        //     inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);  
+        //     printf("%s IPV6 Address %s\n", ifAddrStruct->ifa_name, addressBuffer);   
+        // }   
+        ifAddrStruct = ifAddrStruct->ifa_next;  
+    }  
+    return 0;  
+   
+}  
+
+/*udp 广播本机地址*/
+int udp_broadcast_server(void)
+{
+	char msg[INET_ADDRSTRLEN];
+	char udp_id[INET_ADDRSTRLEN];
+  	int sock=-1;
+
+  	get_local_ip(msg);
+
+	if((sock=socket(AF_INET,SOCK_DGRAM,0))==-1)
+	{
+	   	fprintf(stderr, "udp socket error\n");  
+	    return -1;
+	}
+	const int opt=-1;
+	int nb=0;
+	nb=setsockopt(sock,SOL_SOCKET,SO_BROADCAST,(char*)&opt,sizeof(opt));//设置套接字类型
+	if(nb==-1)
+	{
+	    fprintf(stderr, "udp set socket error\n");  
+	    return -1;
+	}
+	struct sockaddr_in addrto;
+	bzero(&addrto,sizeof(struct sockaddr_in));
+	addrto.sin_family=AF_INET;
+	//addrto.sin_addr.s_addr=inet_addr("255.255.255.255");//htonl(INADDR_BROADCAST);//套接字地址为广播地址
+	strcpy(udp_id, msg);
+	set_udp_broadcast_add(udp_id);
+	fprintf(stdout,"udp id:%s\n",udp_id);
+	addrto.sin_addr.s_addr = inet_addr(udp_id);
+	addrto.sin_port=htons(6000);//套接字广播端口号为6000
+	int nlen=sizeof(addrto);
+	while(1)
+	{
+	    sleep(5);
+	    int ret=sendto(sock,msg,strlen(msg),0,(struct sockaddr*)&addrto,nlen);//向广播地址发布消息
+	    if(ret<0)
+	    {
+	        fprintf(stderr, "sendto failed with error\n");  
+	        continue;
+	    }
+	}
+	return 0;
+}
+
+static int set_udp_broadcast_add(char* d)
+{
+	char* str = ".";
+	char* str1 = "255";
+	char* p = NULL;
+	int i = 0;
+
+	p = d;
+	for(i = 0; i < 3; i++){
+		p = strstr(p,str);
+		p+=1;
+		if(p == NULL)
+			return -1;
+	}
+	strcpy(p,str1);
+	return 0;
+
+}
+
 
