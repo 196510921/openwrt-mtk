@@ -548,7 +548,17 @@ static int get_local_ip(char *ip)
 /*udp 广播本机地址*/
 int udp_broadcast_server(void)
 {
+	cJSON* pJsonRoot = NULL;
+	pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        fprintf(stdout,"pJsonRoot NULL\n");
+        cJSON_Delete(pJsonRoot);
+        return M1_PROTOCOL_FAILED;
+    }
+	
 	char msg[INET_ADDRSTRLEN];
+	char ip[200];
 	char udp_id[INET_ADDRSTRLEN];
   	int sock=-1;
 
@@ -577,10 +587,22 @@ int udp_broadcast_server(void)
 	addrto.sin_addr.s_addr = inet_addr(udp_id);
 	addrto.sin_port=htons(6000);//套接字广播端口号为6000
 	int nlen=sizeof(addrto);
+	/*创建Json*/
+	cJSON_AddStringToObject(pJsonRoot, "ip", msg);
+    cJSON_AddNumberToObject(pJsonRoot, "port", 11235);
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    
+    if(NULL == p)
+    {    
+        return;
+    }
+    strcpy(ip, p);
+    cJSON_Delete(pJsonRoot);
+
 	while(1)
 	{
 	    sleep(5);
-	    int ret=sendto(sock,msg,strlen(msg),0,(struct sockaddr*)&addrto,nlen);//向广播地址发布消息
+	    int ret=sendto(sock,ip,strlen(ip),0,(struct sockaddr*)&addrto,nlen);//向广播地址发布消息
 	    if(ret<0)
 	    {
 	        fprintf(stderr, "sendto failed with error\n");  
