@@ -12,11 +12,10 @@
 #include "buf_manage.h"
 #include "m1_project.h"
 
+/*Macro**********************************************************************************************************/
 #define M1_PROTOCOL_DEBUG    1
-
 #define HEAD_LEN    3
-
-
+/*Private function***********************************************************************************************/
 static int AP_report_data_handle(payload_t data);
 static int APP_read_handle(payload_t data, int sn);
 static int APP_write_handle(payload_t data);
@@ -33,7 +32,8 @@ static int common_rsp(rsp_data_t data);
 static int ap_heartbeat_handle(payload_t data);
 static int common_rsp_handle(payload_t data);
 static int create_sql_table(void);
-
+static int app_change_device_name(payload_t data);
+/*variable******************************************************************************************************/
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
@@ -147,6 +147,8 @@ void data_handle(void)
         case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(rspData.clientFd, rspData.sn);break;
         case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
         case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
+        case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
+        case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
 
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -493,6 +495,8 @@ static int APP_read_handle(payload_t data, int sn)
     cJSON * devArray = NULL;
     cJSON*  devObject = NULL;
     int pduType = TYPE_REPORT_DATA;
+    int rc;
+    char sql[200];
 
     fprintf(stdout,"APP_read_handle\n");
     if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
@@ -500,10 +504,7 @@ static int APP_read_handle(payload_t data, int sn)
     /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL;
-    char sql[200];
-    int rc;
-
-    //rc = sqlite3_open(db_path, &db);  
+    
     rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
     if( rc ){  
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
@@ -561,7 +562,8 @@ static int APP_read_handle(payload_t data, int sn)
         paramTypeJson = cJSON_GetObjectItem(devDataJson, "paramType");
         number2 = cJSON_GetArraySize(paramTypeJson);
         /*get sql data json*/
-        sprintf(sql, "select DEV_NAME from param_table where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
+        //sprintf(sql, "select DEV_NAME from param_table where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
+        sprintf(sql, "select DEV_NAME from all_dev where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
         fprintf(stdout,"%s\n", sql);
         row_n = sql_row_number(db, sql);
         fprintf(stdout,"row_n:%d\n",row_n);
@@ -1686,6 +1688,67 @@ void delete_account_conn_info(int clientFd)
     sqlite3_close(db);
 }
 
+/*app修改设备名称*/
+static int app_change_device_name(payload_t data)
+{
+    int rc, ret = M1_PROTOCOL_OK;
+    char* errorMsg = NULL;
+    char sql[200];
+
+    /*打开sqlite3数据库*/
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    rc = sqlite3_open("dev_info.db", &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
+    cJSON* devIdObject = NULL;
+    cJSON* devNameObject = NULL;
+
+    devIdObject = cJSON_GetObjectItem(data.pdu, "devId");   
+    if(devIdObject == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    fprintf(stdout,"devId:%s\n",devIdObject->valuestring);
+    devNameObject = cJSON_GetObjectItem(data.pdu, "devName");   
+    if(devNameObject == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    fprintf(stdout,"devId:%s\n",devNameObject->valuestring);
+
+    /*修改all_dev设备名称*/
+    sprintf(sql,"update all_dev set DEV_NAME = \"%s\" where DEV_ID = \"%s\";",devNameObject->valuestring, devIdObject->valuestring);
+    fprintf(stdout,"sql:%s\n",sql);
+    if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
+        fprintf(stdout,"BEGIN:\n");
+        sqlite3_reset(stmt);
+        sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        rc = thread_sqlite3_step(&stmt, db);
+        if(rc == SQLITE_ERROR)
+        {
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;   
+        }
+        if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+            fprintf(stdout,"END\n");
+        }
+    }else{
+        fprintf(stdout,"errorMsg\n");
+    }
+
+    Finish:
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    return ret;
+}
+
 void getNowTime(char* _time)
 {
 
@@ -1707,10 +1770,14 @@ void setLocalTime(char* time)
     int mon, day,hour,min;
 
     gettimeofday(&tv, &tz);
-    mon = atoi(time) / 1000000 - 1;
-    day = atoi(&time[2]) / 10000;
-    hour = atoi(&time[4]) / 100; 
-    min = atoi(&time[6]);
+    // mon = atoi(time) / 1000000 - 1;
+    // day = atoi(&time[2]) / 10000;
+    // hour = atoi(&time[4]) / 100; 
+    // min = atoi(&time[6]);
+    mon = 10;
+    day = 31;
+    hour = 17; 
+    min = 55;
     printf("setLocalTime,time:%02d-%02d %02d:%02d\n",mon+1,day,hour,min);
     local_tm.tm_year = 2017 - 1900;
     local_tm.tm_mon = mon;
@@ -1923,6 +1990,13 @@ static int create_sql_table(void)
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK){
         fprintf(stderr,"insert into account_table fail: %s\n",errmsg);
+    }
+    sqlite3_free(errmsg);
+    /*插入项目信息*/
+    sprintf(sql,"insert into project_table(ID, P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT, TIME)values(1,\"M1\",\"00000001\",\"Dalitek\",\"Dalitek\",\"Dalitek\",\"123456789\",\"ShangHai\",\"Brief\",\"123456\",\"Dalitek\",\"20171031161900\");");
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+        fprintf(stderr,"insert into project_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
 

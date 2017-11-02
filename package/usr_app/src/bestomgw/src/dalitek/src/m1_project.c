@@ -100,9 +100,13 @@ int app_confirm_project(payload_t data)
     char sql[200];
     char* key = NULL;
 
-    pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");   
+    pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");
+    if(pNumberJson == NULL)
+        return M1_PROTOCOL_FAILED;   
     fprintf(stdout,"pNumber:%s\n",pNumberJson->valuestring);
     pKeyJson = cJSON_GetObjectItem(data.pdu, "pKey");   
+    if(pKeyJson == NULL)
+        return M1_PROTOCOL_FAILED;   
     fprintf(stdout,"pKey:%s\n",pKeyJson->valuestring);
 
 	/*sqlite3*/
@@ -275,7 +279,7 @@ int app_get_project_config(int clientFd, int sn)
     /*add pdu type to pdu object*/
     cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
     /*获取项目信息*/
-    sql = "select P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_TEL,P_ADD,P_BRIEF,P_EDITOR,TIME from project_table";
+    sql = "select P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_TEL,P_ADD,P_BRIEF,P_EDITOR,TIME from project_table order by ID desc limit 1";
     fprintf(stdout, "%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -368,7 +372,7 @@ int app_change_project_config(payload_t data)
 
 	/*sqlite3*/
     sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL;
+    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
     int rc,row_n,id,ret = M1_PROTOCOL_OK;
 
     rc = sqlite3_open("dev_info.db", &db);  
@@ -410,25 +414,26 @@ int app_change_project_config(payload_t data)
     /*插入到项目表中*/
     sql = "insert into project_table(ID,P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT,TIME)values(?,?,?,?,?,?,?,?,?,?,?,?);";
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, id);
-    sqlite3_bind_text(stmt, 2, pNameJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt, 3, pNumberJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt, 4, pCreatorJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt, 5, pManagerJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt, 6, pEditorJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt, 7, pTelJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt, 8, pAddJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt, 9, pBriefJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt, 10, pKey, -1, NULL);
-    sqlite3_bind_text(stmt, 11, account, -1, NULL);
-    sqlite3_bind_text(stmt, 12,  time, -1, NULL);
+    sqlite3_reset(stmt_2);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_2, NULL);
+    sqlite3_bind_int(stmt_2, 1, id);
+    sqlite3_bind_text(stmt_2, 2, pNameJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 3, pNumberJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 4, pCreatorJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 5, pManagerJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 6, pEditorJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 7, pTelJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 8, pAddJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 9, pBriefJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 10, pKey, -1, NULL);
+    sqlite3_bind_text(stmt_2, 11, account, -1, NULL);
+    sqlite3_bind_text(stmt_2, 12,  time, -1, NULL);
     
-    thread_sqlite3_step(&stmt,db);
+    thread_sqlite3_step(&stmt_2,db);
     Finish:
  	sqlite3_finalize(stmt);
  	sqlite3_finalize(stmt_1);
+    sqlite3_finalize(stmt_2);
     sqlite3_close(db);   
 
     return M1_PROTOCOL_OK;	
@@ -489,24 +494,28 @@ int app_change_project_key(payload_t data)
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
+        fprintf(stderr, "SQLITE_ERROR\n");
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;
     }
     key = sqlite3_column_text(stmt, 0);
     if(key == NULL){
-    	ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }
-    id = sqlite3_column_int(stmt, 1);
-    if(id == NULL){
-    	ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }
-    if(strcmp(key, pKeyJson->valuestring) != 0){
+        fprintf(stderr, "get key error\n");
     	ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     fprintf(stdout, "key:%s\n", key);
+    id = sqlite3_column_int(stmt, 1);
+    if(id == NULL){
+        fprintf(stderr, "get id error\n");
+    	ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    if(strcmp(key, pKeyJson->valuestring) != 0){
+        fprintf(stderr, "key not match\n");
+    	ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
     sprintf(sql,"update project_table set P_KEY = \"%s\" where ID = %05d;",newKeyJson->valuestring, id);
     fprintf(stdout, "%s\n", sql);
     sqlite3_reset(stmt);

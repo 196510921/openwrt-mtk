@@ -72,6 +72,7 @@ int scenario_alarm_create_handle(payload_t data);
 int app_req_scenario(int clientFd, int sn);
 int app_req_scenario_name(int clientFd, int sn);
 void scenario_alarm_select(void);
+int app_exec_scenario(payload_t data);
 /*区域相关API*/
 int district_create_handle(payload_t data);
 int app_req_district(int clientFd, int sn);
@@ -148,6 +149,12 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_REQ_DIS_NAME                   	 0x0020
 /*APP 请求区域下设备*/
 #define TYPE_REQ_DIS_DEV                         0x0021
+/*APP下发网络管理信息*/
+#define TYPE_APP_NET_CONFIG                      0x0022
+/*APP修改子设备名称*/
+#define TYPE_APP_CHANGE_DEV_NAME                 0x0023
+/*APP执行场景*/
+#define TYPE_APP_EXEC_SCEN                		 0x0024
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/

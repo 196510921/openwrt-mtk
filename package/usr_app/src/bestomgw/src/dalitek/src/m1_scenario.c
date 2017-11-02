@@ -77,15 +77,6 @@ int scenario_exec(char* data, sqlite3* db)
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 		fprintf(stdout,"sql_1:%s\n",sql_1);
 		// /*单个子设备数据*/
-		// devDataObject = cJSON_CreateObject();
-		// if(NULL == devDataObject)
-  //       {
-  //           // create object faild, exit
-  //           fprintf(stdout,"devDataObject NULL\n");
-  //           cJSON_Delete(devDataObject);
-  //           return M1_PROTOCOL_FAILED;
-  //       }
-        //cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 		while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 			dev_id = sqlite3_column_text(stmt_1,0);
 			/*检查设备启/停状态*/
@@ -877,8 +868,34 @@ int app_req_scenario_name(int clientFd, int sn)
      		on_time_flag = 0;
      	}
      	
-     }
+    }
      //on_time_flag = 1;
      return on_time_flag;
  }
+
+/*APP执行场景*/
+int app_exec_scenario(payload_t data)
+{
+	fprintf(stdout,"app_exec_scenario\n");
+	char* scenario = NULL;
+	int ret = M1_PROTOCOL_OK,rc;
+
+	/*打开sqlite3数据库*/
+    sqlite3* db = NULL;
+    rc = sqlite3_open("dev_info.db", &db);  
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        return M1_PROTOCOL_FAILED;  
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
+	scenario = data.pdu->valuestring;
+	fprintf(stdout, "scenario:%s\n", scenario);
+	ret = scenario_exec(scenario, db);
+
+	sqlite3_close(db);
+
+	return ret;
+}
 
