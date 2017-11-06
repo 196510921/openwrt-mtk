@@ -309,7 +309,7 @@ static int AP_report_data_handle(payload_t data)
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    trigger_cb_handle();
+    //trigger_cb_handle();
 
     return ret;
 }

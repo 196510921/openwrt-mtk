@@ -482,79 +482,99 @@ static void linkage_check(sqlite3* db, char* link_name)
 int trigger_cb_handle(void)
 {
 	fprintf(stdout,"trigger_cb_handle\n");
-	int rc ,value, param_type, threshold;
+	int rc,rc1;
+	int value, param_type, threshold;
 	uint32_t rowid;
 	char* devId = NULL, *condition = NULL, *status = NULL, *link_name = NULL;
-	char sql[200], sql_1[200], sql_2[200];
+	char* sql = NULL, *sql_1 = NULL, *sql_2 = NULL;
 
-	sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL, *stmt_2 = NULL;
+    while(1){
+	    rc1 = fifo_read(&dev_data_fifo, &rowid);
+	    if(rc1 > 0){
+	    	sqlite3* db = NULL;
+    		sqlite3_stmt* stmt = NULL,*stmt_1 = NULL, *stmt_2 = NULL;
+	    	fprintf(stdout,"trigger_cb_handle\n");
+	    	sql = (char*)malloc(300);
+	    	sql_1 = (char*)malloc(300);
+	    	sql_2 = (char*)malloc(300);
+	    	rc = sqlite3_open("dev_info.db", &db);  
+		    if(rc){  
+		        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+		        goto Finish;  
+		    }else{  
+		        fprintf(stderr, "Opened database successfully\n");  
+		    }
 
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
+		    do{
+		    	/*check linkage table*/
+				sprintf(sql,"select VALUE, DEV_ID, TYPE from param_table where rowid = %05d;",rowid);
+				fprintf(stdout,"sql:%s\n",sql);
+				sqlite3_reset(stmt); 
+				do{
+					rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+					if(rc){
+						fprintf(stderr, "sqlite3_prepare_v2 failed: %s\n", sqlite3_errmsg(db));  
+						if(strstr(sqlite3_errmsg(db), "database is locked")){
+							usleep(100000);
+						}else{
+							goto Finish;
+						}
+					}else{
+						fprintf(stdout,"sqlite3_prepare_v2 ok\n");  		
+					}
+				}while(rc < 0);
 
-    while(fifo_read(&dev_data_fifo, &rowid)){
-		/*check linkage table*/
-		sprintf(sql,"select VALUE, DEV_ID, TYPE from param_table where rowid = %05d;",rowid);
-		//printf("sql:%s\n",sql);
-		sqlite3_reset(stmt); 
-		rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-		if(rc){
-			fprintf(stdout,"sqlite3_prepare_v2 failed\n");
-			return M1_PROTOCOL_FAILED;
-		}else{
-			fprintf(stdout,"sqlite3_prepare_v2 ok\n");  		
-		}
-		rc = thread_sqlite3_step(&stmt, db);
-		if(rc == SQLITE_ROW){
-		    value = sqlite3_column_int(stmt,0);
-		    devId = sqlite3_column_text(stmt,1);
-		    param_type = sqlite3_column_int(stmt,2);
-		    fprintf(stdout,"value:%05d, devId:%s, param_type%05d:\n",value, devId, param_type);
-		}
-	 	/*检查设备启/停状态*/
-	 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
-	 	sqlite3_reset(stmt_1);
-	 	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-	 	rc = thread_sqlite3_step(&stmt_1, db);
-		if(rc == SQLITE_ROW){		
-	    	status = sqlite3_column_text(stmt_1,0);
-		    /*设备处于启动状态*/
-		    if(strcmp(status,"ON") == 0){
-			    /*get linkage table*/
-			    sprintf(sql_1,"select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = \"%s\" and TYPE = %05d;",devId,param_type);
-				fprintf(stdout,"sql_1:%s\n",sql_1);
-				sqlite3_reset(stmt_1);
-				sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-				while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
-					threshold = sqlite3_column_int(stmt_1,0);
-			        condition = sqlite3_column_text(stmt_1,1);
-			        link_name = sqlite3_column_text(stmt_1,2);
-			        fprintf(stdout,"threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
-			 		status = linkage_status(condition, threshold, value);
-			 		/*set linkage table*/
-			 		sprintf(sql_2,"update link_trigger_table set STATUS = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d and LINK_NAME = \"%s\" ;",status,devId,param_type,link_name);
-			 		fprintf(stdout,"sql_2:%s\n",sql_2);
-			 		sqlite3_reset(stmt_2);
-					sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-					rc = thread_sqlite3_step(&stmt_2, db);
-					/*检查是否满足触发条件*/
-					linkage_check(db, link_name);
-			 	}
-		 	}
-	 	}
- 	}
+				rc = thread_sqlite3_step(&stmt, db);
+				if(rc == SQLITE_ROW){
+				    value = sqlite3_column_int(stmt,0);
+				    devId = sqlite3_column_text(stmt,1);
+				    param_type = sqlite3_column_int(stmt,2);
+				    fprintf(stdout,"value:%05d, devId:%s, param_type%05d:\n",value, devId, param_type);
+				}
+			 	/*检查设备启/停状态*/
+			 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
+			 	sqlite3_reset(stmt_1);
+			 	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+			 	rc = thread_sqlite3_step(&stmt_1, db);
+				if(rc == SQLITE_ROW){		
+			    	status = sqlite3_column_text(stmt_1,0);
+				    /*设备处于启动状态*/
+				    if(strcmp(status,"ON") == 0){
+					    /*get linkage table*/
+					    sprintf(sql_1,"select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = \"%s\" and TYPE = %05d;",devId,param_type);
+						fprintf(stdout,"sql_1:%s\n",sql_1);
+						sqlite3_reset(stmt_1);
+						sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+						while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
+							threshold = sqlite3_column_int(stmt_1,0);
+					        condition = sqlite3_column_text(stmt_1,1);
+					        link_name = sqlite3_column_text(stmt_1,2);
+					        fprintf(stdout,"threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
+					 		status = linkage_status(condition, threshold, value);
+					 		/*set linkage table*/
+					 		sprintf(sql_2,"update link_trigger_table set STATUS = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d and LINK_NAME = \"%s\" ;",status,devId,param_type,link_name);
+					 		fprintf(stdout,"sql_2:%s\n",sql_2);
+					 		sqlite3_reset(stmt_2);
+							sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+							rc = thread_sqlite3_step(&stmt_2, db);
+							/*检查是否满足触发条件*/
+							linkage_check(db, link_name);
+					 	}
+				 	}
+			 	}	
+		    	rc1 = fifo_read(&dev_data_fifo, &rowid);
+		    }while(rc1 > 0);
 
- 	sqlite3_finalize(stmt);
- 	sqlite3_finalize(stmt_1);
- 	sqlite3_finalize(stmt_2);
-    sqlite3_close(db);
-     
+		    Finish:
+		    free(sql);
+		    free(sql_1);
+		    free(sql_2);
+		    sqlite3_finalize(stmt);
+		 	sqlite3_finalize(stmt_1);
+		 	sqlite3_finalize(stmt_2);
+		    sqlite3_close(db);
+	    }
+    }   
 }
 
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid)
