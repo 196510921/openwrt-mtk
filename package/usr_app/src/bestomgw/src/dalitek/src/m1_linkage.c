@@ -360,16 +360,17 @@ void linkage_task(void)
 	int rc, rc1;
 	uint32_t rowid;
 	char *exec_type = NULL,*exec_id = NULL, *link_name =  NULL;
-	char* sql = NULL;
+	//char* sql = NULL;
+	char sql[200];
 	sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
 
-    while(1){
+    //while(1){
 	    do{
 	    	rc1 = fifo_read(&link_exec_fifo, &rowid);
 	    	if(rc1 > 0){
 	    		fprintf(stdout,"linkage_task\n");
-	    		sql = (char*)malloc(300);
+	    		//sql = (char*)malloc(300);
 	    		rc = sqlite3_open("dev_info.db", &db);  
 			    if(rc){  
 			        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
@@ -382,7 +383,6 @@ void linkage_task(void)
 				sqlite3_reset(stmt);
 				sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 				rc = thread_sqlite3_step(&stmt, db);
-				
 				if(rc == SQLITE_ROW){
 					exec_type = sqlite3_column_text(stmt,0);
 					exec_id = sqlite3_column_text(stmt,1);
@@ -395,12 +395,12 @@ void linkage_task(void)
 				}
 
 				Finish:
-				free(sql);
+				//free(sql);
 				sqlite3_finalize(stmt);
 				sqlite3_close(db);
 	    	}
 	    }while(rc1 > 0);
-	}
+	//}
 
 }
 
