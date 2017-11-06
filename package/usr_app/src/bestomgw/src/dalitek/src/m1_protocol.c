@@ -171,7 +171,7 @@ void data_handle(void)
         }
 
         cJSON_Delete(rootJson);
-        linkage_task();
+        //linkage_task();
     }
 }
 

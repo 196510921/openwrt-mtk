@@ -360,48 +360,50 @@ void linkage_task(void)
 	int rc, rc1;
 	uint32_t rowid;
 	char *exec_type = NULL,*exec_id = NULL, *link_name =  NULL;
-	//char* sql = NULL;
-	char sql[200];
-	sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL;
+    while(1){
+	    rc1 = fifo_read(&link_exec_fifo, &rowid);
+	    if(rc1 > 0){
+	    	char* sql = NULL;
+			sqlite3* db = NULL;
+    		sqlite3_stmt* stmt = NULL;
+		    sql = (char*)malloc(300);
+			rc = sqlite3_open("dev_info.db", &db);  
+			if(rc){  
+			    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+			    goto Finish;
+			}else{  
+			    fprintf(stderr, "Opened database successfully\n");  
+			}
 
-    //while(1){
-	    do{
-	    	rc1 = fifo_read(&link_exec_fifo, &rowid);
-	    	if(rc1 > 0){
-	    		fprintf(stdout,"linkage_task\n");
-	    		//sql = (char*)malloc(300);
-	    		rc = sqlite3_open("dev_info.db", &db);  
-			    if(rc){  
-			        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-			        goto Finish;
-			    }else{  
-			        fprintf(stderr, "Opened database successfully\n");  
-			    }
-			    sprintf(sql,"select EXEC_TYPE, EXEC_ID, LINK_NAME from linkage_table where rowid = %05d;",rowid);
-				fprintf(stdout,"sql:%s\n", sql);
-				sqlite3_reset(stmt);
-				sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-				rc = thread_sqlite3_step(&stmt, db);
-				if(rc == SQLITE_ROW){
-					exec_type = sqlite3_column_text(stmt,0);
-					exec_id = sqlite3_column_text(stmt,1);
-					link_name = sqlite3_column_text(stmt,2);
-					if(strcmp(exec_type, "scenario") == 0){
-						scenario_exec(exec_id, db);
-					}else{
-						device_exec(link_name, db);			
+		   	do{
+		   		if(rc1 > 0){
+		   			fprintf(stdout,"linkage_task\n");
+			    	sprintf(sql,"select EXEC_TYPE, EXEC_ID, LINK_NAME from linkage_table where rowid = %05d;",rowid);
+					fprintf(stdout,"sql:%s\n", sql);
+					sqlite3_reset(stmt);
+					sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+					rc = thread_sqlite3_step(&stmt, db);
+					if(rc == SQLITE_ROW){
+						exec_type = sqlite3_column_text(stmt,0);
+						exec_id = sqlite3_column_text(stmt,1);
+						link_name = sqlite3_column_text(stmt,2);
+						if(strcmp(exec_type, "scenario") == 0){
+							scenario_exec(exec_id, db);
+						}else{
+							device_exec(link_name, db);			
+						}
 					}
-				}
+		   			rc1 = fifo_read(&link_exec_fifo, &rowid);
+		   		}
+		   	}while(rc1 > 0);
 
-				Finish:
-				//free(sql);
-				sqlite3_finalize(stmt);
-				sqlite3_close(db);
-	    	}
-	    }while(rc1 > 0);
-	//}
-
+			Finish:
+			free(sql);
+			sqlite3_finalize(stmt);
+			sqlite3_close(db);
+		}
+		usleep(100000);
+	}
 }
 
 static char* linkage_status(char* condition, int threshold, int value)

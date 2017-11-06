@@ -1677,7 +1677,7 @@ void SRPC_RxCB(int clientFd)
 		msg->len = 0;
 		msg->clientFd = clientFd;
 	}
-	while(byteToRead)
+	while(byteToRead > 0)
 	{
 #if 1	 
 		byteRead = read(clientFd, msg->data + msg->len, 1024);
