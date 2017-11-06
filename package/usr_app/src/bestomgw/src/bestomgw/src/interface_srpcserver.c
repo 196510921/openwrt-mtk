@@ -1690,10 +1690,6 @@ void SRPC_RxCB(int clientFd)
 				puts("Adding msg to fifo\n");
 			}
 		}
-			//thpool_add_work(thpool, (void*)data_handle, NULL);
-			//data_handle();
-
-
 
 		// byteRead = 0;
 		// byteRead += read(clientFd, read_buf, sizeof(read_buf));

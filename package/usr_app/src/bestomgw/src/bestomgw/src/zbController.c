@@ -66,7 +66,7 @@ static void socket_poll(void);
 int main(int argc, char* argv[])
 {
 	int retval = 0;
-	pthread_t t1,t2,t3,t4,t5;
+	pthread_t t1,t2,t3,t4,t5,t6;
 
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 	SRPC_Init();
@@ -77,12 +77,14 @@ int main(int argc, char* argv[])
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
 	pthread_create(&t5,NULL,data_handle,NULL);
+	//pthread_create(&t6,NULL,linkage_task,NULL);
 	//pthread_create(&t5,NULL,udp_broadcast_server,NULL);
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
 	pthread_join(t5, NULL);
+	//pthread_join(t6, NULL);
 	//pthread_join(t5, NULL);
 	
 	return retval;

@@ -61,7 +61,7 @@ void data_handle(void);
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
 void data_update_cb(int id);
 int trigger_cb_handle(void);
-int linkage_task(void);
+void linkage_task(void);
 int linkage_msg_handle(payload_t data);
 int app_req_linkage(int clientFd, int sn);
 int app_linkage_enable(payload_t data);
