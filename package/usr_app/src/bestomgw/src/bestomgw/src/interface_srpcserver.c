@@ -1660,6 +1660,7 @@ void SRPC_RxCB(int clientFd)
 	int byteToRead;
 	int byteRead;
 	int rtn;
+	m1_package_t * msg  = NULL;
 
 	printf("SRPC_RxCB++[%x]\n", clientFd);
 
@@ -1670,32 +1671,48 @@ void SRPC_RxCB(int clientFd)
 		printf("SRPC_RxCB: Socket error\n");
 	}
 	printf("byteToRead:%d\n",byteToRead);
+	if(byteToRead > 0){
+		msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
+		msg->data = (char*)mem_poll_malloc(byteToRead);
+		msg->len = 0;
+		msg->clientFd = clientFd;
+	}
 	while(byteToRead)
 	{
 #if 1	 
-		unsigned char buffer[2048*2] = {0};
-		char read_buf[2048];
-		int i, head = 0, tail = 0; //
-		int nready, nread, dlen;
-
-		byteRead = 0;
-		byteRead += read(clientFd, read_buf, sizeof(read_buf));
-		byteToRead -= byteRead;
-		printf("byteRead:%d\n",byteRead);
-		if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail)){
-			memcpy(&buffer[tail], read_buf, byteRead);
-			tail += byteRead;
-
-			m1_package_t * msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
-			msg->len = byteRead;
-			msg->clientFd = clientFd;
-			msg->data = (char*)mem_poll_malloc(byteRead);
-			memcpy(msg->data, read_buf, byteRead);
-			fifo_write(&msg_fifo, msg);
-			puts("Adding task to threadpool\n");
+		byteRead = read(clientFd, msg->data + msg->len, 1024);
+		if(byteRead > 0){
+			msg->len += byteRead;
+			byteToRead -= byteRead;
+			printf("byteRead:%d\n",byteRead);		
+			if(byteToRead <= 0){	
+				fifo_write(&msg_fifo, msg);
+				puts("Adding msg to fifo\n");
+			}
+		}
 			//thpool_add_work(thpool, (void*)data_handle, NULL);
 			//data_handle();
-		}
+
+
+
+		// byteRead = 0;
+		// byteRead += read(clientFd, read_buf, sizeof(read_buf));
+		// byteToRead -= byteRead;
+		// printf("byteRead:%d\n",byteRead);
+		// if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail)){
+		// 	memcpy(&buffer[tail], read_buf, byteRead);
+		// 	tail += byteRead;
+
+		// 	m1_package_t * msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
+		// 	msg->len = byteRead;
+		// 	msg->clientFd = clientFd;
+		// 	msg->data = (char*)mem_poll_malloc(byteRead);
+		// 	memcpy(msg->data, read_buf, byteRead);
+		// 	fifo_write(&msg_fifo, msg);
+		// 	puts("Adding msg to fifo\n");
+		// 	//thpool_add_work(thpool, (void*)data_handle, NULL);
+		// 	//data_handle();
+		// }
 		 // if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail))
 		 // {
 		 //     memcpy(&buffer[tail], read_buf, byteRead);
