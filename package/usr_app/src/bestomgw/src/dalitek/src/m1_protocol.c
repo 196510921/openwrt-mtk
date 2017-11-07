@@ -584,9 +584,12 @@ static int APP_read_handle(payload_t data, int sn)
     char* sql = (char*)malloc(300);
 
     fprintf(stdout,"APP_read_handle\n");
-    if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
-    
-    rc = sqlite3_open(db_path, &db); 
+    if(data.pdu == NULL){
+        ret = M1_PROTOCOL_FAILED;  
+        goto Finish;
+    }
+    //rc = sqlite3_open(db_path, &db); 
+    rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READONLY, NULL); 
     if( rc ){  
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
         ret =  M1_PROTOCOL_FAILED;  
@@ -646,7 +649,6 @@ static int APP_read_handle(payload_t data, int sn)
         paramTypeJson = cJSON_GetObjectItem(devDataJson, "paramType");
         number2 = cJSON_GetArraySize(paramTypeJson);
         /*get sql data json*/
-        //sprintf(sql, "select DEV_NAME from param_table where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
         sprintf(sql, "select DEV_NAME from all_dev where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
         fprintf(stdout,"%s\n", sql);
         row_n = sql_row_number(db, sql);
