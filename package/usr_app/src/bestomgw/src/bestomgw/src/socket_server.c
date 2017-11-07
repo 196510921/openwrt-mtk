@@ -429,25 +429,31 @@ void thread_socketSeverSend(void)
 int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 {
 	//m1_package_t * msg = socket_msg_alloc();
-	m1_package_t * msg = (m1_package_t *)mem_poll_malloc(sizeof(m1_package_t));
-	if(msg == NULL)
+	// m1_package_t * msg = (m1_package_t *)mem_poll_malloc(sizeof(m1_package_t));
+	// if(msg == NULL)
+	// {
+	// 	fprintf(stdout,"malloc failed\n");
+	// 	return ;
+	// }
+	// fprintf(stdout,"1.msg:%x\n", msg);
+	// msg->len = len;
+	// msg->clientFd = fdClient;
+	// msg->data = (char*)mem_poll_malloc(len);
+	// if(msg->data == NULL)
+	// {
+	// 	fprintf(stdout,"malloc failed\n");
+	// 	return ;
+	// }
+	// fprintf(stdout,"1.msg->data:%x\n", msg->data);
+	// memcpy(msg->data, buf, len);
+	// fifo_write(&tx_fifo, msg);
+	// puts("Adding msg to tx fifo\n");	
+	int rtn;
+	rtn = write(fdClient, buf, len);
+	if (rtn < 0)
 	{
-		fprintf(stdout,"malloc failed\n");
-		return ;
+		fprintf(stdout,"ERROR writing to socket %d\n", fdClient);
 	}
-	fprintf(stdout,"1.msg:%x\n", msg);
-	msg->len = len;
-	msg->clientFd = fdClient;
-	msg->data = (char*)mem_poll_malloc(len);
-	if(msg->data == NULL)
-	{
-		fprintf(stdout,"malloc failed\n");
-		return ;
-	}
-	fprintf(stdout,"1.msg->data:%x\n", msg->data);
-	memcpy(msg->data, buf, len);
-	fifo_write(&tx_fifo, msg);
-	puts("Adding msg to tx fifo\n");	
 	return 0;
 }
 

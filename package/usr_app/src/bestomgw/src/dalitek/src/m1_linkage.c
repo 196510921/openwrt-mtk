@@ -360,7 +360,7 @@ void linkage_task(void)
 	int rc, rc1;
 	uint32_t rowid;
 	char *exec_type = NULL,*exec_id = NULL, *link_name =  NULL;
-    //while(1){
+    while(1){
 	    rc1 = fifo_read(&link_exec_fifo, &rowid);
 	    if(rc1 > 0){
 	    	char* sql = NULL;
@@ -403,7 +403,7 @@ void linkage_task(void)
 			sqlite3_close(db);
 		}
 		//usleep(100000);
-	//}
+	}
 }
 
 static char* linkage_status(char* condition, int threshold, int value)
@@ -488,7 +488,7 @@ int trigger_cb_handle(void)
 	char* devId = NULL, *condition = NULL, *status = NULL, *link_name = NULL;
 	char* sql = NULL, *sql_1 = NULL, *sql_2 = NULL;
 
-    //while(1){
+    while(1){
 	    rc1 = fifo_read(&dev_data_fifo, &rowid);
 	    if(rc1 > 0){
 	    	sqlite3* db = NULL;
@@ -574,7 +574,7 @@ int trigger_cb_handle(void)
 		 	sqlite3_finalize(stmt_2);
 		    sqlite3_close(db);
 	    }
-    //}   
+    }   
 }
 
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid)
