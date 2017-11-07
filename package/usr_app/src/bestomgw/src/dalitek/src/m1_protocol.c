@@ -50,8 +50,9 @@ static uint32_t tx_buf[256];
 
 void m1_protocol_init(void)
 {
-    create_sql_table();
+    //sqlite3_config(SQLITE_CONFIG_SERIALIZED);
     sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
+    create_sql_table();
     fprintf(stdout,"threadsafe:%d\n",sqlite3_threadsafe());
     fifo_init(&dev_data_fifo, dev_data_buf, 256);
     /*linkage execution fifo*/
