@@ -1653,8 +1653,6 @@ void SRPC_ConnectCB(int clientFd)
  *
  * @return  Status
  ***************************************************************************************************/
-extern fifo_t msg_fifo;
-//extern threadpool thpool;
 void SRPC_RxCB(int clientFd)
 {
 	int byteToRead;
@@ -1679,69 +1677,17 @@ void SRPC_RxCB(int clientFd)
 	}
 	while(byteToRead > 0)
 	{
-#if 1	 
+	 
 		byteRead = read(clientFd, msg->data + msg->len, 1024);
 		if(byteRead > 0){
 			msg->len += byteRead;
 			byteToRead -= byteRead;
 			printf("byteRead:%d\n",byteRead);		
-			if(byteToRead <= 0){	
-				fifo_write(&msg_fifo, msg);
-				puts("Adding msg to fifo\n");
+			if(byteToRead <= 0){
+				//sql读取、写入两个队列版本
+				data_handle(msg);
 			}
-		}
-
-		// byteRead = 0;
-		// byteRead += read(clientFd, read_buf, sizeof(read_buf));
-		// byteToRead -= byteRead;
-		// printf("byteRead:%d\n",byteRead);
-		// if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail)){
-		// 	memcpy(&buffer[tail], read_buf, byteRead);
-		// 	tail += byteRead;
-
-		// 	m1_package_t * msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
-		// 	msg->len = byteRead;
-		// 	msg->clientFd = clientFd;
-		// 	msg->data = (char*)mem_poll_malloc(byteRead);
-		// 	memcpy(msg->data, read_buf, byteRead);
-		// 	fifo_write(&msg_fifo, msg);
-		// 	puts("Adding msg to fifo\n");
-		// 	//thpool_add_work(thpool, (void*)data_handle, NULL);
-		// 	//data_handle();
-		// }
-		 // if(byteRead > 0 && byteRead < (sizeof(read_buf) - tail))
-		 // {
-		 //     memcpy(&buffer[tail], read_buf, byteRead);
-		 //     tail += byteRead;
-		
-		 //     //i = 0;
-		 //     //while(i < tail && buffer[i] != 0x3A) i++;
-		 //    	// while(i < tail) i++;
-				
-		 //     //while(buffer[i] == 0x3A && buffer[i+1] <= tail-i)
-		 //     //{
-		 // 	//	memset(data, 0, sizeof(data));
-		 // 	//	dlen = buffer[i+1]*256+buffer[i+2];
-		 // 	//	memcpy(data, &buffer[i], dlen);
-				
-		 // 	//	SRPC_ProcessIncoming(&data[3], dlen - 3, clientFd);
-		 // 	SRPC_ProcessIncoming(read_buf, byteRead, clientFd);
-
-				
-		//		head = i + dlen;
-		//		tail -= head;
-		//		if(tail > 0)
-		//		{
-		//			memmove(buffer, &buffer[head], tail);
-		//		}
-
-				
-		//		i = 0;
-		//		while(i < tail && buffer[i] != 0x3A) i++;
-		//    }
-		
-		// }
-#endif						
+		}						
 	}
 
 	printf("SRPC_RxCB--\n");

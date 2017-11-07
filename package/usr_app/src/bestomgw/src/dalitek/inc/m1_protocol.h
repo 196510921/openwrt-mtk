@@ -55,8 +55,9 @@ typedef struct _scen_alarm_t{
  int minutes;
 }scen_alarm_t;
 
-//void data_handle(m1_package_t* package);
-void data_handle(void);
+void data_handle(m1_package_t* package);
+void sql_rd_handle(void);
+void sql_wt_handle(void);
 /*联动相关API*/
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
 void data_update_cb(int id);

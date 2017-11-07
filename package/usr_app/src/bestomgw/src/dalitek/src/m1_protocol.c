@@ -37,65 +37,140 @@ static int app_change_device_name(payload_t data);
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
-fifo_t msg_fifo;
+fifo_t msg_rd_fifo;
+fifo_t msg_wt_fifo;
 fifo_t tx_fifo;
 /*优先级队列*/
 PNode head;
 static uint32_t dev_data_buf[256];
 static uint32_t link_exec_buf[256];
-static uint32_t msg_buf[256];
+static uint32_t msg_rd_buf[256];
+static uint32_t msg_wt_buf[256];
 static uint32_t tx_buf[256];
 
 void m1_protocol_init(void)
 {
     create_sql_table();
     sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
+    fprintf(stdout,"threadsafe:%d\n",sqlite3_threadsafe());
     fifo_init(&dev_data_fifo, dev_data_buf, 256);
+    /*linkage execution fifo*/
     fifo_init(&link_exec_fifo, link_exec_buf, 256);
-    fifo_init(&msg_fifo, msg_buf, 256);
+    /*sql read fifo*/
+    fifo_init(&msg_rd_fifo, msg_rd_buf, 256);
+    /*sql write fifo*/
+    fifo_init(&msg_wt_fifo, msg_wt_buf, 256);
+    /*Tx message fifo*/
     fifo_init(&tx_fifo, tx_buf, 256);
     Init_PQueue(&head);
 }
 
-//void data_handle(m1_package_t* package)
-void data_handle(void)
+void data_handle(m1_package_t* package)
+{
+    fprintf(stdout,"data_handle\n");
+    int pduType;
+    cJSON* rootJson = NULL;
+    cJSON* pduJson = NULL;
+    cJSON* pduTypeJson = NULL;
+    rootJson = cJSON_Parse(package->data);
+    if(NULL == rootJson){
+        fprintf(stdout,"rootJson null\n");
+        return;   
+    }
+    pduJson = cJSON_GetObjectItem(rootJson, "pdu");
+    if(NULL == pduJson){
+        fprintf(stdout,"pdu null\n");
+        return;
+    }
+    pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
+    if(NULL == pduTypeJson){
+        fprintf(stdout,"pduType null\n");
+        return;
+    }
+
+    pduType = pduTypeJson->valueint;
+    switch(pduType){
+            /*sql read*/
+            case TYPE_DEV_READ: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_ADDED_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_DEV_NET_CONTROL: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_AP_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DEV_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_COMMON_RSP: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_SCEN_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_LINK_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DISTRICT_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_SCEN_NAME_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_ACCOUNT_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_ACCOUNT_CONFIG_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_GET_PORJECT_NUMBER: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DIS_SCEN_NAME: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DIS_NAME: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DIS_DEV: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_GET_PROJECT_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_APP_CONFIRM_PROJECT: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_APP_EXEC_SCEN: fifo_write(&msg_rd_fifo, package); break;
+            /*sql write*/
+            case TYPE_REPORT_DATA: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_DEV_WRITE: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_ECHO_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_AP_REPORT_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_AP_REPORT_AP_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_CREATE_LINKAGE: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_CREATE_SCENARIO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_CREATE_DISTRICT: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_SCENARIO_ALARM: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_COMMON_OPERATE: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_AP_HEARTBEAT_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_LINK_ENABLE_SET: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_APP_LOGIN: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_SEND_ACCOUNT_CONFIG_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_APP_CREATE_PROJECT: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_PROJECT_KEY_CHANGE: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_PROJECT_INFO_CHANGE:fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_APP_CHANGE_DEV_NAME: fifo_write(&msg_wt_fifo, package); break;
+
+            default: fprintf(stdout,"pdu type not match\n");break;
+    }
+
+}
+
+/*数据库读取操作处理*/
+void sql_rd_handle(void)
 {
     int rc, ret;
-    payload_t pdu;
-    rsp_data_t rspData;
+    int pduType;
+    uint32_t* msg = NULL;
     cJSON* rootJson = NULL;
     cJSON* pduJson = NULL;
     cJSON* pduTypeJson = NULL;
     cJSON* snJson = NULL;
     cJSON* pduDataJson = NULL;
-    int pduType;
+    payload_t pdu;
+    rsp_data_t rspData;
 
-    uint32_t* msg = NULL;
     while(1){
-        ret = fifo_read(&msg_fifo, &msg);
+        ret = fifo_read(&msg_rd_fifo, &msg);
         if(ret == 0){
             continue;
         }
         rc = M1_PROTOCOL_NO_RSP;
-        fprintf(stdout,"data_handle\n");
+        fprintf(stdout,"sql_rd_handle\n");
         m1_package_t* package = (m1_package_t*)msg;
         fprintf(stdout,"Rx message:%s\n",package->data);
         rootJson = cJSON_Parse(package->data);
         if(NULL == rootJson){
             fprintf(stdout,"rootJson null\n");
-            //return;
             continue;   
         }
         pduJson = cJSON_GetObjectItem(rootJson, "pdu");
         if(NULL == pduJson){
             fprintf(stdout,"pdu null\n");
-            //return;
             continue;
         }
         pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
         if(NULL == pduTypeJson){
             fprintf(stdout,"pduType null\n");
-            //return;
             continue;
         }
         pduType = pduTypeJson->valueint;
@@ -104,7 +179,102 @@ void data_handle(void)
         snJson = cJSON_GetObjectItem(rootJson, "sn");
         if(NULL == snJson){
             fprintf(stdout,"sn null\n");
-            //return;
+            continue;
+        }
+        rspData.sn = snJson->valueint;
+
+        pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
+        if(NULL == pduDataJson){
+            fprintf(stdout,"devData null”\n");
+
+        }
+        /*pdu*/ 
+        pdu.clientFd = package->clientFd;
+        pdu.pdu = pduDataJson;
+
+        rspData.clientFd = package->clientFd;
+        fprintf(stdout,"pduType:%x\n",pduType);
+        switch(pduType){
+            case TYPE_DEV_READ: APP_read_handle(pdu, rspData.sn); break;
+            case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(rspData.clientFd , rspData.sn); break;
+            case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
+            case TYPE_REQ_AP_INFO: M1_report_ap_info(rspData.clientFd , rspData.sn); break;
+            case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu, rspData.sn); break;
+            case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
+            case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(rspData.clientFd, rspData.sn);break;
+            case TYPE_REQ_LINK_INFO: rc = app_req_linkage(rspData.clientFd, rspData.sn);break;
+            case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(rspData.clientFd, rspData.sn); break;
+            case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(rspData.clientFd, rspData.sn);break;
+            case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu, rspData.sn);break;
+            case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu, rspData.sn);break;
+            case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(rspData.clientFd, rspData.sn); break;
+            case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu, rspData.sn); break;
+            case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu, rspData.sn); break;
+            case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu, rspData.sn); break;
+            case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(rspData.clientFd, rspData.sn);break;
+            case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
+            case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
+
+            default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
+        }
+
+        if(rc != M1_PROTOCOL_NO_RSP){
+            if(rc == M1_PROTOCOL_OK)
+                rspData.result = RSP_OK;
+            else
+                rspData.result = RSP_FAILED;
+            common_rsp(rspData);
+        }
+
+        cJSON_Delete(rootJson);
+        /*10ms*/
+        usleep(10000);
+    }
+}
+/*数据库写入操作处理*/
+void sql_wt_handle(void)
+{
+    int rc, ret;
+    int pduType;
+    uint32_t* msg = NULL;
+    cJSON* rootJson = NULL;
+    cJSON* pduJson = NULL;
+    cJSON* pduTypeJson = NULL;
+    cJSON* snJson = NULL;
+    cJSON* pduDataJson = NULL;
+    payload_t pdu;
+    rsp_data_t rspData;
+
+    while(1){
+        ret = fifo_read(&msg_wt_fifo, &msg);
+        if(ret == 0){
+            continue;
+        }
+        rc = M1_PROTOCOL_NO_RSP;
+        fprintf(stdout,"sql_rd_handle\n");
+        m1_package_t* package = (m1_package_t*)msg;
+        fprintf(stdout,"Rx message:%s\n",package->data);
+        rootJson = cJSON_Parse(package->data);
+        if(NULL == rootJson){
+            fprintf(stdout,"rootJson null\n");
+            continue;   
+        }
+        pduJson = cJSON_GetObjectItem(rootJson, "pdu");
+        if(NULL == pduJson){
+            fprintf(stdout,"pdu null\n");
+            continue;
+        }
+        pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
+        if(NULL == pduTypeJson){
+            fprintf(stdout,"pduType null\n");
+            continue;
+        }
+        pduType = pduTypeJson->valueint;
+        rspData.pduType = pduType;
+
+        snJson = cJSON_GetObjectItem(rootJson, "sn");
+        if(NULL == snJson){
+            fprintf(stdout,"sn null\n");
             continue;
         }
         rspData.sn = snJson->valueint;
@@ -122,42 +292,23 @@ void data_handle(void)
         fprintf(stdout,"pduType:%x\n",pduType);
         switch(pduType){
             case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-            case TYPE_DEV_READ: APP_read_handle(pdu, rspData.sn); break;
             case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson);break;
             case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
-            case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(rspData.clientFd , rspData.sn); break;
-            case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
-            case TYPE_REQ_AP_INFO: M1_report_ap_info(rspData.clientFd , rspData.sn); break;
-            case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu, rspData.sn); break;
             case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
             case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
-            case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
             case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
             case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
             case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
             case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
             case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
-            case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(rspData.clientFd, rspData.sn);break;
-            case TYPE_REQ_LINK_INFO: rc = app_req_linkage(rspData.clientFd, rspData.sn);break;
-            case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(rspData.clientFd, rspData.sn); break;
-            case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(rspData.clientFd, rspData.sn);break;
             case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
-            case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu, rspData.sn);break;
-            case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu, rspData.sn);break;
             case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
             case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
             case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
-            case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(rspData.clientFd, rspData.sn); break;
-            case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu, rspData.sn); break;
-            case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu, rspData.sn); break;
-            case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu, rspData.sn); break;
             case TYPE_APP_CREATE_PROJECT: rc = app_create_project(pdu);break;
             case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
-            case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(rspData.clientFd, rspData.sn);break;
             case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
-            case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
             case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
-            case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
 
             default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
         }
@@ -171,7 +322,8 @@ void data_handle(void)
         }
 
         cJSON_Delete(rootJson);
-        //linkage_task();
+        /*10ms*/
+        usleep(10000);
     }
 }
 
@@ -309,7 +461,7 @@ static int AP_report_data_handle(payload_t data)
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    //trigger_cb_handle();
+    trigger_cb_handle();
 
     return ret;
 }
