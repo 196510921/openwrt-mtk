@@ -15,6 +15,7 @@ typedef struct _fifo_t {
     uint32_t rptr;
 }fifo_t;
 
+
 /*优先级队列*/
 typedef struct _Item
 {
@@ -32,8 +33,8 @@ void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
 void fifo_write(fifo_t* fifo, uint32_t d);
 uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
 
-uint32_t mem_poll_malloc(uint32_t len);
 
+char* mem_poll_malloc(uint32_t len);
 void Init_PQueue(PQueue pQueue);
 void Push(PQueue pQueue, Item item);
 bool Pop(PQueue pQueue, Item *pItem);

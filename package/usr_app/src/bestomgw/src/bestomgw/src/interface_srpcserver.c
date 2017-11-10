@@ -1653,12 +1653,39 @@ void SRPC_ConnectCB(int clientFd)
  *
  * @return  Status
  ***************************************************************************************************/
+static int json_checker(char* str, int len)
+{
+	int i;
+	int left = 0, right = 0;
+
+	if((str == NULL) || *str != 123)
+		return 0;
+
+	for(i = 0; i < len; i++){
+		if(str+i == NULL)
+			return 0;
+		if(*(str + i) ==  123) // '{':123
+			left++;
+		else if(*(str + i) ==  125) // '}'125
+			right++;
+	}
+	if((left == right) && left != 0 && right != 0)
+		return 1;
+
+	return 0;
+}
+
 void SRPC_RxCB(int clientFd)
 {
-	int byteToRead;
-	int byteRead;
-	int rtn;
-	m1_package_t * msg  = NULL;
+	int byteToRead = 0;
+	int byteRead = 0;
+	int rtn = 0;
+	int JsonComplete = 0;
+	static char buf[1024*10] = {0};
+	static int LiveclientFd = 0;
+	static int len = 0;
+	static int JsonFlag = 0;
+	m1_package_t* msg  = NULL;
 
 	printf("SRPC_RxCB++[%x]\n", clientFd);
 
@@ -1670,23 +1697,44 @@ void SRPC_RxCB(int clientFd)
 	}
 	printf("byteToRead:%d\n",byteToRead);
 	if(byteToRead > 0){
-		msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
-		msg->data = (char*)mem_poll_malloc(byteToRead);
-		msg->len = 0;
-		msg->clientFd = clientFd;
+		if(JsonFlag == 0){
+			memset(buf, 0 , 1024*10);
+			len = 0;
+			LiveclientFd = clientFd;	
+			JsonFlag = 1;
+		}
 	}
 	while(byteToRead > 0)
 	{
-		byteRead = read(clientFd, msg->data + msg->len, 1024);
+		byteRead = read(clientFd, buf + len, 1024);
 		if(byteRead > 0){
-			msg->len += byteRead;
+			len += byteRead;
 			byteToRead -= byteRead;
-			printf("byteRead:%d\n",byteRead);		
-			if(byteToRead <= 0){
-				//sql读取、写入两个队列版本
-				data_handle(msg);
-			}
-		}						
+			fprintf(stdout,"msg->client:%03d,byteRead:%d, msg->len:%05d\n",LiveclientFd, byteRead, len);		
+		}					
+	}
+	if(JsonFlag == 1){
+		JsonComplete = json_checker(buf, len);
+	    printf("1\n");
+	    if(1 == JsonComplete){
+	    	printf("2\n");
+	    	fprintf(stdout, "msg complete!\n");
+	    	printf("3\n");
+	    	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
+	    	printf("4\n");
+	    	msg->clientFd = LiveclientFd;
+	    	msg->len = len;
+	    	msg->data = mem_poll_malloc(msg->len);
+	    	strcpy(msg->data,buf);
+	    	data_handle(msg);
+	    	JsonFlag = 0;
+	    }else{
+	    	if(clientFd != LiveclientFd){
+	    		JsonFlag = 0;	
+	    	}else{
+	    		fprintf(stdout, "msg waiting......\n");
+	    	}
+	    }
 	}
 
 	printf("SRPC_RxCB--\n");

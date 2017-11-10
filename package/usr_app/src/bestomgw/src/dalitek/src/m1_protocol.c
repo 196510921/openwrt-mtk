@@ -92,49 +92,49 @@ void data_handle(m1_package_t* package)
     }
 
     pduType = pduTypeJson->valueint;
-    switch(pduType){
-            /*sql read*/
-            case TYPE_DEV_READ: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_ADDED_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_DEV_NET_CONTROL: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_AP_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DEV_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_COMMON_RSP: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_SCEN_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_LINK_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DISTRICT_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_SCEN_NAME_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_ACCOUNT_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_ACCOUNT_CONFIG_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_GET_PORJECT_NUMBER: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DIS_SCEN_NAME: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DIS_NAME: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DIS_DEV: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_GET_PROJECT_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_APP_CONFIRM_PROJECT: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_APP_EXEC_SCEN: fifo_write(&msg_rd_fifo, package); break;
-            /*sql write*/
-            case TYPE_REPORT_DATA: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_DEV_WRITE: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_ECHO_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_AP_REPORT_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_AP_REPORT_AP_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_CREATE_LINKAGE: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_CREATE_SCENARIO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_CREATE_DISTRICT: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_SCENARIO_ALARM: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_COMMON_OPERATE: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_AP_HEARTBEAT_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_LINK_ENABLE_SET: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_APP_LOGIN: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_SEND_ACCOUNT_CONFIG_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_APP_CREATE_PROJECT: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_PROJECT_KEY_CHANGE: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_PROJECT_INFO_CHANGE:fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_APP_CHANGE_DEV_NAME: fifo_write(&msg_wt_fifo, package); break;
+    // switch(pduType){
+    //         /*sql read*/
+    //         case TYPE_DEV_READ: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_ADDED_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_DEV_NET_CONTROL: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_AP_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_DEV_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_COMMON_RSP: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_SCEN_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_LINK_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_DISTRICT_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_SCEN_NAME_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_ACCOUNT_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_ACCOUNT_CONFIG_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_GET_PORJECT_NUMBER: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_DIS_SCEN_NAME: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_DIS_NAME: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_REQ_DIS_DEV: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_GET_PROJECT_INFO: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_APP_CONFIRM_PROJECT: fifo_write(&msg_rd_fifo, package); break;
+    //         case TYPE_APP_EXEC_SCEN: fifo_write(&msg_rd_fifo, package); break;
+    //         /*sql write*/
+    //         case TYPE_REPORT_DATA: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_DEV_WRITE: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_ECHO_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_AP_REPORT_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_AP_REPORT_AP_INFO: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_CREATE_LINKAGE: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_CREATE_SCENARIO: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_CREATE_DISTRICT: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_SCENARIO_ALARM: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_COMMON_OPERATE: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_AP_HEARTBEAT_INFO: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_LINK_ENABLE_SET: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_APP_LOGIN: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_SEND_ACCOUNT_CONFIG_INFO: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_APP_CREATE_PROJECT: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_PROJECT_KEY_CHANGE: fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_PROJECT_INFO_CHANGE:fifo_write(&msg_wt_fifo, package); break;
+    //         case TYPE_APP_CHANGE_DEV_NAME: fifo_write(&msg_wt_fifo, package); break;
 
-            default: fprintf(stdout,"pdu type not match\n");break;
-    }
+    //         default: fprintf(stdout,"pdu type not match\n");break;
+    // }
 
 }
 

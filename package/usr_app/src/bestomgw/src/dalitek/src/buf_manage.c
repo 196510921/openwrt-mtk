@@ -35,10 +35,11 @@ uint32_t fifo_read(fifo_t* fifo, uint32_t* d)
     return 1;
 }
 
+
 /*固定长度内存空间分配*/
-uint32_t mem_poll_malloc(uint32_t len)
+char* mem_poll_malloc(uint32_t len)
 {
-	static uint32_t wptr = 0;
+	static char* wptr = NULL;
 
 	if(((wptr + len) > (fixed_buf + FIXED_BUF_LEN)) || ((wptr + len) < fixed_buf)){
 		wptr = fixed_buf;
@@ -48,6 +49,7 @@ uint32_t mem_poll_malloc(uint32_t len)
 	printf("wptr:%05d\n",wptr);
 	return wptr;
 }
+
 
 //初始化队列
 void Init_PQueue(PQueue pQueue)
