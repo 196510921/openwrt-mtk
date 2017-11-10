@@ -158,6 +158,16 @@ static int device_exec(char* data, sqlite3* db)
 int linkage_msg_handle(payload_t data)
 {
 	fprintf(stdout,"linkage_msg_handle\n");
+
+	int i,j;
+	int delay;
+	int id, id_1;
+	int rc, ret = M1_PROTOCOL_OK;
+	int number1, number2;
+	int row_number = 0;
+	char* time = (char*)malloc(30);
+	char* sql_1 = (char*)malloc(300);
+	char* errorMsg = NULL;
 	cJSON* linkNameJson = NULL;
 	cJSON* districtJson = NULL;
 	cJSON* logicalJson = NULL;
@@ -176,16 +186,13 @@ int linkage_msg_handle(payload_t data)
 	cJSON* valueJson = NULL;
 	cJSON* delayJson = NULL;
 	cJSON* delayArrayJson = NULL;
-
 	sqlite3* db = NULL;
 	sqlite3_stmt* stmt = NULL, *stmt_1 = NULL;
-	int id, id_1, rc, number1, i, j, number2, delay;
-	int row_number = 0;
-	char time[30];
-	char sql_1[200];
-	char* errorMsg = NULL;
 
-	if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
+	if(data.pdu == NULL){
+		ret = M1_PROTOCOL_FAILED;	
+		goto Finish;
+	} 
 	getNowTime(time);
 
 	/*获取收到数据包信息*/
@@ -194,8 +201,7 @@ int linkage_msg_handle(payload_t data)
     logicalJson = cJSON_GetObjectItem(data.pdu, "logical");
     execTypeJson = cJSON_GetObjectItem(data.pdu, "execType");
     triggerJson = cJSON_GetObjectItem(data.pdu, "trigger");
-    //executeJson = cJSON_GetObjectItem(data.pdu, "execute");
-    //executeArrayJson = cJSON_GetArrayItem(executeJson, 0);
+
     if(strcmp( execTypeJson->valuestring, "scenario") == 0){
     	executeJson = cJSON_GetObjectItem(data.pdu, "exeScen");
     	executeArrayJson = cJSON_GetArrayItem(executeJson, 0);
@@ -207,14 +213,8 @@ int linkage_msg_handle(payload_t data)
 	}
     fprintf(stdout,"linkName:%s, district:%s, logical:%s, execType:%s, scenName:%s\n",linkNameJson->valuestring,
     	districtJson->valuestring, logicalJson->valuestring, execTypeJson->valuestring, scenNameJson->valuestring);
-    /*打开sqlite3*/
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
+    /*获取sqlite3*/
+    db = data.db;
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         fprintf(stdout,"BEGIN\n");
 	   	/*检查联动是否存在*/
@@ -348,11 +348,13 @@ int linkage_msg_handle(payload_t data)
     }    
     sqlite3_free(errorMsg);
 
+    Finish:
+    free(time);
+    free(sql_1);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
-    sqlite3_close(db);
 
-    return M1_PROTOCOL_OK;
+    return ret;
 }
 
 void linkage_task(void)
@@ -402,7 +404,8 @@ void linkage_task(void)
 			sqlite3_finalize(stmt);
 			sqlite3_close(db);
 		}
-		//usleep(100000);
+		/*100ms*/
+	    usleep(100000);
 	}
 }
 
@@ -475,7 +478,6 @@ static void linkage_check(sqlite3* db, char* link_name)
 	}
 
 	sqlite3_finalize(stmt);
-	sqlite3_close(db);
 
 }
 
@@ -574,6 +576,8 @@ int trigger_cb_handle(void)
 		 	sqlite3_finalize(stmt_2);
 		    sqlite3_close(db);
 	    }
+	    /*100ms*/
+	    usleep(100000);
     }   
 }
 
@@ -590,12 +594,19 @@ void trigger_cb(void* udp, int type, char const* db_name, char const* table_name
 	
 }
 
-int app_req_linkage(int clientFd, int sn)
+int app_req_linkage(payload_t data)
 {
 	fprintf(stdout,"app_req_linkage\n");
 	/*数据包类型*/
+	int rc,ret = M1_PROTOCOL_OK;
+	int type, value, delay, pId;
 	int pduType = TYPE_M1_REPORT_LINK_INFO;
-	/*Json对象*/
+	char* sql = NULL;
+    char* sql_1 = (char*)malloc(300);
+    char* sql_2 = (char*)malloc(300);
+    char* link_name = NULL, *district = NULL, *logical = NULL;
+    char *exec_type = NULL, *exec_id = NULL,*enable = NULL;
+    char *ap_id = NULL, *dev_id = NULL, *condition = NULL, *dev_name = NULL;
 	cJSON * pJsonRoot = NULL;
     cJSON * pduJsonObject = NULL;
     cJSON * devDataJsonArray = NULL;
@@ -608,21 +619,19 @@ int app_req_linkage(int clientFd, int sn)
     cJSON*  paramObject= NULL;
     cJSON* delayArrayObject = NULL;
     cJSON* delayObject = NULL;
-    /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
-    char* sql = NULL;
-    char sql_1[200],sql_2[200];
 
+    db = data.db;
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
         fprintf(stdout,"pJsonRoot NULL\n");
-        cJSON_Delete(pJsonRoot);
-        return M1_PROTOCOL_FAILED;
+       	ret =  M1_PROTOCOL_FAILED;
+        goto Finish;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -632,7 +641,8 @@ int app_req_linkage(int clientFd, int sn)
     {
         // create object faild, exit
         cJSON_Delete(pduJsonObject);
-        return M1_PROTOCOL_FAILED;
+        ret =  M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add pdu to root*/
     cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
@@ -643,23 +653,12 @@ int app_req_linkage(int clientFd, int sn)
     if(NULL == devDataJsonArray)
     {
         cJSON_Delete(devDataJsonArray);
-        return M1_PROTOCOL_FAILED;
+        ret =  M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-    /*sqlite3*/
-    int rc;
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    } 
 
-    char* link_name = NULL, *district = NULL, *logical = NULL, *exec_type = NULL, *exec_id = NULL,*enable = NULL,
-    *ap_id = NULL, *dev_id = NULL, *condition = NULL, *dev_name = NULL;
-    int type, value, delay, pId;
     sql = "select LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, ENABLE from linkage_table;";
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -668,7 +667,8 @@ int app_req_linkage(int clientFd, int sn)
 	    if(NULL == devDataObject)
 	    {
 	        cJSON_Delete(devDataObject);
-	        return M1_PROTOCOL_FAILED;
+	        ret =  M1_PROTOCOL_FAILED;
+        	goto Finish;
 	    }
 	    cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 	    link_name = sqlite3_column_text(stmt, 0);
@@ -696,7 +696,8 @@ int app_req_linkage(int clientFd, int sn)
  	    if(NULL == triggerJsonArray)
  	    {
  	        cJSON_Delete(triggerJsonArray);
- 	        return M1_PROTOCOL_FAILED;
+ 	        ret =  M1_PROTOCOL_FAILED;
+        	goto Finish;
  	    }
  	    cJSON_AddItemToObject(devDataObject, "trigger", triggerJsonArray);
  	    sprintf(sql_1,"select DISTINCT DEV_ID from link_trigger_table where LINK_NAME = \"%s\";", link_name);
@@ -708,7 +709,8 @@ int app_req_linkage(int clientFd, int sn)
 		    if(NULL == triggerObject)
 		    {
 		        cJSON_Delete(triggerObject);
-		        return M1_PROTOCOL_FAILED;
+		        ret =  M1_PROTOCOL_FAILED;
+        		goto Finish;
 		    }
 		    cJSON_AddItemToArray(triggerJsonArray, triggerObject);
     		dev_id = sqlite3_column_text(stmt_1, 0);
@@ -740,7 +742,8 @@ int app_req_linkage(int clientFd, int sn)
  	    	if(NULL == paramJsonArray)
  	    	{
  	        	cJSON_Delete(paramJsonArray);
- 	        	return M1_PROTOCOL_FAILED;
+ 	        	ret =  M1_PROTOCOL_FAILED;
+        		goto Finish;
  	    	}
  	    	cJSON_AddItemToObject(triggerObject, "param", paramJsonArray);
 
@@ -753,7 +756,8 @@ int app_req_linkage(int clientFd, int sn)
 			    if(NULL == paramObject)
 			    {
 			        cJSON_Delete(paramObject);
-			        return M1_PROTOCOL_FAILED;
+			        ret =  M1_PROTOCOL_FAILED;
+        			goto Finish;
 			    }
 			    cJSON_AddItemToArray(paramJsonArray, paramObject);
 				type = sqlite3_column_int(stmt_2, 0);
@@ -772,7 +776,8 @@ int app_req_linkage(int clientFd, int sn)
 		if(NULL == execJsonArray)
 		{
 		    cJSON_Delete(execJsonArray);
-		    return M1_PROTOCOL_FAILED;
+		    ret =  M1_PROTOCOL_FAILED;
+        	goto Finish;
 		}
     	if(strcmp(exec_type,"scenario") != 0){
     		/*获取执行设备信息*/
@@ -787,7 +792,8 @@ int app_req_linkage(int clientFd, int sn)
 			    if(NULL == execObject)
 			    {
 			        cJSON_Delete(execObject);
-			        return M1_PROTOCOL_FAILED;
+			        ret =  M1_PROTOCOL_FAILED;
+        			goto Finish;
 			    }
 			    cJSON_AddItemToArray(execJsonArray, execObject);
 	    		dev_id = sqlite3_column_text(stmt_1, 0);
@@ -809,7 +815,8 @@ int app_req_linkage(int clientFd, int sn)
 				   	if(NULL == delayArrayObject)
 				    {
 				        cJSON_Delete(delayArrayObject);
-				        return M1_PROTOCOL_FAILED;
+				        ret =  M1_PROTOCOL_FAILED;
+        				goto Finish;
 				    }
 				    cJSON_AddItemToObject(execObject, "delay", delayArrayObject);
 				    fprintf(stdout,"delay:%05d\n",delay);
@@ -820,7 +827,8 @@ int app_req_linkage(int clientFd, int sn)
 					    if(NULL == delayObject)
 					    {
 					        cJSON_Delete(delayObject);
-					        return M1_PROTOCOL_FAILED;
+					        ret =  M1_PROTOCOL_FAILED;
+        					goto Finish;
 					    }
 						cJSON_AddItemToArray(delayArrayObject, delayObject);
 				   	}
@@ -829,7 +837,8 @@ int app_req_linkage(int clientFd, int sn)
 					    if(NULL == delayObject)
 					    {
 					        cJSON_Delete(delayObject);
-					        return M1_PROTOCOL_FAILED;
+					        ret =  M1_PROTOCOL_FAILED;
+        					goto Finish;
 					    }
 						cJSON_AddItemToArray(delayArrayObject, delayObject);
 					}
@@ -850,7 +859,8 @@ int app_req_linkage(int clientFd, int sn)
 	 	    	if(NULL == paramJsonArray)
 	 	    	{
 	 	        	cJSON_Delete(paramJsonArray);
-	 	        	return M1_PROTOCOL_FAILED;
+	 	        	ret =  M1_PROTOCOL_FAILED;
+        			goto Finish;
 	 	    	}
 	 	    	cJSON_AddItemToObject(execObject, "param", paramJsonArray);
 
@@ -863,7 +873,8 @@ int app_req_linkage(int clientFd, int sn)
 				    if(NULL == paramObject)
 				    {
 				        cJSON_Delete(paramObject);
-				        return M1_PROTOCOL_FAILED;
+				        ret =  M1_PROTOCOL_FAILED;
+        				goto Finish;
 				    }
 				    cJSON_AddItemToArray(paramJsonArray, paramObject);
 					type = sqlite3_column_int(stmt_2, 0);
@@ -882,7 +893,8 @@ int app_req_linkage(int clientFd, int sn)
 		    if(NULL == execObject)
 		    {
 		        cJSON_Delete(execObject);
-		        return M1_PROTOCOL_FAILED;
+		        ret =  M1_PROTOCOL_FAILED;
+        		goto Finish;
 		    }
 		    cJSON_AddItemToArray(execJsonArray, execObject);
 	    	cJSON_AddStringToObject(execObject, "scenName", exec_id);
@@ -891,55 +903,53 @@ int app_req_linkage(int clientFd, int sn)
     	}
  	}
 
- 	sqlite3_finalize(stmt);
- 	sqlite3_finalize(stmt_1);
-	sqlite3_finalize(stmt_2);
-    sqlite3_close(db);
-
     char * p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
         cJSON_Delete(pJsonRoot);
-        return M1_PROTOCOL_FAILED;
+        ret =  M1_PROTOCOL_FAILED;
+        goto Finish;
     }
 
     fprintf(stdout,"string:%s\n",p);
     /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
+    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+    Finish:
+    free(sql_1);
+    free(sql_2);
+ 	sqlite3_finalize(stmt);
+ 	sqlite3_finalize(stmt_1);
+	sqlite3_finalize(stmt_2);
     cJSON_Delete(pJsonRoot);
 
-    return M1_PROTOCOL_OK;
-
-
+    return ret;
 }
 
 int app_linkage_enable(payload_t data)
 {
 	fprintf(stdout, "app_linkage_enable\n");
-	cJSON* linkObject = NULL;
-	cJSON* enableObject = NULL;
-	char sql[200];
-
-	/*sqlite3*/
+	int rc,ret = M1_PROTOCOL_OK;
+	char* sql = (char*)malloc(300);
 	sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-    int rc;
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    } 
+	cJSON* linkObject = NULL;
+	cJSON* enableObject = NULL;
 
+    /*获取数据库*/
+    db = data.db;
 	linkObject = cJSON_GetObjectItem(data.pdu, "linkName");
-	if(linkObject == NULL)
-		return M1_PROTOCOL_FAILED;
+	if(linkObject == NULL){
+		ret = M1_PROTOCOL_FAILED;
+		goto Finish;
+	}
+
 	fprintf(stdout,"link_name:%s\n",linkObject->valuestring);
 	enableObject = cJSON_GetObjectItem(data.pdu, "enable");
-	if(enableObject == NULL)
-		return M1_PROTOCOL_FAILED;
+	if(enableObject == NULL){
+		ret = M1_PROTOCOL_FAILED;
+		goto Finish;
+	}
 	fprintf(stdout,"enable:%s\n",enableObject->valuestring);
 
 	sprintf(sql,"update linkage_table set ENABLE = \"%s\" where LINK_NAME = \"%s\";",enableObject->valuestring,linkObject->valuestring);
@@ -948,10 +958,11 @@ int app_linkage_enable(payload_t data)
   	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
   	while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 
+  	Finish:
+  	free(sql);
   	sqlite3_finalize(stmt);
-    sqlite3_close(db);
 
-    return M1_PROTOCOL_OK;
+    return ret;
 }
 
 

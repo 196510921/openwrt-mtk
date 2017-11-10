@@ -17,14 +17,14 @@
 #define HEAD_LEN    3
 /*Private function***********************************************************************************************/
 static int AP_report_data_handle(payload_t data);
-static int APP_read_handle(payload_t data, int sn);
+static int APP_read_handle(payload_t data);
 static int APP_write_handle(payload_t data);
-static int M1_write_to_AP(cJSON* data);
+static int M1_write_to_AP(cJSON* data, sqlite3* db);
 static int APP_echo_dev_info_handle(payload_t data);
-static int APP_req_added_dev_info_handle(int clientFd, int sn);
+static int APP_req_added_dev_info_handle(payload_t data);
 static int APP_net_control(payload_t data);
-static int M1_report_dev_info(payload_t data, int sn);
-static int M1_report_ap_info(int clientFd, int sn);
+static int M1_report_dev_info(payload_t data);
+static int M1_report_ap_info(payload_t data);
 static int AP_report_dev_handle(payload_t data);
 static int AP_report_ap_handle(payload_t data);
 static int common_operate(payload_t data);
@@ -73,6 +73,8 @@ void data_handle(m1_package_t* package)
     cJSON* rootJson = NULL;
     cJSON* pduJson = NULL;
     cJSON* pduTypeJson = NULL;
+
+    fprintf(stdout,"Rx message:%s\n",package->data);
     rootJson = cJSON_Parse(package->data);
     if(NULL == rootJson){
         fprintf(stdout,"rootJson null\n");
@@ -147,89 +149,101 @@ void sql_rd_handle(void)
     cJSON* pduTypeJson = NULL;
     cJSON* snJson = NULL;
     cJSON* pduDataJson = NULL;
+    sqlite3* db = NULL;
     payload_t pdu;
     rsp_data_t rspData;
 
     while(1){
         ret = fifo_read(&msg_rd_fifo, &msg);
-        if(ret == 0){
-            continue;
-        }
-        rc = M1_PROTOCOL_NO_RSP;
-        fprintf(stdout,"sql_rd_handle\n");
-        m1_package_t* package = (m1_package_t*)msg;
-        fprintf(stdout,"Rx message:%s\n",package->data);
-        rootJson = cJSON_Parse(package->data);
-        if(NULL == rootJson){
-            fprintf(stdout,"rootJson null\n");
-            continue;   
-        }
-        pduJson = cJSON_GetObjectItem(rootJson, "pdu");
-        if(NULL == pduJson){
-            fprintf(stdout,"pdu null\n");
-            continue;
-        }
-        pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
-        if(NULL == pduTypeJson){
-            fprintf(stdout,"pduType null\n");
-            continue;
-        }
-        pduType = pduTypeJson->valueint;
-        rspData.pduType = pduType;
+        if(ret != 0){
+            rc = M1_PROTOCOL_NO_RSP;
+            fprintf(stdout,"sql_rd_handle\n");
+            m1_package_t* package = (m1_package_t*)msg;
+            fprintf(stdout,"Rx message:%s\n",package->data);
+            rootJson = cJSON_Parse(package->data);
+            if(NULL == rootJson){
+                fprintf(stdout,"rootJson null\n");
+                continue;   
+            }
+            pduJson = cJSON_GetObjectItem(rootJson, "pdu");
+            if(NULL == pduJson){
+                fprintf(stdout,"pdu null\n");
+                continue;
+            }
+            pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
+            if(NULL == pduTypeJson){
+                fprintf(stdout,"pduType null\n");
+                continue;
+            }
+            pduType = pduTypeJson->valueint;
+            rspData.pduType = pduType;
 
-        snJson = cJSON_GetObjectItem(rootJson, "sn");
-        if(NULL == snJson){
-            fprintf(stdout,"sn null\n");
-            continue;
+            snJson = cJSON_GetObjectItem(rootJson, "sn");
+            if(NULL == snJson){
+                fprintf(stdout,"sn null\n");
+                continue;
+            }
+            rspData.sn = snJson->valueint;
+
+            pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
+            if(NULL == pduDataJson){
+                fprintf(stdout,"devData null”\n");
+
+            }
+
+            /*打开读数据库*/
+            rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
+            if( rc ){  
+                fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+                continue;
+            }else{  
+                fprintf(stderr, "Opened database successfully\n");  
+            }
+
+            /*pdu*/ 
+            pdu.clientFd = package->clientFd;
+            pdu.sn = snJson->valueint;
+            pdu.db = db;
+            pdu.pdu = pduDataJson;
+
+            rspData.clientFd = package->clientFd;
+            fprintf(stdout,"pduType:%x\n",pduType);
+
+            switch(pduType){
+                case TYPE_DEV_READ: APP_read_handle(pdu); break;
+                case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(pdu); break;
+                case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
+                case TYPE_REQ_AP_INFO: M1_report_ap_info(pdu); break;
+                case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
+                case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
+                case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(pdu);break;
+                case TYPE_REQ_LINK_INFO: rc = app_req_linkage(pdu);break;
+                case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(pdu); break;
+                case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(pdu);break;
+                case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu);break;
+                case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu);break;
+                case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(pdu); break;
+                case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu); break;
+                case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu); break;
+                case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu); break;
+                case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(pdu);break;
+                case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
+                case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
+
+                default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
+            }
+
+            if(rc != M1_PROTOCOL_NO_RSP){
+                if(rc == M1_PROTOCOL_OK)
+                    rspData.result = RSP_OK;
+                else
+                    rspData.result = RSP_FAILED;
+                common_rsp(rspData);
+            }
+
+            cJSON_Delete(rootJson);
+            sqlite3_close(db);
         }
-        rspData.sn = snJson->valueint;
-
-        pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
-        if(NULL == pduDataJson){
-            fprintf(stdout,"devData null”\n");
-
-        }
-        /*pdu*/ 
-        pdu.clientFd = package->clientFd;
-        pdu.pdu = pduDataJson;
-
-        rspData.clientFd = package->clientFd;
-        fprintf(stdout,"pduType:%x\n",pduType);
-        switch(pduType){
-            case TYPE_DEV_READ: APP_read_handle(pdu, rspData.sn); break;
-            case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(rspData.clientFd , rspData.sn); break;
-            case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
-            case TYPE_REQ_AP_INFO: M1_report_ap_info(rspData.clientFd , rspData.sn); break;
-            case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu, rspData.sn); break;
-            case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
-            case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(rspData.clientFd, rspData.sn);break;
-            case TYPE_REQ_LINK_INFO: rc = app_req_linkage(rspData.clientFd, rspData.sn);break;
-            case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(rspData.clientFd, rspData.sn); break;
-            case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(rspData.clientFd, rspData.sn);break;
-            case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu, rspData.sn);break;
-            case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu, rspData.sn);break;
-            case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(rspData.clientFd, rspData.sn); break;
-            case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu, rspData.sn); break;
-            case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu, rspData.sn); break;
-            case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu, rspData.sn); break;
-            case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(rspData.clientFd, rspData.sn);break;
-            case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
-            case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
-
-            default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
-        }
-
-        if(rc != M1_PROTOCOL_NO_RSP){
-            if(rc == M1_PROTOCOL_OK)
-                rspData.result = RSP_OK;
-            else
-                rspData.result = RSP_FAILED;
-            common_rsp(rspData);
-        }
-
-        cJSON_Delete(rootJson);
-        /*10ms*/
-        usleep(10000);
     }
 }
 /*数据库写入操作处理*/
@@ -243,88 +257,96 @@ void sql_wt_handle(void)
     cJSON* pduTypeJson = NULL;
     cJSON* snJson = NULL;
     cJSON* pduDataJson = NULL;
+    sqlite3* db = NULL;
     payload_t pdu;
     rsp_data_t rspData;
 
     while(1){
         ret = fifo_read(&msg_wt_fifo, &msg);
-        if(ret == 0){
-            continue;
-        }
-        rc = M1_PROTOCOL_NO_RSP;
-        fprintf(stdout,"sql_rd_handle\n");
-        m1_package_t* package = (m1_package_t*)msg;
-        fprintf(stdout,"Rx message:%s\n",package->data);
-        rootJson = cJSON_Parse(package->data);
-        if(NULL == rootJson){
-            fprintf(stdout,"rootJson null\n");
-            continue;   
-        }
-        pduJson = cJSON_GetObjectItem(rootJson, "pdu");
-        if(NULL == pduJson){
-            fprintf(stdout,"pdu null\n");
-            continue;
-        }
-        pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
-        if(NULL == pduTypeJson){
-            fprintf(stdout,"pduType null\n");
-            continue;
-        }
-        pduType = pduTypeJson->valueint;
-        rspData.pduType = pduType;
+        if(ret != 0){
+            rc = M1_PROTOCOL_NO_RSP;
+            fprintf(stdout,"sql_wt_handle\n");
+            m1_package_t* package = (m1_package_t*)msg;
+            fprintf(stdout,"Rx message:%s\n",package->data);
+            rootJson = cJSON_Parse(package->data);
+            if(NULL == rootJson){
+                fprintf(stdout,"rootJson null\n");
+                continue;   
+            }
+            pduJson = cJSON_GetObjectItem(rootJson, "pdu");
+            if(NULL == pduJson){
+                fprintf(stdout,"pdu null\n");
+                continue;
+            }
+            pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
+            if(NULL == pduTypeJson){
+                fprintf(stdout,"pduType null\n");
+                continue;
+            }
+            pduType = pduTypeJson->valueint;
+            rspData.pduType = pduType;
 
-        snJson = cJSON_GetObjectItem(rootJson, "sn");
-        if(NULL == snJson){
-            fprintf(stdout,"sn null\n");
-            continue;
+            snJson = cJSON_GetObjectItem(rootJson, "sn");
+            if(NULL == snJson){
+                fprintf(stdout,"sn null\n");
+                continue;
+            }
+            rspData.sn = snJson->valueint;
+
+            pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
+            if(NULL == pduDataJson){
+                fprintf(stdout,"devData null”\n");
+
+            }
+            /*打开写数据库*/
+            rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE, NULL);
+            if( rc ){  
+                fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+                continue;
+            }else{  
+                fprintf(stderr, "Opened database successfully\n");  
+            }
+           /*pdu*/ 
+            pdu.clientFd = package->clientFd;
+            pdu.sn = snJson->valueint;
+            pdu.db = db;
+            pdu.pdu = pduDataJson;
+
+            rspData.clientFd = package->clientFd;
+            fprintf(stdout,"pduType:%x\n",pduType);
+            switch(pduType){
+                case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
+                case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson, db);break;
+                case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
+                case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
+                case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
+                case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
+                case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
+                case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
+                case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
+                case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
+                case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
+                case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
+                case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
+                case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
+                case TYPE_APP_CREATE_PROJECT: rc = app_create_project(pdu);break;
+                case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
+                case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
+                case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
+
+                default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
+            }
+
+            if(rc != M1_PROTOCOL_NO_RSP){
+                if(rc == M1_PROTOCOL_OK)
+                    rspData.result = RSP_OK;
+                else
+                    rspData.result = RSP_FAILED;
+                common_rsp(rspData);
+            }
+            cJSON_Delete(rootJson);
+            sqlite3_close(db);
         }
-        rspData.sn = snJson->valueint;
-
-        pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
-        if(NULL == pduDataJson){
-            fprintf(stdout,"devData null”\n");
-
-        }
-        /*pdu*/ 
-        pdu.clientFd = package->clientFd;
-        pdu.pdu = pduDataJson;
-
-        rspData.clientFd = package->clientFd;
-        fprintf(stdout,"pduType:%x\n",pduType);
-        switch(pduType){
-            case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-            case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson);break;
-            case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
-            case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
-            case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
-            case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
-            case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
-            case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
-            case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
-            case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
-            case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
-            case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
-            case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
-            case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
-            case TYPE_APP_CREATE_PROJECT: rc = app_create_project(pdu);break;
-            case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
-            case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
-            case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
-
-            default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
-        }
-
-        if(rc != M1_PROTOCOL_NO_RSP){
-            if(rc == M1_PROTOCOL_OK)
-                rspData.result = RSP_OK;
-            else
-                rspData.result = RSP_FAILED;
-            common_rsp(rspData);
-        }
-
-        cJSON_Delete(rootJson);
-        /*10ms*/
-        usleep(10000);
     }
 }
 
@@ -360,6 +382,7 @@ static int AP_report_data_handle(payload_t data)
     cJSON* typeJson = NULL;
     cJSON* valueJson = NULL;
 
+    db = data.db;
     fprintf(stdout,"AP_report_data_handle\n");
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -367,15 +390,6 @@ static int AP_report_data_handle(payload_t data)
     }
     /*获取系统当前时间*/
     getNowTime(time);
-
-    rc = sqlite3_open(db_path, &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret =  M1_PROTOCOL_FAILED;  
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_data_handle");
     if(rc){
@@ -460,9 +474,6 @@ static int AP_report_data_handle(payload_t data)
     Finish:
     free(time);
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
-
-    //trigger_cb_handle();
 
     return ret;
 }
@@ -496,16 +507,8 @@ static int AP_report_dev_handle(payload_t data)
     } 
 
     getNowTime(time);
-
-    rc = sqlite3_open(db_path, &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    /*获取数据库*/
+    db = data.db;
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_dev_handle");
     if(rc){
@@ -588,8 +591,7 @@ static int AP_report_dev_handle(payload_t data)
     free(sql_1);
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
-    sqlite3_close(db);  
+    sqlite3_finalize(stmt_1); 
 
     return ret;  
 }
@@ -617,16 +619,8 @@ static int AP_report_ap_handle(payload_t data)
     }
 
     getNowTime(time);
-    /*sqlite3*/
-    rc = sqlite3_open(db_path, &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;  
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    /*获取数据库*/
+    db = data.db;
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_ap_handle");
     if(rc){
@@ -710,43 +704,38 @@ static int AP_report_ap_handle(payload_t data)
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
-    sqlite3_close(db);  
 
     return ret;  
 }
 
-static int APP_read_handle(payload_t data, int sn)
+static int APP_read_handle(payload_t data)
 {   
     /*read json*/
+    int i,j;
+    int number1,number2,row_n;
+    int pduType = TYPE_REPORT_DATA;
+    int rc, ret = M1_PROTOCOL_OK;
+    char* dev_id = NULL;
+    char* sql = (char*)malloc(300);
     cJSON* devDataJson = NULL;
     cJSON* devIdJson = NULL;
     cJSON* paramTypeJson = NULL;
     cJSON* paramJson = NULL;
-    /*write json*/
     cJSON * pJsonRoot = NULL; 
     cJSON * pduJsonObject = NULL;
     cJSON * devDataJsonArray = NULL;
     cJSON * devDataObject= NULL;
     cJSON * devArray = NULL;
     cJSON*  devObject = NULL;
-    /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL;
-    int pduType = TYPE_REPORT_DATA;
-    int rc, ret = M1_PROTOCOL_OK;
-    char* sql = (char*)malloc(300);
 
     fprintf(stdout,"APP_read_handle\n");
-    if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
-    
-    rc = sqlite3_open(db_path, &db); 
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret =  M1_PROTOCOL_FAILED;  
+    if(data.pdu == NULL){
+        ret = M1_PROTOCOL_FAILED;
         goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
     }
+    db = data.db;
 
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
@@ -756,7 +745,7 @@ static int APP_read_handle(payload_t data, int sn)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -784,9 +773,6 @@ static int APP_read_handle(payload_t data, int sn)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
-    int i,j, number1,number2,row_n;
-    char* dev_id = NULL;
-
     number1 = cJSON_GetArraySize(data.pdu);
     fprintf(stdout,"number1:%d\n",number1);
 
@@ -799,7 +785,6 @@ static int APP_read_handle(payload_t data, int sn)
         paramTypeJson = cJSON_GetObjectItem(devDataJson, "paramType");
         number2 = cJSON_GetArraySize(paramTypeJson);
         /*get sql data json*/
-        //sprintf(sql, "select DEV_NAME from param_table where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
         sprintf(sql, "select DEV_NAME from all_dev where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
         fprintf(stdout,"%s\n", sql);
         row_n = sql_row_number(db, sql);
@@ -890,13 +875,12 @@ static int APP_read_handle(payload_t data, int sn)
     free(sql);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
-    sqlite3_close(db);
     cJSON_Delete(pJsonRoot);
 
     return ret;
 }
 
-static int M1_write_to_AP(cJSON* data)
+static int M1_write_to_AP(cJSON* data, sqlite3* db)
 {
     fprintf(stdout,"M1_write_to_AP\n");
     int sn = 2;
@@ -905,7 +889,6 @@ static int M1_write_to_AP(cJSON* data)
     int rc,ret = M1_PROTOCOL_OK;
     const char* ap_id = NULL;
     char* sql = (char*)malloc(300);
-    sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
     cJSON* snJson = NULL;
     cJSON* pduJson = NULL;
@@ -921,16 +904,6 @@ static int M1_write_to_AP(cJSON* data)
     dataArrayJson = cJSON_GetArrayItem(devDataJson, 0);
     devIdJson = cJSON_GetObjectItem(dataArrayJson, "devId");
     fprintf(stdout,"devId:%s\n",devIdJson->valuestring);
-
-    rc = sqlite3_open(db_path, &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    } 
-
     /*get apId*/
     sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" limit 1;",devIdJson->valuestring);
     row_n = sql_row_number(db, sql);
@@ -972,7 +945,6 @@ static int M1_write_to_AP(cJSON* data)
 
     Finish:
     free(sql);
-    sqlite3_close(db);
     sqlite3_finalize(stmt);
 
     return ret;
@@ -1008,15 +980,8 @@ static int APP_write_handle(payload_t data)
     /*获取系统时间*/
     time = (char*)malloc(30);
     getNowTime(time);
-    /*打开数据库*/
-    rc = sqlite3_open(db_path, &db);
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;  
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
+    /*获取数据库*/
+    db = data.db;
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "APP_write_handle");
     if(rc){
@@ -1119,8 +1084,7 @@ static int APP_write_handle(payload_t data)
     free(sql_1);
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1); 
-    sqlite3_close(db);
+    sqlite3_finalize(stmt_1);
 
     return ret;
 }
@@ -1147,15 +1111,7 @@ static int APP_echo_dev_info_handle(payload_t data)
         goto Finish;
     } 
 
-    rc = sqlite3_open(db_path, &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    db = data.db;
     sql = (char*)malloc(300);
     number = cJSON_GetArraySize(data.pdu);
     fprintf(stdout,"number:%d\n",number);  
@@ -1201,12 +1157,11 @@ static int APP_echo_dev_info_handle(payload_t data)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
 
     return ret;
 }
 
-static int APP_req_added_dev_info_handle(int clientFd, int sn)
+static int APP_req_added_dev_info_handle(payload_t data)
 {
     /*cJSON*/
     int row_n;
@@ -1225,6 +1180,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
 
     fprintf(stdout,"APP_req_added_dev_info_handle\n");
+    db = data.db;
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
@@ -1233,7 +1189,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
         goto Finish;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -1260,18 +1216,9 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
         goto Finish;
     }
     /*add devData array to pdu pbject*/
-    cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-    /*sqlite3*/
-    rc = sqlite3_open(db_path, &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    } 
+    cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray); 
     /*获取当前账户*/
-    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",clientFd);
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     fprintf(stdout, "%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -1355,7 +1302,7 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
 
     fprintf(stdout,"string:%s\n",p);
     /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
+    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     
     Finish:
     free(sql);
@@ -1364,7 +1311,6 @@ static int APP_req_added_dev_info_handle(int clientFd, int sn)
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
-    sqlite3_close(db);
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -1389,6 +1335,7 @@ static int APP_net_control(payload_t data)
         goto Finish;
     };
 
+    db = data.db;
     apIdJson = cJSON_GetObjectItem(data.pdu, "apId");
     if(apIdJson == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -1401,15 +1348,6 @@ static int APP_net_control(payload_t data)
         goto Finish;
     };
     fprintf(stdout,"value:%d\n",valueJson->valueint);  
-
-    rc = sqlite3_open(db_path, &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
 
     sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",apIdJson->valuestring);
     row_n = sql_row_number(db, sql);
@@ -1465,18 +1403,17 @@ static int APP_net_control(payload_t data)
 
     fprintf(stdout,"string:%s\n",p);
     /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
+    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
     cJSON_Delete(pJsonRoot);
 
     return ret;
 }
 
-static int M1_report_ap_info(int clientFd, int sn)
+static int M1_report_ap_info(payload_t data)
 {
     fprintf(stdout," M1_report_ap_info\n");
 
@@ -1500,7 +1437,8 @@ static int M1_report_ap_info(int clientFd, int sn)
         goto Finish;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    db = data.db;
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -1527,16 +1465,8 @@ static int M1_report_ap_info(int clientFd, int sn)
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-    rc = sqlite3_open(db_path, &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db)); 
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    } 
     /*获取用户账户信息*/
-    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",clientFd);
+    sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     fprintf(stdout, "%s\n", sql);
     sqlite3_reset(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -1546,7 +1476,7 @@ static int M1_report_ap_info(int clientFd, int sn)
             ret = M1_PROTOCOL_FAILED;
             goto Finish;
         }else{
-            fprintf(stdout,"clientFd:%03d,account:%s\n",clientFd, account);
+            fprintf(stdout,"clientFd:%03d,account:%s\n",data.clientFd, account);
         }
     }
 
@@ -1585,17 +1515,16 @@ static int M1_report_ap_info(int clientFd, int sn)
 
     fprintf(stdout,"string:%s\n",p);
     /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
+    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
     cJSON_Delete(pJsonRoot);
 
     return ret;
 }
 
-static int M1_report_dev_info(payload_t data, int sn)
+static int M1_report_dev_info(payload_t data)
 {
     fprintf(stdout," M1_report_dev_info\n");
     int row_n;
@@ -1612,6 +1541,7 @@ static int M1_report_dev_info(payload_t data, int sn)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
 
+    db = data.db;
     ap = data.pdu->valuestring;
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -1621,7 +1551,7 @@ static int M1_report_dev_info(payload_t data, int sn)
         goto Finish;
     }
 
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -1648,16 +1578,6 @@ static int M1_report_dev_info(payload_t data, int sn)
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-    /*sqlite3*/
-    rc = sqlite3_open(db_path, &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    } 
-
     /*获取用户账户信息*/
     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     fprintf(stdout, "%s\n", sql);
@@ -1714,7 +1634,6 @@ static int M1_report_dev_info(payload_t data, int sn)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -1738,7 +1657,6 @@ static int common_operate(payload_t data)
     cJSON* operateJson = NULL;    
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-
 
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -1765,15 +1683,8 @@ static int common_operate(payload_t data)
         goto Finish;
     }
     fprintf(stdout,"operate:%s\n",operateJson->valuestring);
-
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    /*获取数据库*/
+    db = data.db;
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         fprintf(stdout,"BEGIN\n");
         if(strcmp(typeJson->valuestring, "device") == 0){
@@ -1938,9 +1849,8 @@ static int common_operate(payload_t data)
     free(sql);
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
 
-     return ret;
+    return ret;
 }
 
 static int ap_heartbeat_handle(payload_t data)
@@ -2051,14 +1961,7 @@ static int app_change_device_name(payload_t data)
     cJSON* devIdObject = NULL;
     cJSON* devNameObject = NULL;
 
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    db = data.db;
     devIdObject = cJSON_GetObjectItem(data.pdu, "devId");   
     if(devIdObject == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -2095,7 +1998,6 @@ static int app_change_device_name(payload_t data)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
 
     return ret;
 }

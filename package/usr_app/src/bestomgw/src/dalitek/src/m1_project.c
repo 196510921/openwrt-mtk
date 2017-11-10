@@ -6,29 +6,21 @@
 #include "m1_project.h"
 
 /*app获取项目信息*/
-int app_get_project_info(int clientFd, int sn)
+int app_get_project_info(payload_t data)
 {
 	fprintf(stdout,"app_get_project_info\n");
-    cJSON * pJsonRoot = NULL; 
-    cJSON * pduJsonObject = NULL;
-    cJSON * devDataObject= NULL;
 
+    int rc,ret = M1_PROTOCOL_OK;
     int pduType = TYPE_M1_REPORT_PROJECT_NUMBER;
     char* pNumber = NULL;
     char* sql = NULL;
-    /*sqlite3*/
+    cJSON * pJsonRoot = NULL; 
+    cJSON * pduJsonObject = NULL;
+    cJSON * devDataObject= NULL;
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-    int rc,ret = M1_PROTOCOL_OK;
 
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -37,7 +29,7 @@ int app_get_project_info(int clientFd, int sn)
         cJSON_Delete(pJsonRoot);
         return M1_PROTOCOL_FAILED;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1); 
@@ -80,11 +72,10 @@ int app_get_project_info(int clientFd, int sn)
     }
 
     fprintf(stdout,"string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), clientFd);
+    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
 	Finish:
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -95,11 +86,16 @@ int app_get_project_info(int clientFd, int sn)
 int app_confirm_project(payload_t data)
 {
 	fprintf(stdout,"app_confirm_project\n");
-	cJSON* pNumberJson = NULL;
-    cJSON* pKeyJson = NULL;
-    char sql[200];
+	int rc,row_n;
+    char* sql = (char*)malloc(300);
     char* key = NULL;
+    const char* ap_id = NULL;
+    cJSON* pNumberJson = NULL;
+    cJSON* pKeyJson = NULL;
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
 
+    db = data.db;
     pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");
     if(pNumberJson == NULL)
         return M1_PROTOCOL_FAILED;   
@@ -108,20 +104,6 @@ int app_confirm_project(payload_t data)
     if(pKeyJson == NULL)
         return M1_PROTOCOL_FAILED;   
     fprintf(stdout,"pKey:%s\n",pKeyJson->valuestring);
-
-	/*sqlite3*/
-    sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL;
-    int rc,row_n;
-    const char* ap_id = NULL;
-
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
 
     sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\";",pNumberJson->valuestring);
     fprintf(stdout, "%s\n", sql);
@@ -135,8 +117,9 @@ int app_confirm_project(payload_t data)
  	else
  		rc = M1_PROTOCOL_FAILED;
 
+    Finish:
+    free(sql);
  	sqlite3_finalize(stmt);
-    sqlite3_close(db);   
 
     return rc;
 }
@@ -145,8 +128,12 @@ int app_confirm_project(payload_t data)
 int app_create_project(payload_t data)
 {
 	fprintf(stdout,"app_create_project\n");
-	char time[30];
-	char sql_1[200];
+    int rc,ret = M1_PROTOCOL_OK;
+    int row_n,id;
+    char* account = NULL;
+	char* sql = NULL;
+    char* time = (char*)malloc(30);
+	char* sql_1 = (char*)malloc(300);
 	cJSON* pNameJson = NULL;
 	cJSON* pNumberJson = NULL;
 	cJSON* pCreatorJson = NULL;
@@ -154,7 +141,8 @@ int app_create_project(payload_t data)
 	cJSON* pTelJson = NULL;
 	cJSON* pAddJson = NULL;
 	cJSON* pBriefJson = NULL;
-	char* account = NULL;
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL;
 
 	getNowTime(time);
 	pNameJson = cJSON_GetObjectItem(data.pdu, "pName");   
@@ -171,21 +159,10 @@ int app_create_project(payload_t data)
     fprintf(stdout,"pAdd:%s\n",pAddJson->valuestring);
     pBriefJson = cJSON_GetObjectItem(data.pdu, "pBrief");   
     fprintf(stdout,"pBrief:%s\n",pBriefJson->valuestring);
+    /*获取数据路*/
+    db = data.db;
 
-	/*sqlite3*/
-    sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL;
-    int rc,row_n,id, ret = M1_PROTOCOL_OK;
-
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
-    char* sql = "select ID from project_table order by ID desc limit 1";
+    sql = "select ID from project_table order by ID desc limit 1";
     id = sql_id(db, sql);
     fprintf(stdout, "get id end\n");
     /*获取账户信息*/
@@ -220,39 +197,31 @@ int app_create_project(payload_t data)
     thread_sqlite3_step(&stmt,db);
 
     Finish:
+    free(time);
+    free(sql_1);
  	sqlite3_finalize(stmt);
  	sqlite3_finalize(stmt_1);
-    sqlite3_close(db);   
 
     return ret;	
 }
 
 /*获取项目配置信息*/
-int app_get_project_config(int clientFd, int sn)
+int app_get_project_config(payload_t data)
 {
 	fprintf(stdout,"app_get_project_config\n");
-    cJSON * pJsonRoot = NULL; 
-    cJSON * pduJsonObject = NULL;
-    cJSON * devDataObject= NULL;
-
+    
+    int rc,ret = M1_PROTOCOL_OK;
     int pduType = TYPE_M1_REPORT_PROJECT_CONFIG_INFO;
     char* pName = NULL,*pNumber = NULL,*pCreator = NULL,*pManager = NULL,*pTel = NULL;
     char *pAdd = NULL,*pBrief = NULL,*pEditor = NULL,*pEditTime = NULL;
     char* sql = NULL;
-    /*sqlite3*/
+    cJSON * pJsonRoot = NULL; 
+    cJSON * pduJsonObject = NULL;
+    cJSON * devDataObject= NULL;
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-    int rc,ret = M1_PROTOCOL_OK;
 
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret =  M1_PROTOCOL_FAILED;  
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -261,7 +230,7 @@ int app_get_project_config(int clientFd, int sn)
         ret =  M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1); 
@@ -326,11 +295,10 @@ int app_get_project_config(int clientFd, int sn)
     }
 
     fprintf(stdout,"string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), clientFd);
+    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
     sqlite3_finalize(stmt);
-    sqlite3_close(db);
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -340,8 +308,13 @@ int app_get_project_config(int clientFd, int sn)
 int app_change_project_config(payload_t data)
 {
 	fprintf(stdout,"app_change_project_config\n");
-	char time[30];
-	char sql_1[200];
+
+    int row_n,id;
+    int rc, ret = M1_PROTOCOL_OK;
+	char* time = (char*)malloc(30);
+	char* sql_1 = (char*)malloc(300);
+    char* account = NULL, *pKey = NULL;
+    char* sql = NULL;
 	cJSON* pNameJson = NULL;
 	cJSON* pNumberJson = NULL;
 	cJSON* pCreatorJson = NULL;
@@ -350,7 +323,8 @@ int app_change_project_config(payload_t data)
 	cJSON* pAddJson = NULL;
 	cJSON* pBriefJson = NULL;
 	cJSON* pEditorJson = NULL;
-	char* account = NULL, *pKey = NULL;
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
 
 	getNowTime(time);
 	pNameJson = cJSON_GetObjectItem(data.pdu, "pName");   
@@ -370,20 +344,8 @@ int app_change_project_config(payload_t data)
     pEditorJson = cJSON_GetObjectItem(data.pdu, "pEditor");   
     fprintf(stdout,"pBrief:%s\n",pEditorJson->valuestring);
 
-	/*sqlite3*/
-    sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
-    int rc,row_n,id,ret = M1_PROTOCOL_OK;
-
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
-    char* sql = "select ID, P_KEY from project_table order by ID desc limit 1";
+    db = data.db;
+    sql = "select ID, P_KEY from project_table order by ID desc limit 1";
     sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
     sqlite3_reset(stmt);
     rc = thread_sqlite3_step(&stmt, db);
@@ -431,26 +393,27 @@ int app_change_project_config(payload_t data)
     
     thread_sqlite3_step(&stmt_2,db);
     Finish:
+    free(time);
+    free(sql_1);
  	sqlite3_finalize(stmt);
  	sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
-    sqlite3_close(db);   
 
-    return M1_PROTOCOL_OK;	
+    return ret;	
 }
 
 /*更改项目密码*/
 int app_change_project_key(payload_t data)
 {
 	fprintf(stdout,"app_change_project_key\n");
-		/*sqlite3*/
+    /*sqlite3*/
+    int id;
+    int rc, ret = M1_PROTOCOL_OK;
+    char* key = NULL;
+    char* time = (char*)malloc(30);
+    char* sql= (char*)malloc(300);
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-    int rc, id, ret = M1_PROTOCOL_OK;
-    char* key = NULL;
-	char time[30];
-	char sql[200];
-
 	cJSON* pKeyJson = NULL;
 	cJSON* newKeyJson = NULL;
 	cJSON* confirmKeyJson = NULL;
@@ -478,16 +441,8 @@ int app_change_project_key(payload_t data)
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;	
     }
-
-    rc = sqlite3_open("dev_info.db", &db);  
-    if( rc ){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    /*获取数据库*/
+    db = data.db;
     /*获取账户信息*/
     sprintf(sql,"select P_KEY,ID from project_table order by ID desc limit 1;");
     fprintf(stdout, "%s\n", sql);
@@ -526,8 +481,9 @@ int app_change_project_key(payload_t data)
     }
 
     Finish:
+    free(time);
+    free(sql);
  	sqlite3_finalize(stmt);
-    sqlite3_close(db);   
 
     return ret;	
 }

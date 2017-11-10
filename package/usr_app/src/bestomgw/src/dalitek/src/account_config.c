@@ -9,42 +9,32 @@
 #include "account_config.h"
 #include "m1_protocol.h"
 
-int app_req_account_info_handle(payload_t data, int sn)
+int app_req_account_info_handle(payload_t data)
 {
-	cJSON* pJsonRoot = NULL;
+    fprintf(stdout,"account_info_handle”\n");
+    
+    int rc,ret = M1_PROTOCOL_OK;
+    int pduType = TYPE_M1_REPORT_ACCOUNT_INFO;
+	char* sql = NULL;
+    char* account = NULL;
+    cJSON* pJsonRoot = NULL;
 	cJSON* pduJsonObject = NULL;
 	cJSON* accountJson = NULL;
 	cJSON* devDataJsonArray = NULL;
-
-	char* account = NULL;
-	int pduType = TYPE_M1_REPORT_ACCOUNT_INFO;
-
-	fprintf(stdout,"account_info_handle”\n");
-	
 	sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-    int rc;
-    char* sql = "select ACCOUNT from account_table order by ID";
-
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    
+    sql = "select ACCOUNT from account_table order by ID";
+    db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
         fprintf(stdout,"pJsonRoot NULL\n");
-        cJSON_Delete(pJsonRoot);
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -54,9 +44,8 @@ int app_req_account_info_handle(payload_t data, int sn)
     {
         // create object faild, exit
         cJSON_Delete(pduJsonObject);
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add pdu to root*/
     cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
@@ -67,9 +56,8 @@ int app_req_account_info_handle(payload_t data, int sn)
     if(NULL == devDataJsonArray)
     {
         cJSON_Delete(devDataJsonArray);
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
@@ -85,37 +73,47 @@ int app_req_account_info_handle(payload_t data, int sn)
 	    {
 	        // create object faild, exit
 	        cJSON_Delete(accountJson);
-            sqlite3_finalize(stmt);
-            sqlite3_close(db);
-	        return M1_PROTOCOL_FAILED;
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
 	    }
 	    cJSON_AddItemToArray(devDataJsonArray, accountJson);
 	}
-
-	sqlite3_finalize(stmt);
-    sqlite3_close(db);
 
     char * p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
         cJSON_Delete(pJsonRoot);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
 
     fprintf(stdout,"string:%s\n",p);
     /*response to client*/
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+    
+    Finish:
+    sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
 
-    return M1_PROTOCOL_OK;
+    return ret;
 
 }
 
-int app_req_account_config_handle(payload_t data, int sn)
+int app_req_account_config_handle(payload_t data)
 {
 	fprintf(stdout,"app_req_account_config_handle\n");
-	cJSON* pJsonRoot = NULL;
+    
+    int pId;
+    int rc, ret = M1_PROTOCOL_OK;
+	int pduType = TYPE_M1_REPORT_ACCOUNT_CONFIG_INFO;
+    char* account = NULL;
+    char* sql = (char*)malloc(300);
+    char* sql_1 = (char*)malloc(300);
+    char *key = NULL, *key_auth = NULL;
+    char *remote_auth = NULL, *district = NULL,*scenario = NULL;
+    char *dev_name = NULL,*dev_id = NULL;
+    cJSON* pJsonRoot = NULL;
 	cJSON* pduJsonObject = NULL;
 	cJSON* devDataObject = NULL;
 	cJSON* accountJson = NULL;
@@ -126,24 +124,10 @@ int app_req_account_config_handle(payload_t data, int sn)
 	cJSON* scenJson = NULL;
 	cJSON* devArray = NULL;
 	cJSON* devObject = NULL;
-
-	char* account = NULL;
-	int pduType = TYPE_M1_REPORT_ACCOUNT_CONFIG_INFO;
-
 	sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL,*stmt_1 = NULL;
-    int rc, ret = M1_PROTOCOL_OK;
-    char sql[200],sql_1[200];;
 
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -153,7 +137,7 @@ int app_req_account_config_handle(payload_t data, int sn)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -181,9 +165,6 @@ int app_req_account_config_handle(payload_t data, int sn)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataObject);
     /*获取账户名*/
-    char *key = NULL, *key_auth = NULL, *remote_auth = NULL, *district = NULL,*scenario = NULL,
-    *dev_name = NULL,*dev_id = NULL;
-    int pId;
     accountJson = data.pdu;//cJSON_GetObjectItem(data.pdu, "devData");
     sprintf(sql,"select KEY,KEY_AUTH,REMOTE_AUTH from account_table where ACCOUNT = \"%s\";", accountJson->valuestring);
     fprintf(stdout,"%s\n", sql);
@@ -313,9 +294,10 @@ int app_req_account_config_handle(payload_t data, int sn)
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
+    free(sql);
+    free(sql_1);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
-    sqlite3_close(db);
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -325,6 +307,16 @@ int app_req_account_config_handle(payload_t data, int sn)
 int app_account_config_handle(payload_t data)
 {
     fprintf(stdout,"app_account_config_handle\n");
+    
+    int i,id,number;
+    int rc, ret = M1_PROTOCOL_OK;
+    char* sql = NULL;
+    char* sql_1 = (char*)malloc(300);
+    char* time = (char*)malloc(30);
+    char* errorMsg = NULL;
+    char* ap_id = NULL,*dev_id = NULL;
+    char* district = NULL,*dev_name = NULL,*status = NULL;
+    int type, value, delay, pid,added,net;
     cJSON* districtArray = NULL;
     cJSON* districtObject = NULL;
     cJSON* scenArray = NULL;
@@ -336,26 +328,12 @@ int app_account_config_handle(payload_t data)
     cJSON* keyJson = NULL;
     cJSON* keyAuthJson = NULL;
     cJSON* remoteAuthJson = NULL;
-    
-    int i,rc,id,number;
-    char* sql;
-    char sql_1[200];
-    char time[30];
-    char* ap_id = NULL,*dev_id = NULL, *district = NULL,
-        *dev_name = NULL,*status = NULL,*errorMsg = NULL;
-    int type, value, delay, pid,added,net;
-    /*获取时间*/
-    getNowTime(time);
-
     sqlite3* db = NULL;
     sqlite3_stmt *stmt = NULL, *stmt_1 = NULL;
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
+    /*获取时间*/
+    getNowTime(time);
+    /*获取数据库*/
+    db = data.db;
 
     accountJson = cJSON_GetObjectItem(data.pdu,"account");
     keyJson = cJSON_GetObjectItem(data.pdu,"key");
@@ -388,22 +366,20 @@ int app_account_config_handle(payload_t data)
         sqlite3_bind_text(stmt, 6,  time, -1, NULL);
         rc = thread_sqlite3_step(&stmt,db);
         if(rc == SQLITE_ERROR){
-            sqlite3_finalize(stmt);
-            sqlite3_finalize(stmt_1);
-            sqlite3_close(db);
-            return M1_PROTOCOL_FAILED;
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
         }
-    
         /*添加用户区域信息*/
         /*删除重复用户信息*/
-        if(strcmp(accountJson->valuestring,"Dalitek") == 0)
-            return M1_PROTOCOL_FAILED;   
+        if(strcmp(accountJson->valuestring,"Dalitek") == 0){
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;   
+        }
         sprintf(sql_1,"delete from district_table where ACCOUNT = \"%s\";",accountJson->valuestring);
         fprintf(stdout,"sql:%s\n",sql_1);
         sqlite3_reset(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
         thread_sqlite3_step(&stmt, db);
-        //while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
     
         sql = "select ID from district_table order by ID desc limit 1;";
         id = sql_id(db, sql);
@@ -429,11 +405,9 @@ int app_account_config_handle(payload_t data)
                 sqlite3_bind_text(stmt_1, 4,accountJson->valuestring, -1, NULL);
                 sqlite3_bind_text(stmt_1, 5,  time, -1, NULL);
                 rc = thread_sqlite3_step(&stmt_1, db);
-                if(rc == M1_PROTOCOL_FAILED){
-                    sqlite3_finalize(stmt);
-                    sqlite3_finalize(stmt_1);
-                    sqlite3_close(db);
-                    return M1_PROTOCOL_FAILED;
+                if(rc == SQLITE_ERROR){
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish;
                 }
                 id++;
             }        
@@ -483,11 +457,9 @@ int app_account_config_handle(payload_t data)
                 sqlite3_bind_text(stmt_1, 9, accountJson->valuestring, -1, NULL);
                 sqlite3_bind_text(stmt_1, 10, time, -1, NULL);
                 rc = thread_sqlite3_step(&stmt_1, db);
-                if(rc == M1_PROTOCOL_FAILED){
-                    sqlite3_finalize(stmt);
-                    sqlite3_finalize(stmt_1);
-                    sqlite3_close(db);
-                    return M1_PROTOCOL_FAILED;
+                if(rc == SQLITE_ERROR){
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish;
                 }
                 id++;
             }        
@@ -499,7 +471,6 @@ int app_account_config_handle(payload_t data)
         sqlite3_reset(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
         thread_sqlite3_step(&stmt, db);
-        //while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
     
         sql = "select ID from all_dev order by ID desc limit 1;";
         id = sql_id(db, sql);
@@ -536,11 +507,9 @@ int app_account_config_handle(payload_t data)
                 sqlite3_bind_text(stmt_1, 9, accountJson->valuestring, -1, NULL);
                 sqlite3_bind_text(stmt_1, 10, time, -1, NULL);
                 rc = thread_sqlite3_step(&stmt_1, db);
-                if(rc == M1_PROTOCOL_FAILED){
-                    sqlite3_finalize(stmt);
-                    sqlite3_finalize(stmt_1);
-                    sqlite3_close(db);
-                    return M1_PROTOCOL_FAILED;
+                if(rc == SQLITE_ERROR){
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish;
                 }
                 id++;
             }        
@@ -552,34 +521,31 @@ int app_account_config_handle(payload_t data)
     }else{
         fprintf(stdout,"errorMsg:");
     }    
+
+    Finish:
+    free(time);
+    free(sql_1);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
-    sqlite3_close(db);
 
-    return  M1_PROTOCOL_OK;
+    return  ret;
 }
 
-int app_req_dis_name(int clientFd, int sn)
+int app_req_dis_name(payload_t data)
 {
     fprintf(stdout,"app_req_dis_name\n"); 
     int pdu_type = TYPE_M1_REPORT_DIS_NAME;
-    int rc;
+    int rc,ret = M1_PROTOCOL_OK;
     char* district = NULL;
     cJSON * pJsonRoot = NULL; 
     cJSON * pduJsonObject = NULL;
     cJSON * devDataObject= NULL;
     cJSON * districtObject= NULL;
     cJSON * devDataJsonArray = NULL;
-
     sqlite3* db = NULL;
     sqlite3_stmt *stmt = NULL;
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
+
+    db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -588,7 +554,7 @@ int app_req_dis_name(int clientFd, int sn)
         cJSON_Delete(pJsonRoot);
         return M1_PROTOCOL_FAILED;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1); 
@@ -598,7 +564,8 @@ int app_req_dis_name(int clientFd, int sn)
     {
         // create object faild, exit
         cJSON_Delete(pduJsonObject);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add pdu to root*/
     cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
@@ -609,7 +576,8 @@ int app_req_dis_name(int clientFd, int sn)
     if(NULL == devDataJsonArray)
     {
         cJSON_Delete(devDataJsonArray);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
@@ -623,35 +591,40 @@ int app_req_dis_name(int clientFd, int sn)
         district = sqlite3_column_text(stmt, 0);
         if(district == NULL){
             fprintf(stderr, "%s\n", district);
-            sqlite3_finalize(stmt);
-            sqlite3_close(db);
-            return M1_PROTOCOL_FAILED;
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
         }
         districtObject = cJSON_CreateString(district);
         cJSON_AddItemToArray(devDataJsonArray, districtObject);
     }
-    
-    sqlite3_finalize(stmt);
-    sqlite3_close(db);
 
     char* p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
         cJSON_Delete(pJsonRoot);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
 
     fprintf(stdout,"string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), clientFd);
+    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+    Finish:
+    sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
 
-    return  M1_PROTOCOL_OK;
+    return  ret;
 }
 
-int app_req_dis_scen_name(payload_t data, int sn)
+int app_req_dis_scen_name(payload_t data)
 {
     fprintf(stdout,"app_req_dis_scen_name\n"); 
+
+    int pduType = TYPE_M1_REPORT_DIS_SCEN_NAME;
+    int number, i;
+    int rc, ret = M1_PROTOCOL_OK;
+    char* scenario = NULL;
+    char* sql = (char*)malloc(300);
     cJSON* devDataJson = NULL;
     cJSON* pJsonRoot = NULL;
     cJSON* pduJsonObject = NULL;
@@ -659,22 +632,23 @@ int app_req_dis_scen_name(payload_t data, int sn)
     cJSON* devDataObject = NULL;
     cJSON* scenArray = NULL;
     cJSON* scenJson = NULL;
+    sqlite3* db = NULL;
+    sqlite3_stmt *stmt = NULL;
 
-    int pduType = TYPE_M1_REPORT_DIS_SCEN_NAME;
-    int number, i, rc;
-    char* scenario = NULL;
-    char sql[200];
-
-    if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
+    if(data.pdu == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
         fprintf(stdout,"pJsonRoot NULL\n");
-        cJSON_Delete(pJsonRoot);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -684,7 +658,8 @@ int app_req_dis_scen_name(payload_t data, int sn)
     {
         // create object faild, exit
         cJSON_Delete(pduJsonObject);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add pdu to root*/
     cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
@@ -695,20 +670,11 @@ int app_req_dis_scen_name(payload_t data, int sn)
     if(NULL == devDataJsonArray)
     {
         cJSON_Delete(devDataJsonArray);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-
-    sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL;
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
     /*获取区域*/
     number = cJSON_GetArraySize(data.pdu);
     fprintf(stdout,"number:%d\n",number);
@@ -722,7 +688,8 @@ int app_req_dis_scen_name(payload_t data, int sn)
             // create object faild, exit
             fprintf(stdout,"devDataObject NULL\n");
             cJSON_Delete(devDataObject);
-            return M1_PROTOCOL_FAILED;
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
         }
         cJSON_AddItemToArray(devDataJsonArray, devDataObject);
         cJSON_AddStringToObject(devDataObject, "district", devDataJson->valuestring);
@@ -733,7 +700,8 @@ int app_req_dis_scen_name(payload_t data, int sn)
             // create object faild, exit
             fprintf(stdout,"scenArray NULL\n");
             cJSON_Delete(scenArray);
-            return M1_PROTOCOL_FAILED;
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
         }
         cJSON_AddItemToObject(devDataObject, "scenario", scenArray);
         /*获取场景*/
@@ -744,9 +712,8 @@ int app_req_dis_scen_name(payload_t data, int sn)
         while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
             scenario = sqlite3_column_text(stmt, 0);
             if(scenario == NULL){
-                sqlite3_finalize(stmt);
-                sqlite3_close(db);
-                return M1_PROTOCOL_FAILED;
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish;
             }
             fprintf(stdout, "scenario:%s\n", scenario);
             scenJson = cJSON_CreateString(scenario);
@@ -754,9 +721,6 @@ int app_req_dis_scen_name(payload_t data, int sn)
         }
 
     }
-
-    sqlite3_finalize(stmt);
-    sqlite3_close(db);
 
     char* p = cJSON_PrintUnformatted(pJsonRoot);
     
@@ -768,14 +732,26 @@ int app_req_dis_scen_name(payload_t data, int sn)
 
     fprintf(stdout,"string:%s\n",p);
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+    
+    Finish:
+    free(sql);
+    sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
 
-    return  M1_PROTOCOL_OK;
+    return  ret;
 }
 
-int app_req_dis_dev(payload_t data, int sn)
+int app_req_dis_dev(payload_t data)
 {
     fprintf(stdout,"app_req_dis_dev\n");
+
+    int pduType = TYPE_M1_REPORT_DIS_DEV; 
+    int number, i;
+    int rc,ret = M1_PROTOCOL_OK;
+    char* sql = (char*)malloc(300);
+    char* sql_1 = (char*)malloc(300);
+    char* sql_2 = (char*)malloc(300);
+    char* apId = NULL, *pId = NULL, *devName = NULL, *devId = NULL;
     cJSON* devDataJson = NULL;
     cJSON* pJsonRoot = NULL;
     cJSON* pduJsonObject = NULL;
@@ -785,14 +761,14 @@ int app_req_dis_dev(payload_t data, int sn)
     cJSON* apInfoObject = NULL;
     cJSON* devArray = NULL;
     cJSON* devObject = NULL;
-    int pduType = TYPE_M1_REPORT_DIS_DEV; 
-    int number, i, rc,ret;
-    char* apId = NULL, *pId = NULL, *devName = NULL, *devId = NULL;
-    char sql[200],sql_1[200],sql_2[200];
     sqlite3* db = NULL;
     sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
 
-    if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
+    db = data.db;
+    if(data.pdu == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -801,7 +777,7 @@ int app_req_dis_dev(payload_t data, int sn)
         ret =  M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    cJSON_AddNumberToObject(pJsonRoot, "sn", sn);
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
     cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
@@ -828,15 +804,6 @@ int app_req_dis_dev(payload_t data, int sn)
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        ret =  M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
     /*获取区域*/
     number = cJSON_GetArraySize(data.pdu);
     fprintf(stdout,"number:%d\n",number);
@@ -885,8 +852,6 @@ int app_req_dis_dev(payload_t data, int sn)
             /*apId*/
             apId = sqlite3_column_text(stmt, 0);
             if(apId == NULL){
-                sqlite3_finalize(stmt);
-                sqlite3_close(db);
                 ret =  M1_PROTOCOL_FAILED;
                 goto Finish;
             }
@@ -941,8 +906,7 @@ int app_req_dis_dev(payload_t data, int sn)
                 devId = sqlite3_column_text(stmt_2, 2);
                 if(devId != NULL)
                     cJSON_AddStringToObject(devObject, "devId", devId);
-                }
-
+            }
         }
 
     }
@@ -959,11 +923,13 @@ int app_req_dis_dev(payload_t data, int sn)
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
+    free(sql);
+    free(sql_1);
+    free(sql_2);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
     cJSON_Delete(pJsonRoot);
-    sqlite3_close(db);
 
     return  ret;
 }
@@ -971,29 +937,23 @@ int app_req_dis_dev(payload_t data, int sn)
 int user_login_handle(payload_t data)
 {
 	fprintf(stdout,"user_login_handle\n");
+
+    int rc,ret = M1_PROTOCOL_OK;
+    int id;
+    char* sql = (char*)malloc(300);
+    char* sql_1 = NULL;
+    char* account = NULL,*key = NULL;
 	cJSON* accountJson = NULL;
 	cJSON* keyJson = NULL;
-	char* account = NULL,*key = NULL;
 	sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-    int rc,id;
-    char sql[200];
 
     accountJson = cJSON_GetObjectItem(data.pdu, "account");
     fprintf(stdout,"account:%s\n",accountJson->valuestring);
     keyJson = cJSON_GetObjectItem(data.pdu, "key");
     fprintf(stdout,"key:%s\n",keyJson->valuestring);
-
-    rc = sqlite3_open("dev_info.db", &db);  
-    if(rc){  
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-        return M1_PROTOCOL_FAILED;  
-    }else{  
-        fprintf(stderr, "Opened database successfully\n");  
-    }
-
+    /*获取数据库*/
+    db = data.db;
     /*验证用户信息*/
     sprintf(sql,"select KEY from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
     sqlite3_reset(stmt);
@@ -1001,17 +961,15 @@ int user_login_handle(payload_t data)
 	if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 		key = sqlite3_column_text(stmt, 0);
 	}else{
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-		return M1_PROTOCOL_FAILED;  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
 	}
 	if(strcmp(key,keyJson->valuestring) != 0){
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-		return M1_PROTOCOL_FAILED;  	
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
     }
 
-	char* sql_1 = "select ID from account_info order by ID desc limit 1;";
+	sql_1 = "select ID from account_info order by ID desc limit 1;";
 	id = sql_id(db, sql_1);
 	/*删除重复用户信息*/
     sprintf(sql,"delete from account_info where ACCOUNT = \"%s\";",accountJson->valuestring);
@@ -1031,13 +989,15 @@ int user_login_handle(payload_t data)
     sqlite3_bind_int(stmt, 3, data.clientFd);
     rc = thread_sqlite3_step(&stmt,db);
     if(rc == SQLITE_ERROR){
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-    	return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
     }
 
-
-	return 	M1_PROTOCOL_OK;
+    Finish:
+    free(sql);
+    sqlite3_finalize(stmt);
+    
+	return 	ret;
 }
 
 

@@ -24,6 +24,8 @@ typedef struct _socket_package{
 /*pdu*/
 typedef struct _payload{
   	int clientFd;
+  	int sn;
+  	sqlite3* db;
   	cJSON* pdu;
 }payload_t;
 /*common response data*/
@@ -64,19 +66,19 @@ void data_update_cb(int id);
 int trigger_cb_handle(void);
 void linkage_task(void);
 int linkage_msg_handle(payload_t data);
-int app_req_linkage(int clientFd, int sn);
+int app_req_linkage(payload_t data);
 int app_linkage_enable(payload_t data);
 /*场景相关API*/
 int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
 int scenario_alarm_create_handle(payload_t data);
-int app_req_scenario(int clientFd, int sn);
-int app_req_scenario_name(int clientFd, int sn);
+int app_req_scenario(payload_t data);
+int app_req_scenario_name(payload_t data);
 void scenario_alarm_select(void);
 int app_exec_scenario(payload_t data);
 /*区域相关API*/
 int district_create_handle(payload_t data);
-int app_req_district(int clientFd, int sn);
+int app_req_district(payload_t data);
 /*通用API*/
 void m1_protocol_init(void);
 void getNowTime(char* _time);
