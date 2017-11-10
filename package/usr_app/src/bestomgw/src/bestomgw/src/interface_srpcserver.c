@@ -1653,21 +1653,42 @@ void SRPC_ConnectCB(int clientFd)
  *
  * @return  Status
  ***************************************************************************************************/
+static int msg_header_checker(char*str, int len){
+	int i = 0,j = 0, _len = 0;
+
+	_len = len;
+	printf("msg_header_checker\n");
+	while(*(str + i) != '{'){ 
+		printf("1. %c, i:%03d\n",*(str + i), i);
+		i++;
+		_len--;
+		if(i >= len)
+			return 0;
+	}
+
+	while(*(str + i) != '"'){
+	 	printf("2. %c, i:%03d\n",*(str + i), i);
+	 	i++;
+		if(i >= len)
+			return 0;
+	}
+
+	if(*(str + i + 1) != 's'){
+		printf("3. %c, i:%03d\n",*(str + i + 1), i + 1);
+		_len = msg_header_checker((str + i + 1), len - i);
+	}else{
+		printf("4. %c, i:%03d\n",*(str + i + 1), i + 1);
+	}
+
+	printf("\n");
+	printf("mLen:%03d\n", len - _len);
+	return (len - _len);
+}
+
 static int json_checker(char* str, int len)
 {
 	int i;
 	int left = 0, right = 0;
-
-	if(str == NULL)
-		return 0;
-	while(*(str + i) == ' ')
-		i++;
-	if(*(str + i) != '{')
-		return;
-	while(*(str + i) != '"')
-		i++;
-	if(*(str + i + 1) != 's')
-		return;
 
 	for(i = 0; i < len; i++){
 		if(str+i == NULL)
@@ -1692,6 +1713,7 @@ void SRPC_RxCB(int clientFd)
 	static char buf[1024*10] = {0};
 	static int LiveclientFd = 0;
 	static int len = 0;
+	static int mLen = 0;
 	static int JsonFlag = 0;
 	m1_package_t* msg  = NULL;
 
@@ -1708,9 +1730,14 @@ void SRPC_RxCB(int clientFd)
 		if(JsonFlag == 0){
 			memset(buf, 0 , 1024*10);
 			len = 0;
+			mLen = 0;
 			LiveclientFd = clientFd;	
 			JsonFlag = 1;
 		}
+		if(len + byteToRead >= 10*1024){
+			len = 0;
+			memset(buf, 0, 10*1024);
+		}	
 	}
 	while(byteToRead > 0)
 	{
@@ -1722,7 +1749,9 @@ void SRPC_RxCB(int clientFd)
 		}					
 	}
 	if(JsonFlag == 1){
-		JsonComplete = json_checker(buf, len);
+		mLen += msg_header_checker(buf + mLen, len - mLen);
+		printf("%s\n",buf + mLen);
+		JsonComplete = json_checker(buf + mLen, len - mLen);
 	    printf("1\n");
 	    if(1 == JsonComplete){
 	    	printf("2\n");
@@ -1731,9 +1760,9 @@ void SRPC_RxCB(int clientFd)
 	    	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
 	    	printf("4\n");
 	    	msg->clientFd = LiveclientFd;
-	    	msg->len = len;
+	    	msg->len = len - mLen;
 	    	msg->data = mem_poll_malloc(msg->len);
-	    	strcpy(msg->data,buf);
+	    	strcpy(msg->data,buf + mLen);
 	    	data_handle(msg);
 	    	JsonFlag = 0;
 	    }else{
