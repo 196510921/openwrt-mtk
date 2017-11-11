@@ -1666,19 +1666,19 @@ static int msg_header_checker(char*str, int len){
 			return 0;
 	}
 
-	while(*(str + i) != '"'){
-	 	printf("2. %c, i:%03d\n",*(str + i), i);
-	 	i++;
-		if(i >= len)
-			return 0;
-	}
+	// while(*(str + i) != '"'){
+	//  	printf("2. %c, i:%03d\n",*(str + i), i);
+	//  	i++;
+	// 	if(i >= len)
+	// 		return 0;
+	// }
 
-	if(*(str + i + 1) != 's'){
-		printf("3. %c, i:%03d\n",*(str + i + 1), i + 1);
-		_len = msg_header_checker((str + i + 1), len - i);
-	}else{
-		printf("4. %c, i:%03d\n",*(str + i + 1), i + 1);
-	}
+	// if(*(str + i + 1) != 's'){
+	// 	printf("3. %c, i:%03d\n",*(str + i + 1), i + 1);
+	// 	_len = msg_header_checker((str + i + 1), len - i);
+	// }else{
+	// 	printf("4. %c, i:%03d\n",*(str + i + 1), i + 1);
+	// }
 
 	printf("\n");
 	printf("mLen:%03d\n", len - _len);
@@ -1750,15 +1750,11 @@ void SRPC_RxCB(int clientFd)
 	}
 	if(JsonFlag == 1){
 		mLen += msg_header_checker(buf + mLen, len - mLen);
-		printf("%s\n",buf + mLen);
+		fprintf(stdout,"%s\n",buf + mLen);
 		JsonComplete = json_checker(buf + mLen, len - mLen);
-	    printf("1\n");
 	    if(1 == JsonComplete){
-	    	printf("2\n");
 	    	fprintf(stdout, "msg complete!\n");
-	    	printf("3\n");
 	    	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
-	    	printf("4\n");
 	    	msg->clientFd = LiveclientFd;
 	    	msg->len = len - mLen;
 	    	msg->data = mem_poll_malloc(msg->len);
