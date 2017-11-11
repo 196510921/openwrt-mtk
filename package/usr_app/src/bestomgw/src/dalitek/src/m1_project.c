@@ -20,7 +20,15 @@ int app_get_project_info(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -77,6 +85,7 @@ int app_get_project_info(payload_t data)
 	Finish:
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 
@@ -86,7 +95,8 @@ int app_get_project_info(payload_t data)
 int app_confirm_project(payload_t data)
 {
 	fprintf(stdout,"app_confirm_project\n");
-	int rc,row_n;
+	int rc,ret = M1_PROTOCOL_OK;
+    int row_n;
     char* sql = (char*)malloc(300);
     char* key = NULL;
     const char* ap_id = NULL;
@@ -95,14 +105,26 @@ int app_confirm_project(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");
-    if(pNumberJson == NULL)
-        return M1_PROTOCOL_FAILED;   
+    if(pNumberJson == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;   
+    }
     fprintf(stdout,"pNumber:%s\n",pNumberJson->valuestring);
     pKeyJson = cJSON_GetObjectItem(data.pdu, "pKey");   
-    if(pKeyJson == NULL)
-        return M1_PROTOCOL_FAILED;   
+    if(pKeyJson == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
     fprintf(stdout,"pKey:%s\n",pKeyJson->valuestring);
 
     sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\";",pNumberJson->valuestring);
@@ -113,13 +135,14 @@ int app_confirm_project(payload_t data)
     key =  sqlite3_column_text(stmt, 0);
 
     if(strcmp(key,pKeyJson->valuestring) == 0)
- 		rc = M1_PROTOCOL_OK;
+ 		ret = M1_PROTOCOL_OK;
  	else
- 		rc = M1_PROTOCOL_FAILED;
+ 		ret = M1_PROTOCOL_FAILED;
 
     Finish:
     free(sql);
  	sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return rc;
 }
@@ -160,7 +183,14 @@ int app_create_project(payload_t data)
     pBriefJson = cJSON_GetObjectItem(data.pdu, "pBrief");   
     fprintf(stdout,"pBrief:%s\n",pBriefJson->valuestring);
     /*获取数据路*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
 
     sql = "select ID from project_table order by ID desc limit 1";
     id = sql_id(db, sql);
@@ -201,6 +231,7 @@ int app_create_project(payload_t data)
     free(sql_1);
  	sqlite3_finalize(stmt);
  	sqlite3_finalize(stmt_1);
+    sqlite3_close(db);
 
     return ret;	
 }
@@ -221,7 +252,14 @@ int app_get_project_config(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -300,6 +338,7 @@ int app_get_project_config(payload_t data)
     Finish:
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -344,7 +383,15 @@ int app_change_project_config(payload_t data)
     pEditorJson = cJSON_GetObjectItem(data.pdu, "pEditor");   
     fprintf(stdout,"pBrief:%s\n",pEditorJson->valuestring);
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     sql = "select ID, P_KEY from project_table order by ID desc limit 1";
     sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
     sqlite3_reset(stmt);
@@ -398,6 +445,7 @@ int app_change_project_config(payload_t data)
  	sqlite3_finalize(stmt);
  	sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
+    sqlite3_close(db);
 
     return ret;	
 }
@@ -442,7 +490,14 @@ int app_change_project_key(payload_t data)
     	goto Finish;	
     }
     /*获取数据库*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*获取账户信息*/
     sprintf(sql,"select P_KEY,ID from project_table order by ID desc limit 1;");
     fprintf(stdout, "%s\n", sql);
@@ -484,6 +539,7 @@ int app_change_project_key(payload_t data)
     free(time);
     free(sql);
  	sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return ret;	
 }

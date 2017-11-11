@@ -25,7 +25,7 @@ typedef struct _socket_package{
 typedef struct _payload{
   	int clientFd;
   	int sn;
-  	sqlite3* db;
+  	//sqlite3* db;
   	cJSON* pdu;
 }payload_t;
 /*common response data*/

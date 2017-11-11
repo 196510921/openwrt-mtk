@@ -19,7 +19,7 @@
 static int AP_report_data_handle(payload_t data);
 static int APP_read_handle(payload_t data);
 static int APP_write_handle(payload_t data);
-static int M1_write_to_AP(cJSON* data, sqlite3* db);
+static int M1_write_to_AP(cJSON* data);
 static int APP_echo_dev_info_handle(payload_t data);
 static int APP_req_added_dev_info_handle(payload_t data);
 static int APP_net_control(payload_t data);
@@ -149,7 +149,7 @@ void sql_rd_handle(void)
     cJSON* pduTypeJson = NULL;
     cJSON* snJson = NULL;
     cJSON* pduDataJson = NULL;
-    sqlite3* db = NULL;
+    //sqlite3* db = NULL;
     payload_t pdu;
     rsp_data_t rspData;
 
@@ -192,18 +192,18 @@ void sql_rd_handle(void)
             }
 
             /*打开读数据库*/
-            rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
-            if( rc ){  
-                fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-                continue;
-            }else{  
-                fprintf(stderr, "Opened database successfully\n");  
-            }
+            // rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
+            // if( rc ){  
+            //     fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+            //     continue;
+            // }else{  
+            //     fprintf(stderr, "Opened database successfully\n");  
+            // }
 
             /*pdu*/ 
             pdu.clientFd = package->clientFd;
             pdu.sn = snJson->valueint;
-            pdu.db = db;
+            //pdu.db = db;
             pdu.pdu = pduDataJson;
 
             rspData.clientFd = package->clientFd;
@@ -242,7 +242,7 @@ void sql_rd_handle(void)
             }
 
             cJSON_Delete(rootJson);
-            sqlite3_close(db);
+            //sqlite3_close(db);
         }
     }
 }
@@ -257,7 +257,7 @@ void sql_wt_handle(void)
     cJSON* pduTypeJson = NULL;
     cJSON* snJson = NULL;
     cJSON* pduDataJson = NULL;
-    sqlite3* db = NULL;
+    //sqlite3* db = NULL;
     payload_t pdu;
     rsp_data_t rspData;
 
@@ -299,24 +299,24 @@ void sql_wt_handle(void)
 
             }
             /*打开写数据库*/
-            rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE, NULL);
-            if( rc ){  
-                fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-                continue;
-            }else{  
-                fprintf(stderr, "Opened database successfully\n");  
-            }
+            // rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE, NULL);
+            // if( rc ){  
+            //     fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+            //     continue;
+            // }else{  
+            //     fprintf(stderr, "Opened database successfully\n");  
+            // }
            /*pdu*/ 
             pdu.clientFd = package->clientFd;
             pdu.sn = snJson->valueint;
-            pdu.db = db;
+            //pdu.db = db;
             pdu.pdu = pduDataJson;
 
             rspData.clientFd = package->clientFd;
             fprintf(stdout,"pduType:%x\n",pduType);
             switch(pduType){
                 case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-                case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson, db);break;
+                case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson);break;
                 case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
                 case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
                 case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
@@ -345,7 +345,7 @@ void sql_wt_handle(void)
                 common_rsp(rspData);
             }
             cJSON_Delete(rootJson);
-            sqlite3_close(db);
+            //sqlite3_close(db);
         }
     }
 }
@@ -382,7 +382,15 @@ static int AP_report_data_handle(payload_t data)
     cJSON* typeJson = NULL;
     cJSON* valueJson = NULL;
 
-    db = data.db;
+    rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE, NULL);
+    //rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     fprintf(stdout,"AP_report_data_handle\n");
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -474,6 +482,7 @@ static int AP_report_data_handle(payload_t data)
     Finish:
     free(time);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -508,7 +517,14 @@ static int AP_report_dev_handle(payload_t data)
 
     getNowTime(time);
     /*获取数据库*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_dev_handle");
     if(rc){
@@ -592,6 +608,7 @@ static int AP_report_dev_handle(payload_t data)
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1); 
+    sqlite3_close(db);
 
     return ret;  
 }
@@ -620,7 +637,14 @@ static int AP_report_ap_handle(payload_t data)
 
     getNowTime(time);
     /*获取数据库*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_ap_handle");
     if(rc){
@@ -704,6 +728,7 @@ static int AP_report_ap_handle(payload_t data)
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
+    sqlite3_close(db);
 
     return ret;  
 }
@@ -735,7 +760,16 @@ static int APP_read_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    db = data.db;
+    //db = data.db;
+    //rc = sqlite3_open("dev_info.db", &db);
+     rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
 
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
@@ -876,11 +910,12 @@ static int APP_read_handle(payload_t data)
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 }
 
-static int M1_write_to_AP(cJSON* data, sqlite3* db)
+static int M1_write_to_AP(cJSON* data)
 {
     fprintf(stdout,"M1_write_to_AP\n");
     int sn = 2;
@@ -890,6 +925,7 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     const char* ap_id = NULL;
     char* sql = (char*)malloc(300);
     sqlite3_stmt* stmt = NULL;
+    sqlite3* db = NULL;
     cJSON* snJson = NULL;
     cJSON* pduJson = NULL;
     cJSON* devDataJson = NULL;
@@ -904,6 +940,15 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     dataArrayJson = cJSON_GetArrayItem(devDataJson, 0);
     devIdJson = cJSON_GetObjectItem(dataArrayJson, "devId");
     fprintf(stdout,"devId:%s\n",devIdJson->valuestring);
+
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*get apId*/
     sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" limit 1;",devIdJson->valuestring);
     row_n = sql_row_number(db, sql);
@@ -946,6 +991,7 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -981,7 +1027,15 @@ static int APP_write_handle(payload_t data)
     time = (char*)malloc(30);
     getNowTime(time);
     /*获取数据库*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "APP_write_handle");
     if(rc){
@@ -1085,6 +1139,7 @@ static int APP_write_handle(payload_t data)
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -1111,7 +1166,14 @@ static int APP_echo_dev_info_handle(payload_t data)
         goto Finish;
     } 
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     sql = (char*)malloc(300);
     number = cJSON_GetArraySize(data.pdu);
     fprintf(stdout,"number:%d\n",number);  
@@ -1157,6 +1219,7 @@ static int APP_echo_dev_info_handle(payload_t data)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -1180,7 +1243,16 @@ static int APP_req_added_dev_info_handle(payload_t data)
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
 
     fprintf(stdout,"APP_req_added_dev_info_handle\n");
-    db = data.db;
+    // db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
@@ -1312,6 +1384,7 @@ static int APP_req_added_dev_info_handle(payload_t data)
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -1335,7 +1408,16 @@ static int APP_net_control(payload_t data)
         goto Finish;
     };
 
-    db = data.db;
+    // db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     apIdJson = cJSON_GetObjectItem(data.pdu, "apId");
     if(apIdJson == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -1409,6 +1491,7 @@ static int APP_net_control(payload_t data)
     free(sql);
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -1437,7 +1520,16 @@ static int M1_report_ap_info(payload_t data)
         goto Finish;
     }
 
-    db = data.db;
+    // db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
     cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
@@ -1520,6 +1612,7 @@ static int M1_report_ap_info(payload_t data)
     free(sql);
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -1541,7 +1634,16 @@ static int M1_report_dev_info(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
 
-    db = data.db;
+    // db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     ap = data.pdu->valuestring;
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -1635,6 +1737,7 @@ static int M1_report_dev_info(payload_t data)
     free(sql);
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -1684,7 +1787,15 @@ static int common_operate(payload_t data)
     }
     fprintf(stdout,"operate:%s\n",operateJson->valuestring);
     /*获取数据库*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         fprintf(stdout,"BEGIN\n");
         if(strcmp(typeJson->valuestring, "device") == 0){
@@ -1849,6 +1960,7 @@ static int common_operate(payload_t data)
     free(sql);
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -1961,7 +2073,15 @@ static int app_change_device_name(payload_t data)
     cJSON* devIdObject = NULL;
     cJSON* devNameObject = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     devIdObject = cJSON_GetObjectItem(data.pdu, "devId");   
     if(devIdObject == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -1998,6 +2118,7 @@ static int app_change_device_name(payload_t data)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return ret;
 }

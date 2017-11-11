@@ -211,7 +211,14 @@ int scenario_create_handle(payload_t data)
 
 	getNowTime(time);
 	/*获取数据库*/
-	db = data.db;
+	rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*获取场景名称*/
     scenNameJson = cJSON_GetObjectItem(data.pdu, "scenName");
     fprintf(stdout,"scenName:%s\n",scenNameJson->valuestring);
@@ -337,6 +344,7 @@ int scenario_create_handle(payload_t data)
     free(sql_1);
     free(sql_2);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
     return ret;
     
 }
@@ -364,7 +372,14 @@ int scenario_alarm_create_handle(payload_t data)
 	}
 	getNowTime(time);
 	/*获取数据库*/
-	db = data.db;
+	rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
 	/*获取table id*/
 	sql = "select ID from scen_alarm_table order by ID desc limit 1";
 	/*linkage_table*/
@@ -421,6 +436,7 @@ int scenario_alarm_create_handle(payload_t data)
     free(sql_1);
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -455,7 +471,16 @@ int app_req_scenario(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
 
-    db = data.db;
+    //db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
@@ -704,6 +729,7 @@ int app_req_scenario(payload_t data)
 	sqlite3_finalize(stmt_1);
 	sqlite3_finalize(stmt_2);
 	cJSON_Delete(pJsonRoot);
+	sqlite3_close(db);
 
     return ret;
 
@@ -725,7 +751,14 @@ int app_req_scenario_name(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
@@ -800,6 +833,7 @@ int app_req_scenario_name(payload_t data)
 	sqlite3_finalize(stmt_1);
 	sqlite3_finalize(stmt_2);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 
@@ -818,7 +852,7 @@ int app_req_scenario_name(payload_t data)
 	 	rc = sqlite3_open("dev_info.db", &db);  
 	     if( rc ){  
 	         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
-	         return M1_PROTOCOL_FAILED;  
+	         continue;  
 	     }else{  
 	         fprintf(stderr, "Opened database successfully\n");  
 	     }
@@ -889,11 +923,20 @@ int app_exec_scenario(payload_t data)
 	int ret = M1_PROTOCOL_OK,rc;
     sqlite3* db = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
 	scenario = data.pdu->valuestring;
 	fprintf(stdout, "scenario:%s\n", scenario);
 	ret = scenario_exec(scenario, db);
 
+	Finish:
+	sqlite3_close(db);
 	return ret;
 }
 

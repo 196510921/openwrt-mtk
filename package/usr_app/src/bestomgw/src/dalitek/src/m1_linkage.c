@@ -214,7 +214,14 @@ int linkage_msg_handle(payload_t data)
     fprintf(stdout,"linkName:%s, district:%s, logical:%s, execType:%s, scenName:%s\n",linkNameJson->valuestring,
     	districtJson->valuestring, logicalJson->valuestring, execTypeJson->valuestring, scenNameJson->valuestring);
     /*获取sqlite3*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         fprintf(stdout,"BEGIN\n");
 	   	/*检查联动是否存在*/
@@ -353,6 +360,7 @@ int linkage_msg_handle(payload_t data)
     free(sql_1);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -622,7 +630,15 @@ int app_req_linkage(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
@@ -922,6 +938,7 @@ int app_req_linkage(payload_t data)
  	sqlite3_finalize(stmt_1);
 	sqlite3_finalize(stmt_2);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 }
@@ -937,7 +954,15 @@ int app_linkage_enable(payload_t data)
 	cJSON* enableObject = NULL;
 
     /*获取数据库*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
 	linkObject = cJSON_GetObjectItem(data.pdu, "linkName");
 	if(linkObject == NULL){
 		ret = M1_PROTOCOL_FAILED;
@@ -961,6 +986,7 @@ int app_linkage_enable(payload_t data)
   	Finish:
   	free(sql);
   	sqlite3_finalize(stmt);
+  	sqlite3_close(db);
 
     return ret;
 }

@@ -33,7 +33,14 @@ int district_create_handle(payload_t data)
     } 
 	getNowTime(time);
     /*获取数据路*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
 	/*获取table id*/
 	sql = "select ID from district_table order by ID desc limit 1";
 	/*linkage_table*/
@@ -87,6 +94,7 @@ int district_create_handle(payload_t data)
     free(sql_1);
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
     
     return ret;
     
@@ -110,7 +118,14 @@ int app_req_district(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
@@ -246,6 +261,7 @@ int app_req_district(payload_t data)
     sqlite3_finalize(stmt_2);
     sqlite3_finalize(stmt_3);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 

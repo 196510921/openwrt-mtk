@@ -25,7 +25,14 @@ int app_req_account_info_handle(payload_t data)
     sqlite3_stmt* stmt = NULL;
     
     sql = "select ACCOUNT from account_table order by ID";
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -95,6 +102,7 @@ int app_req_account_info_handle(payload_t data)
     Finish:
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 
@@ -127,7 +135,14 @@ int app_req_account_config_handle(payload_t data)
 	sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL,*stmt_1 = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -299,6 +314,7 @@ int app_req_account_config_handle(payload_t data)
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return ret;
 
@@ -333,7 +349,14 @@ int app_account_config_handle(payload_t data)
     /*获取时间*/
     getNowTime(time);
     /*获取数据库*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
 
     accountJson = cJSON_GetObjectItem(data.pdu,"account");
     keyJson = cJSON_GetObjectItem(data.pdu,"key");
@@ -527,6 +550,7 @@ int app_account_config_handle(payload_t data)
     free(sql_1);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
+    sqlite3_close(db);
 
     return  ret;
 }
@@ -545,7 +569,14 @@ int app_req_dis_name(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt *stmt = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -612,6 +643,7 @@ int app_req_dis_name(payload_t data)
     Finish:
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return  ret;
 }
@@ -639,7 +671,14 @@ int app_req_dis_scen_name(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -737,6 +776,7 @@ int app_req_dis_scen_name(payload_t data)
     free(sql);
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return  ret;
 }
@@ -764,7 +804,14 @@ int app_req_dis_dev(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
 
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
@@ -930,6 +977,7 @@ int app_req_dis_dev(payload_t data)
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
     cJSON_Delete(pJsonRoot);
+    sqlite3_close(db);
 
     return  ret;
 }
@@ -953,7 +1001,14 @@ int user_login_handle(payload_t data)
     keyJson = cJSON_GetObjectItem(data.pdu, "key");
     fprintf(stdout,"key:%s\n",keyJson->valuestring);
     /*获取数据库*/
-    db = data.db;
+    rc = sqlite3_open("dev_info.db", &db);
+    if( rc ){  
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
     /*验证用户信息*/
     sprintf(sql,"select KEY from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
     sqlite3_reset(stmt);
@@ -996,6 +1051,7 @@ int user_login_handle(payload_t data)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
     
 	return 	ret;
 }
