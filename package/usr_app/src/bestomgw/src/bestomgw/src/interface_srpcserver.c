@@ -1750,7 +1750,7 @@ void SRPC_RxCB(int clientFd)
 	}
 	if(JsonFlag == 1){
 		mLen += msg_header_checker(buf + mLen, len - mLen);
-		fprintf(stdout,"%s\n",buf + mLen);
+		//fprintf(stdout,"%s\n",buf + mLen);
 		JsonComplete = json_checker(buf + mLen, len - mLen);
 	    if(1 == JsonComplete){
 	    	fprintf(stdout, "msg complete!\n");

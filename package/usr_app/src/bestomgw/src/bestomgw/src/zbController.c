@@ -69,25 +69,26 @@ int main(int argc, char* argv[])
 	pthread_t t1,t2,t3,t4,t5,t6,t7,t8;
 
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
+	printf_redirect();
 	SRPC_Init();
 	m1_protocol_init();
 
 	pthread_create(&t1,NULL,socket_poll,NULL);
-	//pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
+	////pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
 	pthread_create(&t5,NULL,sql_rd_handle,NULL);
 	pthread_create(&t6,NULL,linkage_task,NULL);
-	pthread_create(&t7,NULL,trigger_cb_handle,NULL);
+	//pthread_create(&t7,NULL,trigger_cb_handle,NULL);
 	pthread_create(&t8,NULL,sql_wt_handle,NULL);
 
 	pthread_join(t1,NULL);
-	//pthread_join(t2,NULL);
+	////pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
 	pthread_join(t5, NULL);
 	pthread_join(t6, NULL);
-	pthread_join(t7, NULL);
+	//pthread_join(t7, NULL);
 	pthread_join(t8, NULL);
 	
 	return retval;

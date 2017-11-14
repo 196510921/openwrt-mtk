@@ -53,7 +53,8 @@ int district_create_handle(payload_t data)
     	fprintf(stdout,"row_number:%d\n",row_number);
     	if(row_number > 0){
     		sprintf(sql_1,"delete from district_table where DIS_NAME = \"%s\";",districtNameJson->valuestring);				
-    		sqlite3_reset(stmt);
+    		//sqlite3_reset(stmt);
+            sqlite3_finalize(stmt);
     		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
     		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
     	}
@@ -65,7 +66,8 @@ int district_create_handle(payload_t data)
 
     		sql = "insert into district_table(ID, DIS_NAME, AP_ID, ACCOUNT,TIME) values(?,?,?,?,?);";
     		fprintf(stdout,"sql:%s\n",sql);
-    		sqlite3_reset(stmt);
+    		//sqlite3_reset(stmt);
+            sqlite3_finalize(stmt);
     		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     		sqlite3_bind_int(stmt, 1, id);
     		id++;
@@ -151,7 +153,8 @@ int app_req_district(payload_t data)
     char* account = NULL;
     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt_3);
+    //sqlite3_reset(stmt_3);
+    sqlite3_finalize(stmt_3);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_3, NULL);
     if(thread_sqlite3_step(&stmt_3, db) == SQLITE_ROW){
         account =  sqlite3_column_text(stmt_3, 0);
@@ -169,7 +172,8 @@ int app_req_district(payload_t data)
     int pId;
     sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account);
    	fprintf(stdout,"sql:%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
     	dist_name = sqlite3_column_text(stmt,0);
@@ -193,7 +197,8 @@ int app_req_district(payload_t data)
 	    cJSON_AddItemToObject(devDataObject, "apInfo", apInfoArrayObject);
 	    sprintf(sql_1,"select AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"%s\";",dist_name,account);
 	    fprintf(stdout,"sql_1:%s\n", sql_1);
-	    sqlite3_reset(stmt_1);
+	    //sqlite3_reset(stmt_1);
+        sqlite3_finalize(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 	    while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 	    	ap_id = sqlite3_column_text(stmt_1,0);
@@ -210,7 +215,8 @@ int app_req_district(payload_t data)
 		    /*取出apName*/
 		    sprintf(sql_2,"select DEV_NAME,pId from all_dev where DEV_ID = \"%s\" ;",ap_id);
 		    fprintf(stdout,"sql_2:%s\n", sql_2);
-		    sqlite3_reset(stmt_2);
+		    //sqlite3_reset(stmt_2);
+            sqlite3_finalize(stmt_2);
 		    sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 		    rc = thread_sqlite3_step(&stmt_2, db); 
 			fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 

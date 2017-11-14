@@ -48,7 +48,8 @@ int app_get_project_info(payload_t data)
     /*获取项目信息*/
     sql = "select P_NUMBER from project_table";
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ERROR){
@@ -107,7 +108,8 @@ int app_confirm_project(payload_t data)
 
     sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\";",pNumberJson->valuestring);
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     thread_sqlite3_step(&stmt, db);
     key =  sqlite3_column_text(stmt, 0);
@@ -168,7 +170,8 @@ int app_create_project(payload_t data)
     /*获取账户信息*/
     sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %03d;", data.clientFd);
     fprintf(stdout, "%s\n", sql_1);
-    sqlite3_reset(stmt_1);
+    //sqlite3_reset(stmt_1);
+    sqlite3_finalize(stmt_1);
     sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
     if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;
@@ -179,7 +182,8 @@ int app_create_project(payload_t data)
     /*插入到项目表中*/
     sql = "insert into project_table(ID,P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT,TIME)values(?,?,?,?,?,?,?,?,?,?,?,?);";
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     sqlite3_bind_int(stmt, 1, id);
     sqlite3_bind_text(stmt, 2, pNameJson->valuestring, -1, NULL);
@@ -250,7 +254,8 @@ int app_get_project_config(payload_t data)
     /*获取项目信息*/
     sql = "select P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_TEL,P_ADD,P_BRIEF,P_EDITOR,TIME from project_table order by ID desc limit 1";
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;
@@ -347,7 +352,7 @@ int app_change_project_config(payload_t data)
     db = data.db;
     sql = "select ID, P_KEY from project_table order by ID desc limit 1";
     sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
         id = (sqlite3_column_int(stmt, 0) + 1);
@@ -363,9 +368,8 @@ int app_change_project_config(payload_t data)
     /*获取账户信息*/
     sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %3d;", data.clientFd);
     fprintf(stdout, "%s\n", sql_1);
-    sqlite3_reset(stmt_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-    sqlite3_reset(stmt_1);
+    //sqlite3_reset(stmt_1);
+    sqlite3_finalize(stmt_1);
     sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
     if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;
@@ -376,7 +380,8 @@ int app_change_project_config(payload_t data)
     /*插入到项目表中*/
     sql = "insert into project_table(ID,P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT,TIME)values(?,?,?,?,?,?,?,?,?,?,?,?);";
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt_2);
+    //sqlite3_reset(stmt_2);
+    sqlite3_finalize(stmt_2);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_2, NULL);
     sqlite3_bind_int(stmt_2, 1, id);
     sqlite3_bind_text(stmt_2, 2, pNameJson->valuestring, -1, NULL);
@@ -446,7 +451,8 @@ int app_change_project_key(payload_t data)
     /*获取账户信息*/
     sprintf(sql,"select P_KEY,ID from project_table order by ID desc limit 1;");
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
         fprintf(stderr, "SQLITE_ERROR\n");
@@ -473,7 +479,8 @@ int app_change_project_key(payload_t data)
     }
     sprintf(sql,"update project_table set P_KEY = \"%s\" where ID = %05d;",newKeyJson->valuestring, id);
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;

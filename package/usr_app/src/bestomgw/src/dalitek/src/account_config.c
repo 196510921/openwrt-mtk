@@ -62,7 +62,8 @@ int app_req_account_info_handle(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
     fprintf(stdout,"%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 	    /*create pdu object*/	    
@@ -168,7 +169,8 @@ int app_req_account_config_handle(payload_t data)
     accountJson = data.pdu;//cJSON_GetObjectItem(data.pdu, "devData");
     sprintf(sql,"select KEY,KEY_AUTH,REMOTE_AUTH from account_table where ACCOUNT = \"%s\";", accountJson->valuestring);
     fprintf(stdout,"%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 	    /*create pdu object*/	    
@@ -193,7 +195,8 @@ int app_req_account_config_handle(payload_t data)
     cJSON_AddItemToObject(devDataObject, "userData", userDataArray);
     sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";", accountJson->valuestring);
     fprintf(stdout,"%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
         userDataObject = cJSON_CreateObject();
@@ -221,7 +224,8 @@ int app_req_account_config_handle(payload_t data)
         cJSON_AddItemToObject(userDataObject, "scenario", scenArray);
         sprintf(sql_1,"select distinct SCEN_NAME from scenario_table where ACCOUNT = \"%s\" and DISTRICT = \"%s\" ;", accountJson->valuestring,district);
         fprintf(stdout,"%s\n", sql_1);
-        sqlite3_reset(stmt_1);
+        //sqlite3_reset(stmt_1);
+        sqlite3_finalize(stmt_1);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
         while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
             /*添加区域信息*/      
@@ -248,7 +252,8 @@ int app_req_account_config_handle(payload_t data)
         cJSON_AddItemToObject(userDataObject, "device", devArray);
         sprintf(sql_1,"select PID, DEV_NAME, DEV_ID from all_dev where ACCOUNT = \"%s\";", accountJson->valuestring);
         fprintf(stdout,"%s\n", sql_1);
-        sqlite3_reset(stmt_1);
+        //sqlite3_reset(stmt_1);
+        sqlite3_finalize(stmt_1);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
         while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
             /*添加区域信息*/      
@@ -349,7 +354,8 @@ int app_account_config_handle(payload_t data)
         /*删除重复用户信息*/
         sprintf(sql_1,"delete from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
         fprintf(stdout,"sql:%s\n",sql_1);
-        sqlite3_reset(stmt);
+        //sqlite3_reset(stmt);
+        sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql), &stmt, NULL);
         thread_sqlite3_step(&stmt, db);
         
@@ -377,7 +383,8 @@ int app_account_config_handle(payload_t data)
         }
         sprintf(sql_1,"delete from district_table where ACCOUNT = \"%s\";",accountJson->valuestring);
         fprintf(stdout,"sql:%s\n",sql_1);
-        sqlite3_reset(stmt);
+        //sqlite3_reset(stmt);
+        sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
         thread_sqlite3_step(&stmt, db);
     
@@ -390,13 +397,15 @@ int app_account_config_handle(payload_t data)
             fprintf(stdout,"district:%s\n",districtObject->valuestring);
             sprintf(sql_1,"select AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"Dalitek\";",districtObject->valuestring);
             fprintf(stdout,"sql:%s\n",sql_1);
-            sqlite3_reset(stmt);
+            //sqlite3_reset(stmt);
+            sqlite3_finalize(stmt);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
             while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
                 ap_id = sqlite3_column_text(stmt, 0);
                 sql = "insert into district_table(ID, DIS_NAME, AP_ID, ACCOUNT, TIME)values(?,?,?,?,?);";
                 fprintf(stdout,"sql:%s\n",sql);
-                sqlite3_reset(stmt_1);
+                //sqlite3_reset(stmt_1);
+                sqlite3_finalize(stmt_1);
                 sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
     
                 sqlite3_bind_int(stmt_1, 1, id);
@@ -417,7 +426,8 @@ int app_account_config_handle(payload_t data)
         /*删除重复用户信息*/
         sprintf(sql_1,"delete from scenario_table where ACCOUNT = \"%s\";",accountJson->valuestring);
         fprintf(stdout,"sql:%s\n",sql_1);
-        sqlite3_reset(stmt);
+        //sqlite3_reset(stmt);
+        sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
         thread_sqlite3_step(&stmt, db);
         //while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
@@ -431,7 +441,8 @@ int app_account_config_handle(payload_t data)
             fprintf(stdout,"scenario:%s\n",scenObject->valuestring);
             sprintf(sql_1,"select DISTRICT,AP_ID,DEV_ID,TYPE,VALUE,DELAY from scenario_table where SCEN_NAME = \"%s\" and ACCOUNT = \"Dalitek\";",scenObject->valuestring);
             fprintf(stdout,"sql:%s\n",sql_1);
-            sqlite3_reset(stmt);
+            //sqlite3_reset(stmt);
+            sqlite3_finalize(stmt);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
             while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
                 district = sqlite3_column_text(stmt, 0);
@@ -443,7 +454,8 @@ int app_account_config_handle(payload_t data)
                 /*插入到场景表中*/
                 sql = "insert into scenario_table(ID, SCEN_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT, TIME)values(?,?,?,?,?,?,?,?,?,?);";
                 fprintf(stdout,"sql:%s\n",sql);
-                sqlite3_reset(stmt_1);
+                //sqlite3_reset(stmt_1);
+                sqlite3_finalize(stmt_1);
                 sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
     
                 sqlite3_bind_int(stmt_1, 1, id);
@@ -468,7 +480,8 @@ int app_account_config_handle(payload_t data)
         /*添加用户设备信息*/
         sprintf(sql_1,"delete from all_dev where ACCOUNT = \"%s\";",accountJson->valuestring);
         fprintf(stdout,"sql:%s\n",sql_1);
-        sqlite3_reset(stmt);
+        //sqlite3_reset(stmt);
+        sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
         thread_sqlite3_step(&stmt, db);
     
@@ -481,7 +494,8 @@ int app_account_config_handle(payload_t data)
             devIdObject = cJSON_GetObjectItem(devObject, "devId");
             sprintf(sql_1,"select DEV_NAME,AP_ID,PID,ADDED,NET,STATUS from all_dev where DEV_ID = \"%s\" and ACCOUNT = \"Dalitek\";",devIdObject->valuestring);
             fprintf(stdout,"sql:%s\n",sql_1);
-            sqlite3_reset(stmt);
+            //sqlite3_reset(stmt);
+            sqlite3_finalize(stmt);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
             while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
                 dev_name = sqlite3_column_text(stmt, 0);
@@ -493,7 +507,8 @@ int app_account_config_handle(payload_t data)
                 /*插入到场景表中*/
                 sql = "insert into all_dev(ID,DEV_ID,DEV_NAME,AP_ID,PID,ADDED,NET,STATUS,ACCOUNT,TIME)values(?,?,?,?,?,?,?,?,?,?);";
                 fprintf(stdout,"sql:%s\n",sql);
-                sqlite3_reset(stmt_1);
+                //sqlite3_reset(stmt_1);
+                sqlite3_finalize(stmt_1);
                 sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
     
                 sqlite3_bind_int(stmt_1, 1, id);
@@ -585,7 +600,8 @@ int app_req_dis_name(payload_t data)
     /*获取项目信息*/
     char* sql = "select distinct DIS_NAME from district_table";
     fprintf(stdout, "%s\n", sql);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
         district = sqlite3_column_text(stmt, 0);
@@ -707,7 +723,8 @@ int app_req_dis_scen_name(payload_t data)
         /*获取场景*/
         sprintf(sql,"select distinct SCEN_NAME from scenario_table where DISTRICT = \"%s\";",devDataJson->valuestring);
         fprintf(stdout, "%s\n", sql);
-        sqlite3_reset(stmt);
+        //sqlite3_reset(stmt);
+        sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
         while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
             scenario = sqlite3_column_text(stmt, 0);
@@ -836,7 +853,8 @@ int app_req_dis_dev(payload_t data)
         /*获取场景*/
         sprintf(sql,"select distinct AP_ID from district_table where DIS_NAME = \"%s\";",devDataJson->valuestring);
         fprintf(stdout, "%s\n", sql);
-        sqlite3_reset(stmt);
+        //sqlite3_reset(stmt);
+        sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
         while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
             apInfoObject = cJSON_CreateObject();
@@ -860,7 +878,8 @@ int app_req_dis_dev(payload_t data)
             /*pId,apName,apId*/
             sprintf(sql_1,"select PID, DEV_NAME from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;", apId);
             fprintf(stdout, "%s\n", sql_1);
-            sqlite3_reset(stmt_1);
+            //sqlite3_reset(stmt_1);
+            sqlite3_finalize(stmt_1);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
             rc = thread_sqlite3_step(&stmt_1, db);
             if(rc != SQLITE_ERROR){
@@ -883,7 +902,8 @@ int app_req_dis_dev(payload_t data)
             cJSON_AddItemToObject(apInfoObject, "dev", devArray);
             sprintf(sql_2,"select PID, DEV_NAME, DEV_ID from all_dev where AP_ID = \"%s\" and ACCOUNT = \"Dalitek\";",apId);
             fprintf(stdout, "%s\n", sql_2);
-            sqlite3_reset(stmt_2);
+            //sqlite3_reset(stmt_2);
+            sqlite3_finalize(stmt_2);
             sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
             while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
                 /*添加设备*/
@@ -947,6 +967,8 @@ int user_login_handle(payload_t data)
 	cJSON* keyJson = NULL;
 	sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
+    sqlite3_stmt* stmt_1 = NULL;
+    sqlite3_stmt* stmt_2 = NULL;
 
     accountJson = cJSON_GetObjectItem(data.pdu, "account");
     fprintf(stdout,"account:%s\n",accountJson->valuestring);
@@ -956,7 +978,8 @@ int user_login_handle(payload_t data)
     db = data.db;
     /*验证用户信息*/
     sprintf(sql,"select KEY from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
-    sqlite3_reset(stmt);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
 	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 	if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 		key = sqlite3_column_text(stmt, 0);
@@ -974,20 +997,18 @@ int user_login_handle(payload_t data)
 	/*删除重复用户信息*/
     sprintf(sql,"delete from account_info where ACCOUNT = \"%s\";",accountJson->valuestring);
     fprintf(stdout,"sql:%s\n",sql);
-    sqlite3_reset(stmt);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-	if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
-		account = sqlite3_column_text(stmt, 0);
+	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+	if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
+		account = sqlite3_column_text(stmt_1, 0);
 	}
 	/*插入用户信息*/	
 	sql_1 = "insert into account_info(ID,ACCOUNT,CLIENT_FD)values(?,?,?);";
     fprintf(stdout,"sql_1:%s\n",sql_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-	sqlite3_reset(stmt);
-	sqlite3_bind_int(stmt, 1, id);
-    sqlite3_bind_text(stmt, 2,  accountJson->valuestring, -1, NULL);
-    sqlite3_bind_int(stmt, 3, data.clientFd);
-    rc = thread_sqlite3_step(&stmt,db);
+    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_2, NULL);
+	sqlite3_bind_int(stmt_2, 1, id);
+    sqlite3_bind_text(stmt_2, 2,  accountJson->valuestring, -1, NULL);
+    sqlite3_bind_int(stmt_2, 3, data.clientFd);
+    rc = thread_sqlite3_step(&stmt_2,db);
     if(rc == SQLITE_ERROR){
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
@@ -996,6 +1017,8 @@ int user_login_handle(payload_t data)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt_1);
+    sqlite3_finalize(stmt_2);
     
 	return 	ret;
 }
