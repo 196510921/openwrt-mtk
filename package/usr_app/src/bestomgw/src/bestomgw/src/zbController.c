@@ -150,7 +150,10 @@ static void printf_redirect(void)
      setvbuf(stdout,NULL,_IONBF,0);  
      printf("test stdout\n");  
      int save_fd = dup(STDOUT_FILENO); 
-     int fd = open("test1.txt",(O_RDWR | O_CREAT), 0644);  
+     int fd = open("/home/ubuntu/share/test1.txt",(O_RDWR | O_CREAT), 0644);  
+     //int fd = open("/tmp/log/test1.txt",(O_RDWR | O_CREAT), 0644);  
+     if(fd == -1)
+     	fprintf(stderr, " open file failed\n");
      dup2(fd,STDOUT_FILENO); 
      printf("test file\n");  
 }
