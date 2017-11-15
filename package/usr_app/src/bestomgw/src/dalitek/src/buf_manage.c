@@ -2,9 +2,10 @@
 #include "buf_manage.h"
 
 /*宏定义*******************************************************************************************************/
-#define FIXED_BUF_LEN  ((300*300)/1024)*1024   // 支持300组300字节的有效数据同时存储
+#define FIXED_BUF_LEN  (100 * 1024)  // 支持300组300字节的有效数据同时存储
+#define STACK_BLOCK_LEN  (4 * 1024)              //单个数据块4k
+#define STACK_BLOCK_NUM 25
 /*全局变量定义*************************************************************************************************/
-
 char fixed_buf[FIXED_BUF_LEN];
 /*静态函数声明*************************************************************************************************/
 static PNode* Buy_Node(Item item);
@@ -35,22 +36,55 @@ uint32_t fifo_read(fifo_t* fifo, uint32_t* d)
     return 1;
 }
 
-
-/*固定长度内存空间分配*/
-char* mem_poll_malloc(uint32_t len)
+/*静态栈内存动态分配*******************************************************************************************/
+static block_status_t block[STACK_BLOCK_NUM];
+void stack_block_init(void)
 {
-	static char* wptr = NULL;
-
-	if(((wptr + len) > (fixed_buf + FIXED_BUF_LEN)) || ((wptr + len) < fixed_buf)){
-		wptr = fixed_buf;
-	}else{
-			wptr += len;
+	fprintf(stdout,"stack_block_init\n");
+	int i;
+	
+	for(i = 0; i < STACK_BLOCK_NUM; i++)
+	{
+		block[i].blockNum = i;
+		block[i].status = IDLE;
 	}
-	printf("wptr:%05d\n",wptr);
-	return wptr;
 }
 
+int stack_block_req(stack_mem_t* d)
+{
+	fprintf(stdout,"stack_block_req\n");
+	int i;
 
+	for(i = 0; i < STACK_BLOCK_NUM; i++){
+		if(IDLE == block[i].status){
+			block[i].status = BUSY;
+			d->blockNum = i;
+			d->start = &fixed_buf[i * STACK_BLOCK_LEN];
+			d->end = &fixed_buf[(i + 1) * STACK_BLOCK_LEN];
+			d->wPtr = d->start;
+			d->rPtr = d->wPtr;
+			return BUF_MANAGE_SUCCESS;		
+		}
+	}
+
+	return BUF_MANAGE_FAILED;
+}
+
+int stack_block_destroy(stack_mem_t d)
+{
+	fprintf(stdout,"stack_block_destroy\n");
+	int i = 0;
+
+	i = d.blockNum;
+	if(i >= STACK_BLOCK_NUM)
+		return BUF_MANAGE_FAILED;
+
+	block[i].status = IDLE;
+	memset(d.start, 0, STACK_BLOCK_LEN);
+
+	return BUF_MANAGE_SUCCESS;
+}
+/*队列*********************************************************************************************************/
 //初始化队列
 void Init_PQueue(PQueue pQueue)
 {

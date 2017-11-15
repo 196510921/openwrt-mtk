@@ -63,13 +63,26 @@ static void socket_poll(void);
 #include "interface_srpcserver.h"
 #include "socket_server.h"
 
+// static void test(void)
+// {
+// 	stack_block_init();
+// 	stack_mem_t d;
+// 	stack_block_req(d);
+// 	printf(stdout,"d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d.blockNum,d.start,d.end,d.wPtr,d.rPtr);
+// 	char buf[1024];
+// 	int i;
+// 	for(i = 0; i < 20; i++){
+
+// 	}
+// }
+
 int main(int argc, char* argv[])
 {
 	int retval = 0;
 	pthread_t t1,t2,t3,t4,t5,t6,t7,t8;
 
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
-	printf_redirect();
+	//printf_redirect();
 	SRPC_Init();
 	m1_protocol_init();
 
