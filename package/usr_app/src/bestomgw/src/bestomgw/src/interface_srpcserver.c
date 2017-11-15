@@ -1748,27 +1748,27 @@ void SRPC_RxCB(int clientFd)
 			fprintf(stdout,"msg->client:%03d,byteRead:%d, msg->len:%05d\n",LiveclientFd, byteRead, len);		
 		}					
 	}
-	if(JsonFlag == 1){
-		mLen += msg_header_checker(buf + mLen, len - mLen);
-		//fprintf(stdout,"%s\n",buf + mLen);
-		JsonComplete = json_checker(buf + mLen, len - mLen);
-	    if(1 == JsonComplete){
-	    	fprintf(stdout, "msg complete!\n");
-	    	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
-	    	msg->clientFd = LiveclientFd;
-	    	msg->len = len - mLen;
-	    	msg->data = mem_poll_malloc(msg->len);
-	    	strcpy(msg->data,buf + mLen);
-	    	data_handle(msg);
-	    	JsonFlag = 0;
-	    }else{
-	    	if(clientFd != LiveclientFd){
-	    		JsonFlag = 0;	
-	    	}else{
-	    		fprintf(stdout, "msg waiting......\n");
-	    	}
-	    }
-	}
+	// if(JsonFlag == 1){
+	// 	mLen += msg_header_checker(buf + mLen, len - mLen);
+	// 	//fprintf(stdout,"%s\n",buf + mLen);
+	// 	JsonComplete = json_checker(buf + mLen, len - mLen);
+	//     if(1 == JsonComplete){
+	//     	fprintf(stdout, "msg complete!\n");
+	//     	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
+	//     	msg->clientFd = LiveclientFd;
+	//     	msg->len = len - mLen;
+	//     	msg->data = mem_poll_malloc(msg->len);
+	//     	strcpy(msg->data,buf + mLen);
+	//     	data_handle(msg);
+	//     	JsonFlag = 0;
+	//     }else{
+	//     	if(clientFd != LiveclientFd){
+	//     		JsonFlag = 0;	
+	//     	}else{
+	//     		fprintf(stdout, "msg waiting......\n");
+	//     	}
+	//     }
+	// }
 
 	printf("SRPC_RxCB--\n");
 

@@ -50,6 +50,7 @@
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
 #include "m1_protocol.h"
+#include "buf_manage.h"
 
 #define MAX_DB_FILENAMR_LEN 255
 
@@ -63,18 +64,27 @@ static void socket_poll(void);
 #include "interface_srpcserver.h"
 #include "socket_server.h"
 
-// static void test(void)
-// {
-// 	stack_block_init();
-// 	stack_mem_t d;
-// 	stack_block_req(d);
-// 	printf(stdout,"d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d.blockNum,d.start,d.end,d.wPtr,d.rPtr);
-// 	char buf[1024];
-// 	int i;
-// 	for(i = 0; i < 20; i++){
+static void test(void)
+{
+	stack_mem_t d[20];
+	char buf[1024];
+	int rc = 0;
 
-// 	}
-// }
+	stack_block_init();
+	int i;
+	for(i = 0; i < 21; i++){
+		rc = stack_block_req(&d[i]);
+		if(rc == 0){
+			fprintf(stdout,"req failed\n");
+			break;
+		}
+		fprintf(stdout,"d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
+		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
+	}
+	for(i = 0; i < 20; i++){
+		fprintf(stdout,"msg:%s\n",d[i].rPtr);
+	}
+}
 
 int main(int argc, char* argv[])
 {
@@ -82,27 +92,28 @@ int main(int argc, char* argv[])
 	pthread_t t1,t2,t3,t4,t5,t6,t7,t8;
 
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
+	test();
 	//printf_redirect();
-	SRPC_Init();
-	m1_protocol_init();
+	// SRPC_Init();
+	// m1_protocol_init();
 
-	pthread_create(&t1,NULL,socket_poll,NULL);
-	////pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
-	pthread_create(&t3,NULL,delay_send_task,NULL);
-	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
-	pthread_create(&t5,NULL,sql_rd_handle,NULL);
-	pthread_create(&t6,NULL,linkage_task,NULL);
-	//pthread_create(&t7,NULL,trigger_cb_handle,NULL);
-	pthread_create(&t8,NULL,sql_wt_handle,NULL);
+	// pthread_create(&t1,NULL,socket_poll,NULL);
+	// ////pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
+	// pthread_create(&t3,NULL,delay_send_task,NULL);
+	// pthread_create(&t4,NULL,scenario_alarm_select,NULL);
+	// pthread_create(&t5,NULL,sql_rd_handle,NULL);
+	// pthread_create(&t6,NULL,linkage_task,NULL);
+	// //pthread_create(&t7,NULL,trigger_cb_handle,NULL);
+	// pthread_create(&t8,NULL,sql_wt_handle,NULL);
 
-	pthread_join(t1,NULL);
-	////pthread_join(t2,NULL);
-	pthread_join(t3, NULL);
-	pthread_join(t4, NULL);
-	pthread_join(t5, NULL);
-	pthread_join(t6, NULL);
-	//pthread_join(t7, NULL);
-	pthread_join(t8, NULL);
+	// pthread_join(t1,NULL);
+	// ////pthread_join(t2,NULL);
+	// pthread_join(t3, NULL);
+	// pthread_join(t4, NULL);
+	// pthread_join(t5, NULL);
+	// pthread_join(t6, NULL);
+	// //pthread_join(t7, NULL);
+	// pthread_join(t8, NULL);
 	
 	return retval;
 }
