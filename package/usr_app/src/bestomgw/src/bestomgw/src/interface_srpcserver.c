@@ -1838,7 +1838,8 @@ static int client_write(stack_mem_t* d, char* data, int len)
 {
 	fprintf(stdout, "client_write\n");
 	
-	fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	// fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	// fprintf(stdout,"header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
 	if(NULL == d){
 		fprintf(stdout, "NULL == d\n");
 		return TCP_SERVER_FAILED;
@@ -1857,8 +1858,10 @@ static int client_write(stack_mem_t* d, char* data, int len)
 				return TCP_SERVER_FAILED;
 		}
 	}else{
+		memcpy(d->wPtr, data, len);
 		d->wPtr += len;
 	}
+
 
 	fprintf(stdout,"wPtr:%05d\n",d->wPtr);
 
@@ -1874,7 +1877,7 @@ void client_read(void)
 	int len = 0;
 	int distance = 0;
 
-	//while(1){
+	while(1){
 
 		d = &client_block[i].stack_block;
 		if(client_block[i].clientFd == 0){
@@ -1890,7 +1893,8 @@ void client_read(void)
 			distance = d->wPtr - d->rPtr;
 			
 			if(distance >= 4){
-				if((*(uint16_t*)d->rPtr & 0xFF) != MSG_HEADER){
+				fprintf(stdout,"header:%x\n",*(uint16_t*)d->rPtr);
+				if((*(uint16_t*)d->rPtr & 0xFFFF) != MSG_HEADER){
 					fprintf(stderr, "missing header\n");
 					goto Finish;
 				}
@@ -1898,18 +1902,23 @@ void client_read(void)
 			}
 
 			fprintf(stdout,"len:%05d, distance:%05d\n",len, distance);
-			if(distance >= len)
-				data = d->rPtr;
-			else
+			if(distance >= len){
+				data = d->rPtr + 4;
+				fprintf(stdout,"read message:%s\n",data);
+				d->rPtr += len;
+			}
+			else{
 				goto Finish;
+			}
 		}else{
-			data = d->rPtr;
+			data = d->rPtr + 4;
+			fprintf(stdout,"read message:%s\n",data);
+			d->rPtr += len;
 		}
 
 		Finish:
 		i = (i + 1) % STACK_BLOCK_NUM;
-		fprintf(stdout,"read message:%s\n",data);
-	// }
+	}
 
 }
 
@@ -1923,7 +1932,7 @@ void client_write_test(void)
 	char test_buf[200];
 
 	client_block_init();
-	// while(1){
+	while(1){
 
 		client_block = client_stack_block_req(clientFd[i]);
 		if(NULL == client_block){
@@ -1934,8 +1943,8 @@ void client_write_test(void)
 		client_block->stack_block.wPtr, client_block->stack_block.rPtr, client_block->stack_block.start,
 		client_block->stack_block.end);
 
-		test_buf[0] = 0xFE;
-		test_buf[1] = 0xFD;
+		test_buf[0] = 0xFD;
+		test_buf[1] = 0xFE;
 		test_buf[2] = 0x00;
 		sprintf(&test_buf[4],"-------------------------client write test :%d----------------------------------\n",i);
 		len = strlen(&test_buf[4]);
@@ -1947,7 +1956,7 @@ void client_write_test(void)
 
 		Finish:
 		i = (i + 1) % 10;
-	// }
+	}
 
 }
 

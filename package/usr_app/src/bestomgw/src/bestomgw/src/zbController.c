@@ -74,12 +74,11 @@ int main(int argc, char* argv[])
 	// SRPC_Init();
 	// m1_protocol_init();
 
-	client_write_test();
-	client_read();
-	// pthread_create(&t1, NULL, client_write_test, NULL);
-	// pthread_create(&t2,NULL,client_read,NULL);
-	// pthread_join(t1,NULL);
-	// pthread_join(t2,NULL);
+
+	pthread_create(&t1, NULL, client_write_test, NULL);
+	pthread_create(&t2,NULL,client_read,NULL);
+	pthread_join(t1,NULL);
+	pthread_join(t2,NULL);
 	// pthread_create(&t1,NULL,socket_poll,NULL);
 	// ////pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
 	// pthread_create(&t3,NULL,delay_send_task,NULL);
