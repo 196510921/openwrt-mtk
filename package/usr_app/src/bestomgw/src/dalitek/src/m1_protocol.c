@@ -64,6 +64,8 @@ void m1_protocol_init(void)
     /*Tx message fifo*/
     fifo_init(&tx_fifo, tx_buf, 256);
     Init_PQueue(&head);
+    /*初始化接收buf*/
+    client_block_init();
 }
 
 void data_handle(m1_package_t* package)
