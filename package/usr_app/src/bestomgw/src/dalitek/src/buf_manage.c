@@ -2,7 +2,10 @@
 #include "buf_manage.h"
 
 /*全局变量定义*************************************************************************************************/
+#define FIXED_BUF2_LEN    (1024 * 6)
+
 char fixed_buf[FIXED_BUF_LEN];
+char fixed_buf2[FIXED_BUF2_LEN];
 static block_status_t block[STACK_BLOCK_NUM];
 /*静态函数声明*************************************************************************************************/
 static PNode* Buy_Node(Item item);
@@ -58,8 +61,8 @@ int stack_block_req(stack_mem_t* d)
 			d->blockNum = i;
 			d->start = &fixed_buf[i * STACK_BLOCK_LEN];
 			d->end = &fixed_buf[(i + 1) * STACK_BLOCK_LEN];
-			d->wPtr = d->start;
-			d->rPtr = d->wPtr;
+			d->rPtr = d->start;
+			d->wPtr = d->rPtr;
 			return BUF_MANAGE_SUCCESS;		
 		}
 	}
@@ -81,6 +84,22 @@ int stack_block_destroy(stack_mem_t d)
 
 	return BUF_MANAGE_SUCCESS;
 }
+
+/*ring buf*/
+/*固定长度内存空间分配*/
+char* mem_poll_malloc(uint32_t len)
+{
+	static char* wptr = NULL;
+
+	if(((wptr + len) > (fixed_buf2 + FIXED_BUF2_LEN)) || ((wptr + len) < fixed_buf2)){
+		wptr = fixed_buf2;
+	}else{
+			wptr += len;
+	}
+	printf("wptr:%05d\n",wptr);
+	return wptr;
+}
+
 /*队列*********************************************************************************************************/
 //初始化队列
 void Init_PQueue(PQueue pQueue)

@@ -376,6 +376,7 @@ void socketSeverPoll(int clinetFd, int revent)
 			//its a shut down close the socket
 			fprintf(stdout,"Client fd:%d disconnected\n", clinetFd);
 			//remove the record and close the socket
+			client_block_destory(clinetFd);
 			delete_account_conn_info(clinetFd);
 			deleteSocketRec(clinetFd);
 		}

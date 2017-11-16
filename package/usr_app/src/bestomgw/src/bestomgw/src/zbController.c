@@ -70,12 +70,12 @@ int main(int argc, char* argv[])
 
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 	
-	printf_redirect();
+	//printf_redirect();
 	SRPC_Init();
 	m1_protocol_init();
 
 	pthread_create(&t1,NULL,socket_poll,NULL);
-	////pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
+	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
 	pthread_create(&t5,NULL,sql_rd_handle,NULL);
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 	pthread_create(&t8,NULL,sql_wt_handle,NULL);
 
 	pthread_join(t1,NULL);
-	////pthread_join(t2,NULL);
+	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
 	pthread_join(t5, NULL);

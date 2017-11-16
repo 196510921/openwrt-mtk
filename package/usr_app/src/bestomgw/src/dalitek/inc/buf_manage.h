@@ -61,7 +61,7 @@ void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
 void fifo_write(fifo_t* fifo, uint32_t d);
 uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
 
-
+char* mem_poll_malloc(uint32_t len);
 /*stack动态分配*/
 void stack_block_init(void);
 int stack_block_req(stack_mem_t* d);

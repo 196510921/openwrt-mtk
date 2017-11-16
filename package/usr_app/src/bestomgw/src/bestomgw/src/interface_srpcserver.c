@@ -87,6 +87,8 @@ static uint8_t SRPC_permitJoin(uint8_t *pBuf, uint32_t clientFd);
 static uint8_t SRPC_changeDeviceName(uint8_t *pBuf, uint32_t clientFd);
 static uint8_t SRPC_notSupported(uint8_t *pBuf, uint32_t clientFd);
 
+static int client_write(stack_mem_t* d, char* data, int len);
+
 //RPSC ZLL Interface call back functions
 static void SRPC_CallBack_addGroupRsp(uint16_t groupId, char *nameStr,
 		uint32_t clientFd);
@@ -1710,9 +1712,9 @@ void SRPC_RxCB(int clientFd)
 	int byteRead = 0;
 	int rtn = 0;
 	int JsonComplete = 0;
-	char buf[1024*2] = {0};
 	int len = 0;
-	m1_package_t* msg  = NULL;
+	int rc = 0;
+	char buf[1024*2] = {0};
 	client_block_t* client_block = NULL;
 
 	printf("SRPC_RxCB++[%x]\n", clientFd);
@@ -1730,16 +1732,16 @@ void SRPC_RxCB(int clientFd)
 		byteRead = read(clientFd, buf + len, 1024);
 		if(byteRead > 0){
 			len += byteRead;
-			byteToRead -= byteRead;
-			fprintf(stdout,"msg->client:%03d,byteRead:%d, msg->len:%05d\n",LiveclientFd, byteRead, len);		
+			byteToRead -= byteRead;		
 		}					
 	}
 
-	client_block = client_stack_block_req(clientFd[i]);
+	client_block = client_stack_block_req(clientFd);
 	if(NULL == client_block){
 		fprintf(stderr, "client_block null\n");
 		return;
 	}
+	printf("rx len:%05d\n",len);
 	rc = client_write(&client_block->stack_block, buf, len);
 	if(rc != TCP_SERVER_SUCCESS)
 		fprintf(stdout,"client_write failed\n");
@@ -1768,6 +1770,18 @@ void SRPC_RxCB(int clientFd)
 	printf("SRPC_RxCB--\n");
 
 	return;
+}
+
+static void client_read_to_data_handle(char* data, int len, int clientFd)
+{
+	m1_package_t* msg  = NULL;
+
+	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
+	msg->clientFd = clientFd;
+	msg->len = len;
+	msg->data = data;
+	data_handle(msg);
+
 }
 
 /*clientfd stack block request****************************************************************************************/
@@ -1833,15 +1847,22 @@ static int client_write(stack_mem_t* d, char* data, int len)
 {
 	fprintf(stdout, "client_write\n");
 	
-	// fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
-	fprintf(stdout,"header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
+	fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	//fprintf(stdout,"header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
 	if(NULL == d){
 		fprintf(stdout, "NULL == d\n");
 		return TCP_SERVER_FAILED;
 	}
 
-	if(d->rPtr != d->start){
+	if((*(uint16_t*)d->rPtr & 0xFFFF) == MSG_HEADER){
 		if(d->wPtr == d->rPtr){
+			fprintf(stdout, " write d->wPtr == d->rPtr\n");	
+			return TCP_SERVER_FAILED;
+		}
+	}
+
+	if((*(uint8_t*)d->wPtr & 0xFF) != 0x00){
+		if((d->wPtr + len) >= d->rPtr){
 			fprintf(stdout, " write d->wPtr == d->rPtr\n");	
 			return TCP_SERVER_FAILED;
 		}
@@ -1852,6 +1873,9 @@ static int client_write(stack_mem_t* d, char* data, int len)
 			if((d->start + len) >= d->rPtr){
 				fprintf(stdout, "(d->start + len) >= d->rPtr\n");
 				return TCP_SERVER_FAILED;
+			}else{
+				memcpy(d->start, data, len);
+				d->wPtr = d->start;		
 			}
 		}
 	}else{
@@ -1869,55 +1893,69 @@ void client_read(void)
 {
 	fprintf(stdout, "client_read\n");
 	int i = 0;
-	char* data = NULL;
-	stack_mem_t* d = NULL;
 	int len = 0;
 	int distance = 0;
+	char* data = NULL;
+	stack_mem_t* d = NULL;
 
 	while(1){
 		fprintf(stdout,"-------------------------%d read----------------------------\n",i);
 		d = &client_block[i].stack_block;
 		if(client_block[i].clientFd == 0){
-			fprintf(stdout, "client_block[i].clientFd == 0\n");
+			//fprintf(stdout, "client_block[i].clientFd == 0\n");
 			//continue;
 			goto Finish;
 		}
-		if(d->rPtr != d->start){
+		// if(d->rPtr != d->start){
 			if(d->wPtr == d->rPtr){	
-				fprintf(stdout, "read d->wPtr == d->rPtr\n");
+				//fprintf(stdout, "read d->wPtr == d->rPtr\n");
 				goto Finish;
 			}
-		}
-		if(d->wPtr > d->rPtr){
-			distance = d->wPtr - d->rPtr;
+		// }
+		// if(d->wPtr > d->rPtr){
+			// distance = d->wPtr - d->rPtr;
 			
-			if(distance >= 4){
+			// if(distance >= 4){
+				fprintf(stdout, "read:d->rPtr:%05d",d->rPtr);
 				fprintf(stdout,"header:%x\n",*(uint16_t*)d->rPtr);
 				if((*(uint16_t*)d->rPtr & 0xFFFF) != MSG_HEADER){
 					fprintf(stderr, "missing header\n");
 					goto Finish;
 				}
-				len = (*(uint16_t*)(d->rPtr + BLOCK_LEN_OFFSET)) & 0xFF;
-			}
+				len = (*(uint16_t*)(d->rPtr + BLOCK_LEN_OFFSET)) & 0xFFFF;
+				len = (((len & 0xff00) >> 8) | len & 0xff) & 0xffff;
+				len-=1;
+			// }
 
-			fprintf(stdout,"len:%05d, distance:%05d\n",len, distance);
-			if(distance >= len){
+			//fprintf(stdout,"len:%05d, distance:%05d\n",len, distance);
+			// if(distance >= len){
 				data = d->rPtr + 4;
-				fprintf(stdout,"read message:%s\n",data);
+				fprintf(stdout, "read:len:%05d\n",len);
+				//fprintf(stdout,"read message:%s\n",data);
+				client_read_to_data_handle(data, len, client_block[i].clientFd);
 				d->rPtr += (len + 4);
-			}
-			else{
-				goto Finish;
-			}
-		}else{
-			data = d->rPtr + 4;
-			fprintf(stdout,"read message:%s\n",data);
-			d->rPtr += (len + 4);
-		}
+			// }
+			// else{
+				// goto Finish;
+			// }
+		// }else{
+		// 	fprintf(stdout,"header:%x\n",*(uint16_t*)d->rPtr);
+		// 	if((*(uint16_t*)d->rPtr & 0xFFFF) != MSG_HEADER){
+		// 		fprintf(stderr, "missing header\n");
+		// 		goto Finish;
+		// 	}
+		// 	len = (*(uint16_t*)(d->rPtr + BLOCK_LEN_OFFSET)) & 0xFF;
+
+		// 	data = d->rPtr + 4;
+		// 	fprintf(stdout, "read:d->rPtr:%05d, len:%05d\n",d->rPtr, len);
+		// 	//fprintf(stdout,"read message:%s\n",data);
+		// 	client_read_to_data_handle(data, len, client_block[i].clientFd);
+		// 	d->rPtr += (len + 4);
+		// }
 
 		Finish:
 		i = (i + 1) % STACK_BLOCK_NUM;
-		usleep(1000);
+		usleep(500000);
 	}
 
 }
