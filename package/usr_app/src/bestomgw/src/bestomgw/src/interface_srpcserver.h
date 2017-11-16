@@ -47,6 +47,7 @@ extern "C" {
 #include "zbSocCmd.h"
 #include "interface_devicelist.h"
 #include "cJSON.h"
+#include "buf_manage.h"
 
 //define the outgoing RPSC command ID's
 #define SRPC_NEW_DEVICE     0x0001
@@ -168,6 +169,19 @@ extern "C" {
 #define MT_NEW_DEVICE_FLAGS_FIRST 0x01
 #define MT_NEW_DEVICE_FLAGS_LAST  0x02
 
+#define BLOCK_LEN_OFFSET     2
+#define MSG_HEADER           0xFEFD
+
+typedef struct _client_block_t{
+	int clientFd;
+	stack_mem_t stack_block;
+}client_block_t;
+
+enum client_block_status_t{
+	TCP_SERVER_FAILED = 0,
+	TCP_SERVER_SUCCESS
+};
+
 typedef struct
 {
 	union
@@ -191,6 +205,14 @@ void SRPC_CallBack_getSatRsp(uint8_t sat, uint16_t srcAddr, uint8_t endpoint, ui
 void SRPC_CallBack_getTempRsp(uint16_t temp, uint16_t srcAddr, uint8_t endpoint, uint32_t clientFd);
 void SRPC_CallBack_getPowerRsp(uint32_t power, uint16_t srcAddr, uint8_t endpoint, uint32_t clientFd);
 
+
+/*client block*/
+int client_block_init(void);
+client_block_t* client_stack_block_req(int clientFd);
+int client_block_destory(int clientFd);
+void client_read(void);
+
+void client_write_test(void);
 #ifdef __cplusplus
 }
 #endif

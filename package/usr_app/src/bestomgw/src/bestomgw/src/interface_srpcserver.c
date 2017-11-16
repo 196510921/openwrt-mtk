@@ -1775,6 +1775,179 @@ void SRPC_RxCB(int clientFd)
 	return;
 }
 
+/*clientfd stack block request****************************************************************************************/
+static client_block_t client_block[STACK_BLOCK_NUM];
+
+int client_block_init(void)
+{
+	fprintf(stdout, "client_block_init\n");
+	int i;
+
+	stack_block_init();
+
+	for(i = 0; i < STACK_BLOCK_NUM; i++){
+		client_block[i].clientFd = 0;
+		// client_block[i].stack_block = NULL;
+	}
+}
+
+client_block_t* client_stack_block_req(int clientFd)
+{
+	fprintf(stdout, "client_stack_block_req\n");
+	int i;
+	int j = -1;
+
+	for(i = 0; i <  STACK_BLOCK_NUM; i++){
+		if(-1 == j)
+			if(0 == client_block[i].clientFd)
+				j = i;
+
+		if(clientFd == client_block[i].clientFd)
+			return &client_block[i];
+	}
+
+	client_block[j].clientFd = clientFd;
+	if(TCP_SERVER_FAILED == stack_block_req(&client_block[j].stack_block))
+		return NULL;
+
+	fprintf(stdout,"blockNum:%d,wPtr:%05d,rPtr:%05d,start:%05d,end:%05d\n",client_block[j].stack_block.blockNum,
+		client_block[j].stack_block.wPtr, client_block[j].stack_block.rPtr, client_block[j].stack_block.start,
+		client_block[j].stack_block.end);
+	return &client_block[j];
+} 
+
+int client_block_destory(int clientFd)
+{
+	fprintf(stdout, "client_block_destory\n");
+	int i;
+
+	for(i = 0; i <  STACK_BLOCK_NUM; i++){
+
+		if(clientFd == client_block[i].clientFd){
+			client_block[i].clientFd = 0;
+			if(TCP_SERVER_FAILED == stack_block_destroy(client_block[i].stack_block))
+				return TCP_SERVER_FAILED;
+		}
+	}
+
+	return TCP_SERVER_SUCCESS;
+}
+
+/*client write/read**************************************************************************************/
+static int client_write(stack_mem_t* d, char* data, int len)
+{
+	fprintf(stdout, "client_write\n");
+	
+	fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, len, d->end);
+	if(NULL == d){
+		fprintf(stdout, "NULL == d\n");
+		return TCP_SERVER_FAILED;
+	}
+
+	if(d->wPtr == d->rPtr){
+		fprintf(stdout, " write d->wPtr == d->rPtr\n");	
+		return TCP_SERVER_FAILED;
+	}
+
+	if((d->wPtr + len) > d->end){
+		if(d->rPtr != d->start){
+			if((d->start + len) >= d->rPtr)
+				return TCP_SERVER_FAILED;
+		}
+	}else{
+		d->wPtr += len;
+	}
+	fprintf(stdout,"wPtr:%05d\n",d->wPtr);
+
+	return TCP_SERVER_SUCCESS;
+}
+
+void client_read(void)
+{
+	fprintf(stdout, "client_read\n");
+	int i = 0;
+	char* data = NULL;
+	stack_mem_t* d = NULL;
+	int len = 0;
+	int distance = 0;
+
+	//while(1){
+
+		d = &client_block[i].stack_block;
+		if(client_block[i].clientFd == 0){
+			fprintf(stdout, "client_block[i].clientFd == 0\n");
+			//continue;
+			goto Finish;
+		}
+		if(d->wPtr == d->rPtr){	
+			fprintf(stdout, "read d->wPtr == d->rPtr\n");
+			goto Finish;
+		}
+		if(d->wPtr > d->rPtr){
+			distance = d->wPtr - d->rPtr;
+			
+			if(distance >= 4){
+				if((*(uint16_t*)d->rPtr & 0xFF) != MSG_HEADER){
+					fprintf(stderr, "missing header\n");
+					goto Finish;
+				}
+				len = (*(uint16_t*)(d->rPtr + BLOCK_LEN_OFFSET)) & 0xFF;
+			}
+
+			fprintf(stdout,"len:%05d, distance:%05d\n",len, distance);
+			if(distance >= len)
+				data = d->rPtr;
+			else
+				goto Finish;
+		}else{
+			data = d->rPtr;
+		}
+
+		Finish:
+		i = (i + 1) % STACK_BLOCK_NUM;
+		fprintf(stdout,"read message:%s\n",data);
+	// }
+
+}
+
+void client_write_test(void)
+{
+	int i = 0;
+	int len = 0;
+	int rc;
+	int clientFd[10] = {1,2,3,4,5,6,7,8,9,10};
+	client_block_t* client_block = NULL;
+	char test_buf[200];
+
+	client_block_init();
+	// while(1){
+
+		client_block = client_stack_block_req(clientFd[i]);
+		if(NULL == client_block){
+			fprintf(stderr, "client_write_test error\n");
+			goto Finish;
+		}
+		fprintf(stdout,"write blockNum:%d,wPtr:%05d,rPtr:%05d,start:%05d,end:%05d\n",client_block->stack_block.blockNum,
+		client_block->stack_block.wPtr, client_block->stack_block.rPtr, client_block->stack_block.start,
+		client_block->stack_block.end);
+
+		test_buf[0] = 0xFE;
+		test_buf[1] = 0xFD;
+		test_buf[2] = 0x00;
+		sprintf(&test_buf[4],"-------------------------client write test :%d----------------------------------\n",i);
+		len = strlen(&test_buf[4]);
+		test_buf[2] = len;
+		printf("write len:%05d\n",len);
+		rc = client_write(&client_block->stack_block, test_buf, len + 4);
+		if(rc != TCP_SERVER_SUCCESS)
+			fprintf(stdout,"client_write failed\n");
+
+		Finish:
+		i = (i + 1) % 10;
+	// }
+
+}
+
 /***************************************************************************************************
  * @fn      Closes the TCP port
  *

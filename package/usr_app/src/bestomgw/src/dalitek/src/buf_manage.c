@@ -1,12 +1,9 @@
 #include <malloc.h>
 #include "buf_manage.h"
 
-/*宏定义*******************************************************************************************************/
-#define FIXED_BUF_LEN  (100 * 1024)  // 支持300组300字节的有效数据同时存储
-#define STACK_BLOCK_LEN  (4 * 1024)              //单个数据块4k
-#define STACK_BLOCK_NUM 25
 /*全局变量定义*************************************************************************************************/
 char fixed_buf[FIXED_BUF_LEN];
+static block_status_t block[STACK_BLOCK_NUM];
 /*静态函数声明*************************************************************************************************/
 static PNode* Buy_Node(Item item);
 static int GetPQueueLen(PQueue pQueue);
@@ -37,7 +34,7 @@ uint32_t fifo_read(fifo_t* fifo, uint32_t* d)
 }
 
 /*静态栈内存动态分配*******************************************************************************************/
-static block_status_t block[STACK_BLOCK_NUM];
+
 void stack_block_init(void)
 {
 	fprintf(stdout,"stack_block_init\n");

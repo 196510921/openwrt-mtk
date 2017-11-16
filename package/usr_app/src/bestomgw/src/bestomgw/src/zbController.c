@@ -50,7 +50,6 @@
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
 #include "m1_protocol.h"
-#include "buf_manage.h"
 
 #define MAX_DB_FILENAMR_LEN 255
 
@@ -64,39 +63,23 @@ static void socket_poll(void);
 #include "interface_srpcserver.h"
 #include "socket_server.h"
 
-static void test(void)
-{
-	stack_mem_t d[20];
-	char buf[1024];
-	int rc = 0;
-
-	stack_block_init();
-	int i;
-	for(i = 0; i < 21; i++){
-		rc = stack_block_req(&d[i]);
-		if(rc == 0){
-			fprintf(stdout,"req failed\n");
-			break;
-		}
-		fprintf(stdout,"d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
-		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
-	}
-	for(i = 0; i < 20; i++){
-		fprintf(stdout,"msg:%s\n",d[i].rPtr);
-	}
-}
-
 int main(int argc, char* argv[])
 {
 	int retval = 0;
 	pthread_t t1,t2,t3,t4,t5,t6,t7,t8;
 
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
-	test();
-	//printf_redirect();
+	
+	// printf_redirect();
 	// SRPC_Init();
 	// m1_protocol_init();
 
+	client_write_test();
+	client_read();
+	// pthread_create(&t1, NULL, client_write_test, NULL);
+	// pthread_create(&t2,NULL,client_read,NULL);
+	// pthread_join(t1,NULL);
+	// pthread_join(t2,NULL);
 	// pthread_create(&t1,NULL,socket_poll,NULL);
 	// ////pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
 	// pthread_create(&t3,NULL,delay_send_task,NULL);
@@ -297,3 +280,46 @@ uint8_t zclGetSatCb(uint8_t sat, uint16_t nwkAddr, uint8_t endpoint)
 	return 0;
 }
 
+
+#if 0
+static void test(void)
+{
+	stack_mem_t d[20];
+	char buf[1024];
+	int rc = 0;
+
+	stack_block_init();
+	int i;
+	for(i = 0; i < 21; i++){
+		rc = stack_block_req(&d[i]);
+		if(rc == 0){
+			fprintf(stdout,"req failed\n");
+			break;
+		}
+		fprintf(stdout,"d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
+		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
+	}
+	for(i = 0; i < 20; i++){
+		fprintf(stdout,"msg:%s\n",d[i].rPtr);
+	}
+	for(i = 0; i < 20; i+=2){
+		rc = stack_block_destroy(d[i]);
+		if(rc == 0){
+			fprintf(stdout,"destroy failed\n");
+			break;
+		}
+	}
+	for(i = 0; i < 21; i++){
+		rc = stack_block_req(&d[i]);
+		if(rc == 0){
+			fprintf(stdout,"req failed\n");
+			continue;
+		}
+		fprintf(stdout,"d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
+		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
+	}
+	for(i = 0; i < 20; i++){
+		fprintf(stdout,"msg:%s\n",d[i].rPtr);
+	}
+}
+#endif

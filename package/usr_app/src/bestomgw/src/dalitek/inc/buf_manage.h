@@ -8,6 +8,10 @@
 #include <stdbool.h>
 #include "cJSON.h" 
 
+/*宏定义*******************************************************************************************************/
+#define FIXED_BUF_LEN  (100 * 1024)  // 支持300组300字节的有效数据同时存储
+#define STACK_BLOCK_LEN  (4 * 1024)              //单个数据块4k
+#define STACK_BLOCK_NUM 25
 
 enum block_status{
 	IDLE = 0,
