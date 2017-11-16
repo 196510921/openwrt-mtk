@@ -1838,15 +1838,17 @@ static int client_write(stack_mem_t* d, char* data, int len)
 {
 	fprintf(stdout, "client_write\n");
 	
-	fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, len, d->end);
+	fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	if(NULL == d){
 		fprintf(stdout, "NULL == d\n");
 		return TCP_SERVER_FAILED;
 	}
 
-	if(d->wPtr == d->rPtr){
-		fprintf(stdout, " write d->wPtr == d->rPtr\n");	
-		return TCP_SERVER_FAILED;
+	if(d->rPtr != d->start){
+		if(d->wPtr == d->rPtr){
+			fprintf(stdout, " write d->wPtr == d->rPtr\n");	
+			return TCP_SERVER_FAILED;
+		}
 	}
 
 	if((d->wPtr + len) > d->end){
@@ -1857,6 +1859,7 @@ static int client_write(stack_mem_t* d, char* data, int len)
 	}else{
 		d->wPtr += len;
 	}
+
 	fprintf(stdout,"wPtr:%05d\n",d->wPtr);
 
 	return TCP_SERVER_SUCCESS;
