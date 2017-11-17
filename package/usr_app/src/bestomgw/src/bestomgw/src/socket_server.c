@@ -429,6 +429,7 @@ void thread_socketSeverSend(void)
 
 int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 {
+	fprintf(stdout, "socketSeverSend++\n");
 	//m1_package_t * msg = socket_msg_alloc();
 	// m1_package_t * msg = (m1_package_t *)mem_poll_malloc(sizeof(m1_package_t));
 	// if(msg == NULL)
@@ -450,11 +451,24 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	// fifo_write(&tx_fifo, msg);
 	// puts("Adding msg to tx fifo\n");	
 	int rtn;
-	rtn = write(fdClient, buf, len);
+	uint16_t header = 0xFEFD;
+	// char send_buf[4*1024] = {0};
+
+	char* send_buf = NULL;
+
+	send_buf = (char*)malloc(len + 4);
+	memcpy(send_buf, &header, 2);
+	memcpy((send_buf+2), &len, 2);
+	memcpy((send_buf+4), buf, len);
+	//rtn = write(fdClient, buf, len);
+	rtn = write(fdClient, send_buf, len + 4);
 	if (rtn < 0)
 	{
 		fprintf(stdout,"ERROR writing to socket %d\n", fdClient);
 	}
+
+	free(send_buf);
+	fprintf(stdout, "socketSeverSend--\n");
 	return 0;
 }
 
