@@ -59,6 +59,8 @@ int stack_block_req(stack_mem_t* d)
 		if(IDLE == block[i].status){
 			block[i].status = BUSY;
 			d->blockNum = i;
+			d->ringFlag = RING_IDLE;
+			d->unitCount = 0;
 			d->start = &fixed_buf[i * STACK_BLOCK_LEN];
 			d->end = &fixed_buf[(i + 1) * STACK_BLOCK_LEN];
 			d->rPtr = d->start;
@@ -83,6 +85,123 @@ int stack_block_destroy(stack_mem_t d)
 	memset(d.start, 0, STACK_BLOCK_LEN);
 
 	return BUF_MANAGE_SUCCESS;
+}
+
+int stack_push(stack_mem_t* d, char* data, int len, int distance)
+{
+	int i;
+	int ret = BUF_MANAGE_SUCCESS;
+	int count;
+	int exp_count = 0;
+	int remain_count = 0;
+
+	fprintf(stdout, "push begin: d->unitCount:%d\n", d->unitCount);
+	if(NULL == d){
+		ret = BUF_MANAGE_FAILED;
+		goto Finish;
+	}
+	if(d->unitCount == STACK_UNIT_CAPACITY){
+		ret = BUF_MANAGE_FAILED;
+		goto Finish;
+	}
+
+	if(distance > 0)
+		exp_count = (distance / STACK_UNIT) + (((distance % STACK_UNIT) > 0) ? 1 : 0);
+
+	if((d->wPtr + distance) > d->end){
+		d->unitCount += ((d->end - d->wPtr) / STACK_UNIT);
+		d->wPtr = d->start;
+	}
+	//fprintf(stdout, "middle:%05d\n", d->unitCount);
+
+	remain_count = STACK_UNIT_CAPACITY - d->unitCount;
+	if(exp_count > remain_count){
+		ret = BUF_MANAGE_FAILED;
+		goto Finish;		
+	}
+
+	count = (len / STACK_UNIT);// + (((len % STACK_UNIT) > 0)? 1 : 0);
+
+	for(i = 0; i < count; i++)
+	{
+		if(d->wPtr == d->end)
+			d->wPtr = d->start;
+		memcpy(d->wPtr, data, STACK_UNIT);
+		d->wPtr += STACK_UNIT;
+		data += STACK_UNIT;
+		d->unitCount++;
+		if(d->unitCount == STACK_UNIT_CAPACITY){
+			ret = BUF_MANAGE_FAILED;
+			goto Finish;
+		}
+	}
+
+	count = len % STACK_UNIT;
+	for(i = 0; i < count; i++)
+	{
+		if(d->wPtr == d->end)
+			d->wPtr = d->start;
+		d->wPtr[i] = data[i];
+	}	
+	if(count > 0){
+		d->unitCount++;
+		d->wPtr += STACK_UNIT;
+	}
+
+	Finish:
+	fprintf(stdout, "push end: d->unitCount:%d\n", d->unitCount);
+	return ret;
+}
+
+int stack_pop(stack_mem_t* d, char* data, int len)
+{
+	int i;
+	int j;
+	int ret = BUF_MANAGE_SUCCESS;
+	int count;
+
+	fprintf(stdout, "pop end: d->unitCount:%d\n", d->unitCount);
+	if( NULL == d){
+		ret = BUF_MANAGE_FAILED;
+		goto Finish;
+	}
+	if(d->unitCount == 0){
+		ret = BUF_MANAGE_FAILED;
+		goto Finish;
+	}
+
+	count = (len / STACK_UNIT);
+
+	for(i = 0; i < count; i++)
+	{
+		if(d->rPtr == d->end)
+			d->rPtr = d->start;
+		memcpy(&data[i * STACK_UNIT], d->rPtr, STACK_UNIT);
+		d->rPtr += STACK_UNIT;
+		//data += STACK_UNIT;
+		d->unitCount--;
+		if(d->unitCount == 0){
+			ret = BUF_MANAGE_FAILED;
+			goto Finish;
+		}
+	}
+
+	count = len % STACK_UNIT;
+	
+	for(j = 0; j < count; j++)
+	{
+		if(d->rPtr == d->end)
+			d->rPtr = d->start;
+		data[i * STACK_UNIT + j] = d->rPtr[j];
+	}
+	if(count > 0){
+		d->unitCount--;	
+		d->rPtr += STACK_UNIT;
+	}
+
+	Finish:
+	fprintf(stdout, "pop: d->unitCount:%d\n", d->unitCount);
+	return ret;
 }
 
 /*ring buf*/

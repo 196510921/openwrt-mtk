@@ -12,10 +12,17 @@
 #define FIXED_BUF_LEN  (100 * 1024)  // 支持300组300字节的有效数据同时存储
 #define STACK_BLOCK_LEN  (4 * 1024)              //单个数据块4k
 #define STACK_BLOCK_NUM 25
+#define STACK_UNIT     256
+#define STACK_UNIT_CAPACITY    (STACK_BLOCK_LEN / STACK_UNIT)
 
 enum block_status{
 	IDLE = 0,
 	BUSY
+};
+
+enum ring_status{
+	RING_IDLE = 0,
+	RING_BUSY
 };
 
 enum buf_manage_status{
@@ -33,6 +40,8 @@ typedef struct _fifo_t {
 
 typedef struct _stack_mem_t{
 	uint8_t blockNum;
+	uint8_t ringFlag;
+	uint8_t unitCount;
 	char* start;
 	char* end;
 	char* wPtr;
@@ -66,6 +75,8 @@ char* mem_poll_malloc(uint32_t len);
 void stack_block_init(void);
 int stack_block_req(stack_mem_t* d);
 int stack_block_destroy(stack_mem_t d);
+int stack_push(stack_mem_t* d, char* data, int len, int distance);
+int stack_pop(stack_mem_t* d, char* data, int len);
 /*队列*/
 void Init_PQueue(PQueue pQueue);
 void Push(PQueue pQueue, Item item);
