@@ -151,7 +151,7 @@ void sql_rd_handle(void)
     cJSON* pduTypeJson = NULL;
     cJSON* snJson = NULL;
     cJSON* pduDataJson = NULL;
-    sqlite3* db = NULL;
+    //sqlite3* db = NULL;
     payload_t pdu;
     rsp_data_t rspData;
 
