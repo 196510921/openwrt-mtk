@@ -1779,7 +1779,9 @@ static void client_read_to_data_handle(char* data, int len, int clientFd)
 	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
 	msg->clientFd = clientFd;
 	msg->len = len;
-	msg->data = data;
+	msg->data = (char*)mem_poll_malloc(len);
+	strcpy(msg->data, data);
+	fprintf(stdout, "len:%05d, data:%s, %x, %x, %x\n",len, data,data[0],data[1],data[2]);
 	data_handle(msg);
 
 }
@@ -1876,20 +1878,23 @@ void client_read(void)
 	fprintf(stdout, "client_read\n");
 	int i = 0;
 	int rc = 0;
+	int count = 0;
 	uint16_t len = 0;
 	uint16_t header = 0;
+	char* headerP = NULL;
 	char data[2048];
 	stack_mem_t* d = NULL;
 
 	while(1){
-		fprintf(stdout,"-------------------------%d read----------------------------\n",i);
+		//fprintf(stdout,"-------------------------%d read----------------------------\n",i);
 		d = &client_block[i].stack_block;
-		fprintf(stdout, "read begin:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
+		//fprintf(stdout, "read begin:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
 		if(client_block[i].clientFd == 0){
 			goto Finish;
 		}
 
 		do{
+			headerP = d->rPtr;
 			rc = stack_pop(d, data, STACK_UNIT);
 			if(rc != TCP_SERVER_SUCCESS)
 				goto Finish;
@@ -1906,13 +1911,18 @@ void client_read(void)
 		if(rc != TCP_SERVER_SUCCESS)
 			goto Finish;
 
-		fprintf(stdout,"read str:%s\n",data + 4);
-
 		fprintf(stdout, "read end:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
+		count = (((len + 4) / STACK_UNIT) + ((len % STACK_UNIT) > 0 ? 1: 0)) * STACK_UNIT;
+		client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
+
 		Finish:
+		if(rc != TCP_SERVER_SUCCESS){
+			d->rPtr = headerP;
+			d->unitCount+=1;
+		}
 		i = (i + 1) % STACK_BLOCK_NUM;
 		memset(data, 0, 2048);
-		usleep(300000);
+		usleep(1000);
 	}
 }
 #if 0

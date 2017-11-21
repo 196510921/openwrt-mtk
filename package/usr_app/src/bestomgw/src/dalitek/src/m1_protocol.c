@@ -76,7 +76,7 @@ void data_handle(m1_package_t* package)
     cJSON* pduJson = NULL;
     cJSON* pduTypeJson = NULL;
 
-    //fprintf(stdout,"Rx message:%s\n",package->data);
+    fprintf(stdout,"Rx message:%s\n",package->data);
     rootJson = cJSON_Parse(package->data);
     if(NULL == rootJson){
         fprintf(stdout,"rootJson null\n");

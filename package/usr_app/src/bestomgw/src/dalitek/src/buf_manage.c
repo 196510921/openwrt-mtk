@@ -2,7 +2,7 @@
 #include "buf_manage.h"
 
 /*全局变量定义*************************************************************************************************/
-#define FIXED_BUF2_LEN    (1024 * 6)
+#define FIXED_BUF2_LEN    (1024 * 100)
 
 char fixed_buf[FIXED_BUF_LEN];
 char fixed_buf2[FIXED_BUF2_LEN];
@@ -89,13 +89,13 @@ int stack_block_destroy(stack_mem_t d)
 
 int stack_push(stack_mem_t* d, char* data, int len, int distance)
 {
-	int i;
+	int i = 0;
 	int ret = BUF_MANAGE_SUCCESS;
 	int count;
 	int exp_count = 0;
 	int remain_count = 0;
 
-	fprintf(stdout, "push begin: d->unitCount:%d\n", d->unitCount);
+	//fprintf(stdout, "push begin: d->unitCount:%d\n", d->unitCount);
 	if(NULL == d){
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
@@ -149,18 +149,18 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 	}
 
 	Finish:
-	fprintf(stdout, "push end: d->unitCount:%d\n", d->unitCount);
+	//fprintf(stdout, "push end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 
 int stack_pop(stack_mem_t* d, char* data, int len)
 {
-	int i;
-	int j;
+	int i = 0;
+	int j = 0;
 	int ret = BUF_MANAGE_SUCCESS;
 	int count;
 
-	fprintf(stdout, "pop end: d->unitCount:%d\n", d->unitCount);
+	//fprintf(stdout, "pop end: d->unitCount:%d\n", d->unitCount);
 	if( NULL == d){
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
@@ -200,7 +200,9 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	}
 
 	Finish:
-	fprintf(stdout, "pop: d->unitCount:%d\n", d->unitCount);
+	if(ret != BUF_MANAGE_SUCCESS)
+		d->unitCount = d->unitCount + i + j;
+	//fprintf(stdout, "pop: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 
