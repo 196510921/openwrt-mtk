@@ -76,7 +76,7 @@ void data_handle(m1_package_t* package)
     cJSON* pduJson = NULL;
     cJSON* pduTypeJson = NULL;
 
-    fprintf(stdout,"Rx message:%s\n",package->data);
+    //fprintf(stdout,"Rx message:%s\n",package->data);
     rootJson = cJSON_Parse(package->data);
     if(NULL == rootJson){
         fprintf(stdout,"rootJson null\n");
@@ -194,7 +194,8 @@ void sql_rd_handle(void)
             }
 
             /*打开读数据库*/
-            rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
+            //rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
+            rc = sqlite3_open(db_path, &db);
             if( rc != SQLITE_OK){  
                 fprintf(stderr, "Can't open database\n");  
                 continue;
@@ -246,6 +247,7 @@ void sql_rd_handle(void)
             cJSON_Delete(rootJson);
             sqlite3_close(db);
         }
+        usleep(1000);
     }
 }
 /*数据库写入操作处理*/
@@ -301,7 +303,8 @@ void sql_wt_handle(void)
 
             }
             /*打开写数据库*/
-            rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE, NULL);
+            //rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE, NULL);
+            rc = sqlite3_open(db_path, &db);
             if( rc != SQLITE_OK){  
                 fprintf(stderr, "Can't open database\n");  
                 continue;
@@ -350,6 +353,7 @@ void sql_wt_handle(void)
             //trigger_cb_handle(db);
             sqlite3_close(db);
         }
+        usleep(1000);
     }
 }
 

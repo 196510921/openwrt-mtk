@@ -1741,7 +1741,7 @@ void SRPC_RxCB(int clientFd)
 		fprintf(stderr, "client_block null\n");
 		return;
 	}
-	printf("rx len:%05d\n",len);
+	printf("rx len:%05d, rx data:%s\n",len, buf+4);
 	rc = client_write(&client_block->stack_block, buf, len);
 	if(rc != TCP_SERVER_SUCCESS)
 		fprintf(stdout,"client_write failed\n");
@@ -1781,7 +1781,7 @@ static void client_read_to_data_handle(char* data, int len, int clientFd)
 	msg->len = len;
 	msg->data = (char*)mem_poll_malloc(len);
 	strcpy(msg->data, data);
-	fprintf(stdout, "len:%05d, data:%s, %x, %x, %x\n",len, data,data[0],data[1],data[2]);
+	//fprintf(stdout, "len:%05d, data:%s\n",len, data,data[0],data[1],data[2]);
 	data_handle(msg);
 
 }
@@ -1852,7 +1852,7 @@ static int client_write(stack_mem_t* d, char* data, int len)
 	int header = 0;
 	int distance = 0;
 
-	fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	fprintf(stdout,"write begin: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	//fprintf(stdout,"header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
 	if(NULL == d){
 		fprintf(stdout, "NULL == d\n");
@@ -1870,6 +1870,8 @@ static int client_write(stack_mem_t* d, char* data, int len)
 	rc = stack_push(d, data, len ,distance);
 	if(rc != TCP_SERVER_SUCCESS)
 		fprintf(stderr, "client write failed\n");
+	
+	fprintf(stdout,"write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	return rc;
 }
 
@@ -1877,7 +1879,7 @@ void client_read(void)
 {
 	fprintf(stdout, "client_read\n");
 	int i = 0;
-	int rc = 0;
+	int rc = TCP_SERVER_SUCCESS;
 	int count = 0;
 	uint16_t len = 0;
 	uint16_t header = 0;
@@ -1900,28 +1902,33 @@ void client_read(void)
 				goto Finish;
 			header = *(uint16_t*)data;
 			header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
-			fprintf(stdout,"read header:%x\n", header);
+			//fprintf(stdout,"read header:%x\n", header);
 		}while(header != MSG_HEADER);
 
 		len = *(uint16_t*)&data[2];
 		len = (uint16_t)(((len << 8) & 0xff00) | ((len >> 8) & 0xff)) & 0xffff;
-		fprintf(stdout,"read len:%05d\n", len);
+		//fprintf(stdout,"read len:%05d\n", len);
+		if(len <= STACK_UNIT){
+			client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
+			goto Finish;
+		}
 
 		rc = stack_pop(d, data + STACK_UNIT, len - STACK_UNIT + 4);
 		if(rc != TCP_SERVER_SUCCESS)
 			goto Finish;
 
-		fprintf(stdout, "read end:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
-		count = (((len + 4) / STACK_UNIT) + ((len % STACK_UNIT) > 0 ? 1: 0)) * STACK_UNIT;
 		client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
+		//count = (((len + 4) / STACK_UNIT) + ((len % STACK_UNIT) > 0 ? 1: 0)) * STACK_UNIT;
 
 		Finish:
 		if(rc != TCP_SERVER_SUCCESS){
 			d->rPtr = headerP;
-			d->unitCount+=1;
+			//d->unitCount+=1;
+			//fprintf(stdout,"client read failed\n");
 		}
 		i = (i + 1) % STACK_BLOCK_NUM;
 		memset(data, 0, 2048);
+		//fprintf(stdout, "read end:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
 		usleep(1000);
 	}
 }

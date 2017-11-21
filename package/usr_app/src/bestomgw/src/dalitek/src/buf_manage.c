@@ -95,7 +95,7 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 	int exp_count = 0;
 	int remain_count = 0;
 
-	//fprintf(stdout, "push begin: d->unitCount:%d\n", d->unitCount);
+	fprintf(stdout, "push begin: d->unitCount:%d\n", d->unitCount);
 	if(NULL == d){
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
@@ -124,16 +124,16 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 
 	for(i = 0; i < count; i++)
 	{
+		if(d->unitCount == STACK_UNIT_CAPACITY){
+			ret = BUF_MANAGE_FAILED;
+			goto Finish;
+		}
 		if(d->wPtr == d->end)
 			d->wPtr = d->start;
 		memcpy(d->wPtr, data, STACK_UNIT);
 		d->wPtr += STACK_UNIT;
 		data += STACK_UNIT;
 		d->unitCount++;
-		if(d->unitCount == STACK_UNIT_CAPACITY){
-			ret = BUF_MANAGE_FAILED;
-			goto Finish;
-		}
 	}
 
 	count = len % STACK_UNIT;
@@ -149,7 +149,7 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 	}
 
 	Finish:
-	//fprintf(stdout, "push end: d->unitCount:%d\n", d->unitCount);
+	fprintf(stdout, "push end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 
@@ -160,7 +160,7 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	int ret = BUF_MANAGE_SUCCESS;
 	int count;
 
-	//fprintf(stdout, "pop end: d->unitCount:%d\n", d->unitCount);
+	// fprintf(stdout, "pop begin: d->unitCount:%d\n", d->unitCount);
 	if( NULL == d){
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
@@ -174,16 +174,16 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 
 	for(i = 0; i < count; i++)
 	{
+		if(d->unitCount == 0){
+			ret = BUF_MANAGE_FAILED;
+			goto Finish;
+		}
 		if(d->rPtr == d->end)
 			d->rPtr = d->start;
 		memcpy(&data[i * STACK_UNIT], d->rPtr, STACK_UNIT);
 		d->rPtr += STACK_UNIT;
 		//data += STACK_UNIT;
 		d->unitCount--;
-		if(d->unitCount == 0){
-			ret = BUF_MANAGE_FAILED;
-			goto Finish;
-		}
 	}
 
 	count = len % STACK_UNIT;
@@ -202,7 +202,7 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	Finish:
 	if(ret != BUF_MANAGE_SUCCESS)
 		d->unitCount = d->unitCount + i + j;
-	//fprintf(stdout, "pop: d->unitCount:%d\n", d->unitCount);
+	// fprintf(stdout, "pop end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 

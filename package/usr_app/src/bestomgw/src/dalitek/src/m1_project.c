@@ -46,7 +46,7 @@ int app_get_project_info(payload_t data)
     /*add pdu type to pdu object*/
     cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
     /*获取项目信息*/
-    sql = "select P_NUMBER from project_table";
+    sql = "select P_NUMBER from project_table;";
     fprintf(stdout, "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
