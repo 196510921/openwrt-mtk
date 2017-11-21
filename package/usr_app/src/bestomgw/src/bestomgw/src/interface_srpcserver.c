@@ -1781,7 +1781,7 @@ static void client_read_to_data_handle(char* data, int len, int clientFd)
 	msg->len = len;
 	msg->data = (char*)mem_poll_malloc(len);
 	strcpy(msg->data, data);
-	//fprintf(stdout, "len:%05d, data:%s\n",len, data,data[0],data[1],data[2]);
+	fprintf(stdout, "len:%05d, data:%s\n",len, data);
 	data_handle(msg);
 
 }

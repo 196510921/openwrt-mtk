@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
 
 	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 	
-	printf_redirect();
+	//printf_redirect();
 	SRPC_Init();
 	m1_protocol_init();
 

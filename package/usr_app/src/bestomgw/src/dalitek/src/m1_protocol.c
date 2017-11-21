@@ -151,7 +151,7 @@ void sql_rd_handle(void)
     cJSON* pduTypeJson = NULL;
     cJSON* snJson = NULL;
     cJSON* pduDataJson = NULL;
-    //sqlite3* db = NULL;
+    sqlite3* db = NULL;
     payload_t pdu;
     rsp_data_t rspData;
 
@@ -882,6 +882,7 @@ static int APP_read_handle(payload_t data)
     fprintf(stdout,"string:%s\n",p);
     socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     Finish:
+    free(p);
     free(sql);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
