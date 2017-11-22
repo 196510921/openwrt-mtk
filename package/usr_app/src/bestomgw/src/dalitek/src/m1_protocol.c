@@ -264,224 +264,7 @@ void data_handle(m1_package_t* package)
 
 }
 
-#if 0
-/*数据库读取操作处理*/
-void sql_rd_handle(void)
-{
-    int rc, ret;
-    int pduType;
-    uint32_t* msg = NULL;
-    cJSON* rootJson = NULL;
-    cJSON* pduJson = NULL;
-    cJSON* pduTypeJson = NULL;
-    cJSON* snJson = NULL;
-    cJSON* pduDataJson = NULL;
-    sqlite3* db = NULL;
-    payload_t pdu;
-    rsp_data_t rspData;
 
-    while(1){
-        ret = fifo_read(&msg_rd_fifo, &msg);
-        if(ret != 0){
-            rc = M1_PROTOCOL_NO_RSP;
-            fprintf(stdout,"sql_rd_handle\n");
-            m1_package_t* package = (m1_package_t*)msg;
-            fprintf(stdout,"Rx message:%s\n",package->data);
-            rootJson = cJSON_Parse(package->data);
-            if(NULL == rootJson){
-                fprintf(stdout,"rootJson null\n");
-                continue;   
-            }
-            pduJson = cJSON_GetObjectItem(rootJson, "pdu");
-            if(NULL == pduJson){
-                fprintf(stdout,"pdu null\n");
-                continue;
-            }
-            pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
-            if(NULL == pduTypeJson){
-                fprintf(stdout,"pduType null\n");
-                continue;
-            }
-            pduType = pduTypeJson->valueint;
-            rspData.pduType = pduType;
-
-            snJson = cJSON_GetObjectItem(rootJson, "sn");
-            if(NULL == snJson){
-                fprintf(stdout,"sn null\n");
-                continue;
-            }
-            rspData.sn = snJson->valueint;
-
-            pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
-            if(NULL == pduDataJson){
-                fprintf(stdout,"devData null”\n");
-
-            }
-
-            /*打开读数据库*/
-            //rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
-            rc = sqlite3_open(db_path, &db);
-            if( rc != SQLITE_OK){  
-                fprintf(stderr, "Can't open database\n");  
-                continue;
-            }else{  
-                fprintf(stderr, "Opened database successfully\n");  
-            }
-
-            /*pdu*/ 
-            pdu.clientFd = package->clientFd;
-            pdu.sn = snJson->valueint;
-            pdu.db = db;
-            pdu.pdu = pduDataJson;
-
-            rspData.clientFd = package->clientFd;
-            fprintf(stdout,"pduType:%x\n",pduType);
-
-            switch(pduType){
-                case TYPE_DEV_READ: APP_read_handle(pdu); break;
-                case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(pdu); break;
-                case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
-                case TYPE_REQ_AP_INFO: M1_report_ap_info(pdu); break;
-                case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
-                case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
-                case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(pdu);break;
-                case TYPE_REQ_LINK_INFO: rc = app_req_linkage(pdu);break;
-                case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(pdu); break;
-                case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(pdu);break;
-                case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu);break;
-                case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu);break;
-                case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(pdu); break;
-                case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu); break;
-                case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu); break;
-                case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu); break;
-                case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(pdu);break;
-                case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
-                case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
-
-                default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
-            }
-
-            if(rc != M1_PROTOCOL_NO_RSP){
-                if(rc == M1_PROTOCOL_OK)
-                    rspData.result = RSP_OK;
-                else
-                    rspData.result = RSP_FAILED;
-                common_rsp(rspData);
-            }
-
-            cJSON_Delete(rootJson);
-            sqlite3_close(db);
-        }
-        usleep(1000);
-    }
-}
-/*数据库写入操作处理*/
-void sql_wt_handle(void)
-{
-    int rc, ret;
-    int pduType;
-    uint32_t* msg = NULL;
-    cJSON* rootJson = NULL;
-    cJSON* pduJson = NULL;
-    cJSON* pduTypeJson = NULL;
-    cJSON* snJson = NULL;
-    cJSON* pduDataJson = NULL;
-    sqlite3* db = NULL;
-    payload_t pdu;
-    rsp_data_t rspData;
-
-    while(1){
-        ret = fifo_read(&msg_wt_fifo, &msg);
-        if(ret != 0){
-            rc = M1_PROTOCOL_NO_RSP;
-            fprintf(stdout,"sql_wt_handle\n");
-            m1_package_t* package = (m1_package_t*)msg;
-            fprintf(stdout,"Rx message:%s\n",package->data);
-            rootJson = cJSON_Parse(package->data);
-            if(NULL == rootJson){
-                fprintf(stdout,"rootJson null\n");
-                continue;   
-            }
-            pduJson = cJSON_GetObjectItem(rootJson, "pdu");
-            if(NULL == pduJson){
-                fprintf(stdout,"pdu null\n");
-                continue;
-            }
-            pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
-            if(NULL == pduTypeJson){
-                fprintf(stdout,"pduType null\n");
-                continue;
-            }
-            pduType = pduTypeJson->valueint;
-            rspData.pduType = pduType;
-
-            snJson = cJSON_GetObjectItem(rootJson, "sn");
-            if(NULL == snJson){
-                fprintf(stdout,"sn null\n");
-                continue;
-            }
-            rspData.sn = snJson->valueint;
-
-            pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
-            if(NULL == pduDataJson){
-                fprintf(stdout,"devData null”\n");
-
-            }
-            /*打开写数据库*/
-            //rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE, NULL);
-            rc = sqlite3_open(db_path, &db);
-            if( rc != SQLITE_OK){  
-                fprintf(stderr, "Can't open database\n");  
-                continue;
-            }else{  
-                fprintf(stderr, "Opened database successfully\n");  
-            }
-           /*pdu*/ 
-            pdu.clientFd = package->clientFd;
-            pdu.sn = snJson->valueint;
-            pdu.db = db;
-            pdu.pdu = pduDataJson;
-
-            rspData.clientFd = package->clientFd;
-            fprintf(stdout,"pduType:%x\n",pduType);
-            switch(pduType){
-                case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-                case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson, db);break;
-                case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
-                case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
-                case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
-                case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
-                case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
-                case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
-                case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
-                case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
-                case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
-                case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
-                case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
-                case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
-                case TYPE_APP_CREATE_PROJECT: rc = app_create_project(pdu);break;
-                case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
-                case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
-                case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
-
-                default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
-            }
-
-            if(rc != M1_PROTOCOL_NO_RSP){
-                if(rc == M1_PROTOCOL_OK)
-                    rspData.result = RSP_OK;
-                else
-                    rspData.result = RSP_FAILED;
-                common_rsp(rspData);
-            }
-            cJSON_Delete(rootJson);
-            //trigger_cb_handle(db);
-            sqlite3_close(db);
-        }
-        usleep(1000);
-    }
-}
-#endif
 
 static int common_rsp_handle(payload_t data)
 {
@@ -533,81 +316,81 @@ static int AP_report_data_handle(payload_t data)
     if(rc){
         fprintf(stderr, "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
     }
-    if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
-        fprintf(stdout,"BEGIN\n");
-        sqlite3_free(errorMsg);
+    // if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
+    //     fprintf(stdout,"BEGIN\n");
+    //     sqlite3_free(errorMsg);
 
-        id = sql_id(db, sql);
-        fprintf(stdout,"id:%d\n",id);
-        sql = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
-        fprintf(stdout,"sql:%s\n",sql);
-        sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    id = sql_id(db, sql);
+    fprintf(stdout,"id:%d\n",id);
+    sql = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
+    fprintf(stdout,"sql:%s\n",sql);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 
-        number1 = cJSON_GetArraySize(data.pdu);
-        fprintf(stdout,"number1:%d\n",number1);
-        for(i = 0; i < number1; i++){
-            devDataJson = cJSON_GetArrayItem(data.pdu, i);
-            if(devDataJson == NULL){
-                ret =  M1_PROTOCOL_FAILED;  
-                goto Finish;    
-            }
-            devNameJson = cJSON_GetObjectItem(devDataJson, "devName");
-            if(devNameJson == NULL){
-                ret =  M1_PROTOCOL_FAILED;  
-                goto Finish;    
-            }
-            fprintf(stdout,"devName:%s\n",devNameJson->valuestring);
-            devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
-            if(devIdJson == NULL){
-                ret =  M1_PROTOCOL_FAILED;  
-                goto Finish;    
-            }
-            fprintf(stdout,"devId:%s\n",devIdJson->valuestring);
-            paramJson = cJSON_GetObjectItem(devDataJson, "param");
-            if(paramJson == NULL){
-                ret =  M1_PROTOCOL_FAILED;  
-                goto Finish;    
-            }
-            number2 = cJSON_GetArraySize(paramJson);
-            fprintf(stdout," number2:%d\n",number2);
-
-            for(j = 0; j < number2; j++){
-                paramDataJson = cJSON_GetArrayItem(paramJson, j);
-                if(paramDataJson == NULL){
-                    ret =  M1_PROTOCOL_FAILED;  
-                    goto Finish;    
-                }   
-                typeJson = cJSON_GetObjectItem(paramDataJson, "type");
-                if(typeJson == NULL){
-                    ret =  M1_PROTOCOL_FAILED;  
-                    goto Finish;    
-                }
-                fprintf(stdout,"  type:%d\n",typeJson->valueint);
-                valueJson = cJSON_GetObjectItem(paramDataJson, "value");
-                if(valueJson == NULL){
-                    ret =  M1_PROTOCOL_FAILED;  
-                    goto Finish;    
-                }
-                fprintf(stdout,"  value:%d\n",valueJson->valueint);
-
-                sqlite3_reset(stmt); 
-                sqlite3_bind_int(stmt, 1, id);
-                id++;
-                sqlite3_bind_text(stmt, 2,  devNameJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt, 3, devIdJson->valuestring, -1, NULL);
-                sqlite3_bind_int(stmt, 4,typeJson->valueint);
-                sqlite3_bind_int(stmt, 5, valueJson->valueint);
-                sqlite3_bind_text(stmt, 6,  time, -1, NULL);
-            
-                thread_sqlite3_step(&stmt, db);
-            }
+    number1 = cJSON_GetArraySize(data.pdu);
+    fprintf(stdout,"number1:%d\n",number1);
+    for(i = 0; i < number1; i++){
+        devDataJson = cJSON_GetArrayItem(data.pdu, i);
+        if(devDataJson == NULL){
+            ret =  M1_PROTOCOL_FAILED;  
+            goto Finish;    
         }
-        if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
-            fprintf(stdout,"END\n");
-            sqlite3_free(errorMsg);
+        devNameJson = cJSON_GetObjectItem(devDataJson, "devName");
+        if(devNameJson == NULL){
+            ret =  M1_PROTOCOL_FAILED;  
+            goto Finish;    
         }
- 
+        fprintf(stdout,"devName:%s\n",devNameJson->valuestring);
+        devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
+        if(devIdJson == NULL){
+            ret =  M1_PROTOCOL_FAILED;  
+            goto Finish;    
+        }
+        fprintf(stdout,"devId:%s\n",devIdJson->valuestring);
+        paramJson = cJSON_GetObjectItem(devDataJson, "param");
+        if(paramJson == NULL){
+            ret =  M1_PROTOCOL_FAILED;  
+            goto Finish;    
+        }
+        number2 = cJSON_GetArraySize(paramJson);
+        fprintf(stdout," number2:%d\n",number2);
+
+        for(j = 0; j < number2; j++){
+            paramDataJson = cJSON_GetArrayItem(paramJson, j);
+            if(paramDataJson == NULL){
+                ret =  M1_PROTOCOL_FAILED;  
+                goto Finish;    
+            }   
+            typeJson = cJSON_GetObjectItem(paramDataJson, "type");
+            if(typeJson == NULL){
+                ret =  M1_PROTOCOL_FAILED;  
+                goto Finish;    
+            }
+            fprintf(stdout,"  type:%d\n",typeJson->valueint);
+            valueJson = cJSON_GetObjectItem(paramDataJson, "value");
+            if(valueJson == NULL){
+                ret =  M1_PROTOCOL_FAILED;  
+                goto Finish;    
+            }
+            fprintf(stdout,"  value:%d\n",valueJson->valueint);
+
+            sqlite3_reset(stmt); 
+            sqlite3_bind_int(stmt, 1, id);
+            id++;
+            sqlite3_bind_text(stmt, 2,  devNameJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 3, devIdJson->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt, 4,typeJson->valueint);
+            sqlite3_bind_int(stmt, 5, valueJson->valueint);
+            sqlite3_bind_text(stmt, 6,  time, -1, NULL);
+        
+            thread_sqlite3_step(&stmt, db);
+        }
     }
+    //     if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+    //         fprintf(stdout,"END\n");
+    //         sqlite3_free(errorMsg);
+    //     }
+ 
+    // }
 
     Finish:
     free(time);
@@ -1158,95 +941,94 @@ static int APP_write_handle(payload_t data)
     sql = "select ID from param_table order by ID desc limit 1";
     id = sql_id(db, sql);
     fprintf(stdout,"id:%d\n",id);
-    if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
-        fprintf(stdout,"BEGIN\n");
-        /*insert data*/
-        sql_1 = (char*)malloc(300);
-        sql_2 = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
-        number1 = cJSON_GetArraySize(data.pdu);
-        fprintf(stdout,"number1:%d\n",number1);
-        for(i = 0; i < number1; i++){
-            devDataJson = cJSON_GetArrayItem(data.pdu, i);
-            if(devDataJson == NULL)
-            {
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish;
-            }
-            devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
-            if(devIdJson == NULL)
-            {
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish;
-            }
-            fprintf(stdout,"devId:%s\n",devIdJson->valuestring);
-            paramDataJson = cJSON_GetObjectItem(devDataJson, "param");
-            if(paramDataJson == NULL)
-            {
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish;
-            }
-            number2 = cJSON_GetArraySize(paramDataJson);
-            fprintf(stdout,"number2:%d\n",number2);
-    
-                sprintf(sql_1,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;", devIdJson->valuestring);
-                fprintf(stdout,"sql_1:%s\n",sql_1);
-                row_n = sql_row_number(db, sql);
-                fprintf(stdout,"row_n:%d\n",row_n);
-                if(row_n > 0){        
-                    //sqlite3_reset(stmt);
-                    sqlite3_finalize(stmt);
-                    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-                    rc = thread_sqlite3_step(&stmt, db);
-                    if(rc == SQLITE_ROW){
-                        dev_name = (const char*)sqlite3_column_text(stmt, 0);
-                        if(dev_name == NULL)
-                        {
-                            ret = M1_PROTOCOL_FAILED;
-                            goto Finish;
-                        }           
-                        fprintf(stdout,"dev_name:%s\n",dev_name);
-                    }
-                    for(j = 0; j < number2; j++){
-                        paramArrayJson = cJSON_GetArrayItem(paramDataJson, j);
-                        if(paramArrayJson == NULL)
-                        {
-                            ret = M1_PROTOCOL_FAILED;
-                            goto Finish;
-                        }
-                        valueTypeJson = cJSON_GetObjectItem(paramArrayJson, "type");
-                        if(valueTypeJson == NULL)
-                        {
-                            ret = M1_PROTOCOL_FAILED;
-                            goto Finish;
-                        }
-                        fprintf(stdout,"  type%d:%d\n",j,valueTypeJson->valueint);
-                        valueJson = cJSON_GetObjectItem(paramArrayJson, "value");
-                        if(valueJson == NULL)
-                        {
-                            ret = M1_PROTOCOL_FAILED;
-                            goto Finish;
-                        }
-                        fprintf(stdout,"  value%d:%d\n",j,valueJson->valueint);
-                        //sqlite3_reset(stmt_1); 
-                        sqlite3_finalize(stmt_1); 
-                        sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_1, NULL);
-                        sqlite3_bind_int(stmt_1, 1, id);
-                        id++;
-                        sqlite3_bind_text(stmt_1, 2,  dev_name, -1, NULL);
-                        sqlite3_bind_text(stmt_1, 3, devIdJson->valuestring, -1, NULL);
-                        sqlite3_bind_int(stmt_1, 4, valueTypeJson->valueint);
-                        sqlite3_bind_int(stmt_1, 5, valueJson->valueint);
-                        sqlite3_bind_text(stmt_1, 6,  time, -1, NULL);
-                        rc = thread_sqlite3_step(&stmt_1, db);
-                    }
+    // if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
+    //     fprintf(stdout,"BEGIN\n");
+    /*insert data*/
+    sql_1 = (char*)malloc(300);
+    sql_2 = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
+    number1 = cJSON_GetArraySize(data.pdu);
+    fprintf(stdout,"number1:%d\n",number1);
+    for(i = 0; i < number1; i++){
+        devDataJson = cJSON_GetArrayItem(data.pdu, i);
+        if(devDataJson == NULL)
+        {
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+        devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
+        if(devIdJson == NULL)
+        {
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+        fprintf(stdout,"devId:%s\n",devIdJson->valuestring);
+        paramDataJson = cJSON_GetObjectItem(devDataJson, "param");
+        if(paramDataJson == NULL)
+        {
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+        number2 = cJSON_GetArraySize(paramDataJson);
+        fprintf(stdout,"number2:%d\n",number2);
+            sprintf(sql_1,"select DEV_NAME from all_dev where DEV_ID = \"%s\" limit 1;", devIdJson->valuestring);
+            fprintf(stdout,"sql_1:%s\n",sql_1);
+            row_n = sql_row_number(db, sql);
+            fprintf(stdout,"row_n:%d\n",row_n);
+            if(row_n > 0){        
+                //sqlite3_reset(stmt);
+                sqlite3_finalize(stmt);
+                sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+                rc = thread_sqlite3_step(&stmt, db);
+                if(rc == SQLITE_ROW){
+                    dev_name = (const char*)sqlite3_column_text(stmt, 0);
+                    if(dev_name == NULL)
+                    {
+                        ret = M1_PROTOCOL_FAILED;
+                        goto Finish;
+                    }           
+                    fprintf(stdout,"dev_name:%s\n",dev_name);
                 }
-        }
-        if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
-            fprintf(stdout,"END\n");
-        }
-    }else{
-        fprintf(stdout,"errorMsg:");
-    }    
+                for(j = 0; j < number2; j++){
+                    paramArrayJson = cJSON_GetArrayItem(paramDataJson, j);
+                    if(paramArrayJson == NULL)
+                    {
+                        ret = M1_PROTOCOL_FAILED;
+                        goto Finish;
+                    }
+                    valueTypeJson = cJSON_GetObjectItem(paramArrayJson, "type");
+                    if(valueTypeJson == NULL)
+                    {
+                        ret = M1_PROTOCOL_FAILED;
+                        goto Finish;
+                    }
+                    fprintf(stdout,"  type%d:%d\n",j,valueTypeJson->valueint);
+                    valueJson = cJSON_GetObjectItem(paramArrayJson, "value");
+                    if(valueJson == NULL)
+                    {
+                        ret = M1_PROTOCOL_FAILED;
+                        goto Finish;
+                    }
+                    fprintf(stdout,"  value%d:%d\n",j,valueJson->valueint);
+                    sqlite3_reset(stmt_1); 
+                    //sqlite3_finalize(stmt_1); 
+                    sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_1, NULL);
+                    sqlite3_bind_int(stmt_1, 1, id);
+                    id++;
+                    sqlite3_bind_text(stmt_1, 2,  dev_name, -1, NULL);
+                    sqlite3_bind_text(stmt_1, 3, devIdJson->valuestring, -1, NULL);
+                    sqlite3_bind_int(stmt_1, 4, valueTypeJson->valueint);
+                    sqlite3_bind_int(stmt_1, 5, valueJson->valueint);
+                    sqlite3_bind_text(stmt_1, 6,  time, -1, NULL);
+                    rc = thread_sqlite3_step(&stmt_1, db);
+                }
+            }
+    }
+    //     if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+    //         fprintf(stdout,"END\n");
+    //     }
+    // }else{
+    //     fprintf(stdout,"errorMsg:");
+    // }    
 
     Finish:
     free(time);
@@ -2441,4 +2223,221 @@ static int create_sql_table(void)
 }
 
 
+#if 0
+/*数据库读取操作处理*/
+void sql_rd_handle(void)
+{
+    int rc, ret;
+    int pduType;
+    uint32_t* msg = NULL;
+    cJSON* rootJson = NULL;
+    cJSON* pduJson = NULL;
+    cJSON* pduTypeJson = NULL;
+    cJSON* snJson = NULL;
+    cJSON* pduDataJson = NULL;
+    sqlite3* db = NULL;
+    payload_t pdu;
+    rsp_data_t rspData;
 
+    while(1){
+        ret = fifo_read(&msg_rd_fifo, &msg);
+        if(ret != 0){
+            rc = M1_PROTOCOL_NO_RSP;
+            fprintf(stdout,"sql_rd_handle\n");
+            m1_package_t* package = (m1_package_t*)msg;
+            fprintf(stdout,"Rx message:%s\n",package->data);
+            rootJson = cJSON_Parse(package->data);
+            if(NULL == rootJson){
+                fprintf(stdout,"rootJson null\n");
+                continue;   
+            }
+            pduJson = cJSON_GetObjectItem(rootJson, "pdu");
+            if(NULL == pduJson){
+                fprintf(stdout,"pdu null\n");
+                continue;
+            }
+            pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
+            if(NULL == pduTypeJson){
+                fprintf(stdout,"pduType null\n");
+                continue;
+            }
+            pduType = pduTypeJson->valueint;
+            rspData.pduType = pduType;
+
+            snJson = cJSON_GetObjectItem(rootJson, "sn");
+            if(NULL == snJson){
+                fprintf(stdout,"sn null\n");
+                continue;
+            }
+            rspData.sn = snJson->valueint;
+
+            pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
+            if(NULL == pduDataJson){
+                fprintf(stdout,"devData null”\n");
+
+            }
+
+            /*打开读数据库*/
+            //rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
+            rc = sqlite3_open(db_path, &db);
+            if( rc != SQLITE_OK){  
+                fprintf(stderr, "Can't open database\n");  
+                continue;
+            }else{  
+                fprintf(stderr, "Opened database successfully\n");  
+            }
+
+            /*pdu*/ 
+            pdu.clientFd = package->clientFd;
+            pdu.sn = snJson->valueint;
+            pdu.db = db;
+            pdu.pdu = pduDataJson;
+
+            rspData.clientFd = package->clientFd;
+            fprintf(stdout,"pduType:%x\n",pduType);
+
+            switch(pduType){
+                case TYPE_DEV_READ: APP_read_handle(pdu); break;
+                case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(pdu); break;
+                case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
+                case TYPE_REQ_AP_INFO: M1_report_ap_info(pdu); break;
+                case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
+                case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
+                case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(pdu);break;
+                case TYPE_REQ_LINK_INFO: rc = app_req_linkage(pdu);break;
+                case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(pdu); break;
+                case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(pdu);break;
+                case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu);break;
+                case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu);break;
+                case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(pdu); break;
+                case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu); break;
+                case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu); break;
+                case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu); break;
+                case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(pdu);break;
+                case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
+                case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
+
+                default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
+            }
+
+            if(rc != M1_PROTOCOL_NO_RSP){
+                if(rc == M1_PROTOCOL_OK)
+                    rspData.result = RSP_OK;
+                else
+                    rspData.result = RSP_FAILED;
+                common_rsp(rspData);
+            }
+
+            cJSON_Delete(rootJson);
+            sqlite3_close(db);
+        }
+        usleep(1000);
+    }
+}
+/*数据库写入操作处理*/
+void sql_wt_handle(void)
+{
+    int rc, ret;
+    int pduType;
+    uint32_t* msg = NULL;
+    cJSON* rootJson = NULL;
+    cJSON* pduJson = NULL;
+    cJSON* pduTypeJson = NULL;
+    cJSON* snJson = NULL;
+    cJSON* pduDataJson = NULL;
+    sqlite3* db = NULL;
+    payload_t pdu;
+    rsp_data_t rspData;
+
+    while(1){
+        ret = fifo_read(&msg_wt_fifo, &msg);
+        if(ret != 0){
+            rc = M1_PROTOCOL_NO_RSP;
+            fprintf(stdout,"sql_wt_handle\n");
+            m1_package_t* package = (m1_package_t*)msg;
+            fprintf(stdout,"Rx message:%s\n",package->data);
+            rootJson = cJSON_Parse(package->data);
+            if(NULL == rootJson){
+                fprintf(stdout,"rootJson null\n");
+                continue;   
+            }
+            pduJson = cJSON_GetObjectItem(rootJson, "pdu");
+            if(NULL == pduJson){
+                fprintf(stdout,"pdu null\n");
+                continue;
+            }
+            pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
+            if(NULL == pduTypeJson){
+                fprintf(stdout,"pduType null\n");
+                continue;
+            }
+            pduType = pduTypeJson->valueint;
+            rspData.pduType = pduType;
+
+            snJson = cJSON_GetObjectItem(rootJson, "sn");
+            if(NULL == snJson){
+                fprintf(stdout,"sn null\n");
+                continue;
+            }
+            rspData.sn = snJson->valueint;
+
+            pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
+            if(NULL == pduDataJson){
+                fprintf(stdout,"devData null”\n");
+
+            }
+            /*打开写数据库*/
+            //rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE, NULL);
+            rc = sqlite3_open(db_path, &db);
+            if( rc != SQLITE_OK){  
+                fprintf(stderr, "Can't open database\n");  
+                continue;
+            }else{  
+                fprintf(stderr, "Opened database successfully\n");  
+            }
+           /*pdu*/ 
+            pdu.clientFd = package->clientFd;
+            pdu.sn = snJson->valueint;
+            pdu.db = db;
+            pdu.pdu = pduDataJson;
+
+            rspData.clientFd = package->clientFd;
+            fprintf(stdout,"pduType:%x\n",pduType);
+            switch(pduType){
+                case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
+                case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson, db);break;
+                case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
+                case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
+                case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
+                case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
+                case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
+                case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
+                case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
+                case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
+                case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
+                case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
+                case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
+                case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
+                case TYPE_APP_CREATE_PROJECT: rc = app_create_project(pdu);break;
+                case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
+                case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
+                case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
+
+                default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
+            }
+
+            if(rc != M1_PROTOCOL_NO_RSP){
+                if(rc == M1_PROTOCOL_OK)
+                    rspData.result = RSP_OK;
+                else
+                    rspData.result = RSP_FAILED;
+                common_rsp(rspData);
+            }
+            cJSON_Delete(rootJson);
+            //trigger_cb_handle(db);
+            sqlite3_close(db);
+        }
+        usleep(1000);
+    }
+}
+#endif

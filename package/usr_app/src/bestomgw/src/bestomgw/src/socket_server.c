@@ -434,14 +434,14 @@ fprintf(stdout, "socketSeverSend++\n");
 	int rtn;
 	uint16_t header = 0xFEFD;
 	uint16_t msg_len = 0;
-	//char* send_buf = NULL;
-	char send_buf[4096] = {0};
+	char* send_buf = NULL;
+	//char send_buf[4096] = {0};
 
 	/*大端序*/
 	header = (((header >> 8) & 0xff) | ((header << 8) & 0xff00)) & 0xffff;
 	msg_len = (((len >> 8) & 0xff) | ((len << 8) & 0xff00)) & 0xffff;
 
-	//send_buf = (char*)malloc(len + 4);
+	send_buf = (char*)malloc(len + 4);
 	memcpy(send_buf, &header, 2);
 	memcpy((send_buf+2), &msg_len, 2);
 	memcpy((send_buf+4), buf, len);
@@ -453,7 +453,7 @@ fprintf(stdout, "socketSeverSend++\n");
 		fprintf(stdout,"ERROR writing to socket %d\n", fdClient);
 	}
 
-	// free(send_buf);
+	free(send_buf);
 	fprintf(stdout, "socketSeverSend--\n");
 	return 0;
 }
