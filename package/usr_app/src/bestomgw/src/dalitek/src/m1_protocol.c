@@ -51,7 +51,7 @@ static uint32_t tx_buf[256];
 void m1_protocol_init(void)
 {
     //sqlite3_config(SQLITE_CONFIG_SERIALIZED);
-    sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
+    //sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
     create_sql_table();
     fprintf(stdout,"threadsafe:%d\n",sqlite3_threadsafe());
     fifo_init(&dev_data_fifo, dev_data_buf, 256);
@@ -68,6 +68,7 @@ void m1_protocol_init(void)
     client_block_init();
 }
 
+#if 0
 void data_handle(m1_package_t* package)
 {
     fprintf(stdout,"data_handle\n");
@@ -139,7 +140,131 @@ void data_handle(m1_package_t* package)
     }
 
 }
+#endif
+void data_handle(m1_package_t* package)
+{
+    fprintf(stdout,"data_handle\n");
+    int rc, ret;
+    int pduType;
+    uint32_t* msg = NULL;
+    cJSON* rootJson = NULL;
+    cJSON* pduJson = NULL;
+    cJSON* pduTypeJson = NULL;
+    cJSON* snJson = NULL;
+    cJSON* pduDataJson = NULL;
+    sqlite3* db = NULL;
+    payload_t pdu;
+    rsp_data_t rspData;
 
+    rc = M1_PROTOCOL_NO_RSP;
+    fprintf(stdout,"Rx message:%s\n",package->data);
+    rootJson = cJSON_Parse(package->data);
+    if(NULL == rootJson){
+        fprintf(stdout,"rootJson null\n");
+        goto Finish;   
+    }
+    pduJson = cJSON_GetObjectItem(rootJson, "pdu");
+    if(NULL == pduJson){
+        fprintf(stdout,"pdu null\n");
+        goto Finish;
+    }
+    pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
+    if(NULL == pduTypeJson){
+        fprintf(stdout,"pduType null\n");
+        goto Finish;
+    }
+    pduType = pduTypeJson->valueint;
+    rspData.pduType = pduType;
+
+    snJson = cJSON_GetObjectItem(rootJson, "sn");
+    if(NULL == snJson){
+        fprintf(stdout,"sn null\n");
+        goto Finish;
+    }
+    rspData.sn = snJson->valueint;
+
+    pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
+    if(NULL == pduDataJson){
+        fprintf(stdout,"devData null”\n");
+    }
+
+    /*打开读数据库*/
+    //rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
+    rc = sqlite3_open(db_path, &db);
+    if( rc != SQLITE_OK){  
+        fprintf(stderr, "Can't open database\n");  
+        goto Finish;
+    }else{  
+        fprintf(stderr, "Opened database successfully\n");  
+    }
+
+    /*pdu*/ 
+    pdu.clientFd = package->clientFd;
+    pdu.sn = snJson->valueint;
+    pdu.db = db;
+    pdu.pdu = pduDataJson;
+
+    rspData.clientFd = package->clientFd;
+    fprintf(stdout,"pduType:%x\n",pduType);
+
+    switch(pduType){
+        case TYPE_DEV_READ: APP_read_handle(pdu); break;
+        case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(pdu); break;
+        case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
+        case TYPE_REQ_AP_INFO: M1_report_ap_info(pdu); break;
+        case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
+        case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
+        case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(pdu);break;
+        case TYPE_REQ_LINK_INFO: rc = app_req_linkage(pdu);break;
+        case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(pdu); break;
+        case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(pdu);break;
+        case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu);break;
+        case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu);break;
+        case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(pdu); break;
+        case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu); break;
+        case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu); break;
+        case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu); break;
+        case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(pdu);break;
+        case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
+        case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
+        /*write*/
+        case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
+        case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson, db);break;
+        case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
+        case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
+        case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
+        case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
+        case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
+        case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
+        case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
+        case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
+        case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
+        case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
+        case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
+        case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
+        case TYPE_APP_CREATE_PROJECT: rc = app_create_project(pdu);break;
+        case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
+        case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
+        case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
+
+            default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
+    }
+
+    if(rc != M1_PROTOCOL_NO_RSP){
+        if(rc == M1_PROTOCOL_OK)
+            rspData.result = RSP_OK;
+        else
+            rspData.result = RSP_FAILED;
+        common_rsp(rspData);
+    }
+
+    Finish:
+    cJSON_Delete(rootJson);
+    sqlite3_close(db);
+
+}
+
+#if 0
 /*数据库读取操作处理*/
 void sql_rd_handle(void)
 {
@@ -356,6 +481,7 @@ void sql_wt_handle(void)
         usleep(1000);
     }
 }
+#endif
 
 static int common_rsp_handle(payload_t data)
 {
@@ -395,6 +521,11 @@ static int AP_report_data_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;   
     }
+    /*关闭写同步*/
+    if(sqlite3_exec(db,"PRAGMA synchronous = OFF; ",0,0,0) != SQLITE_OK){
+        fprintf(stderr,"PRAGMA synchronous = OFF falied\n");
+    }
+
     /*获取系统当前时间*/
     getNowTime(time);
     /*添加update/insert/delete监察*/
@@ -517,6 +648,10 @@ static int AP_report_dev_handle(payload_t data)
     getNowTime(time);
     /*获取数据库*/
     db = data.db;
+    /*关闭写同步*/
+    if(sqlite3_exec(db,"PRAGMA synchronous = OFF; ",0,0,0) != SQLITE_OK){
+        fprintf(stderr,"PRAGMA synchronous = OFF falied\n");
+    }
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_dev_handle");
     if(rc){
@@ -994,6 +1129,10 @@ static int APP_write_handle(payload_t data)
     getNowTime(time);
     /*获取数据库*/
     db = data.db;
+    /*关闭写同步*/
+    if(sqlite3_exec(db,"PRAGMA synchronous = OFF; ",0,0,0) != SQLITE_OK){
+        fprintf(stderr,"PRAGMA synchronous = OFF falied\n");
+    }
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "APP_write_handle");
     if(rc){

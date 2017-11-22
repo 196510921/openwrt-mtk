@@ -1774,15 +1774,21 @@ void SRPC_RxCB(int clientFd)
 
 static void client_read_to_data_handle(char* data, int len, int clientFd)
 {
-	m1_package_t* msg  = NULL;
+	fprintf(stdout, "client_read_to_data_handle:  len:%05d, data:%s\n",len, data);
+	// m1_package_t* msg  = NULL;
 
-	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
-	msg->clientFd = clientFd;
-	msg->len = len;
-	msg->data = (char*)mem_poll_malloc(len);
-	strcpy(msg->data, data);
-	fprintf(stdout, "len:%05d, data:%s\n",len, data);
-	data_handle(msg);
+	// msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
+	// msg->clientFd = clientFd;
+	// msg->len = len;
+	//msg->data = (char*)mem_poll_malloc(len);
+	//strcpy(msg->data, data);
+	m1_package_t msg;
+
+	msg.clientFd = clientFd;
+	msg.len = len;
+	msg.data = data;
+
+	data_handle(&msg);
 
 }
 
