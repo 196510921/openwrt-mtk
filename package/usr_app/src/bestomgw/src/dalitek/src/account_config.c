@@ -362,8 +362,9 @@ int app_account_config_handle(payload_t data)
         /*添加账户信息*/
         sql = "insert into account_table(ID, ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH, TIME)values(?,?,?,?,?,?);";
         fprintf(stdout,"sql:%s\n",sql);
+        sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-        sqlite3_reset(stmt);
+        //sqlite3_reset(stmt);
         sqlite3_bind_int(stmt, 1, id);
         sqlite3_bind_text(stmt, 2,  accountJson->valuestring, -1, NULL);
         sqlite3_bind_text(stmt, 3,  keyJson->valuestring, -1, NULL);

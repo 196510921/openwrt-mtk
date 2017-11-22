@@ -698,7 +698,8 @@ static int AP_report_dev_handle(payload_t data)
             /*判断该设备是否存在*/
             sprintf(sql_1,"select ID from all_dev where DEV_ID = \"%s\";",idJson->valuestring);
             /*get id*/
-            sqlite3_reset(stmt_1); 
+            //sqlite3_reset(stmt_1);
+            sqlite3_finalize(stmt_1); 
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
             rc = thread_sqlite3_step(&stmt_1, db);
             if(rc == SQLITE_ROW){
@@ -816,7 +817,8 @@ static int AP_report_ap_handle(payload_t data)
         /*判断该设备是否存在*/
         sprintf(sql_1,"delete from all_dev where DEV_ID = \"%s\";",apIdJson->valuestring);
         /*get id*/
-        sqlite3_reset(stmt_1); 
+        //sqlite3_reset(stmt_1);
+        sqlite3_finalize(stmt_1); 
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
         while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW);
         
