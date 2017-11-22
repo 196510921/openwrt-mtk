@@ -858,8 +858,11 @@ static int APP_read_handle(payload_t data)
     int number1,number2,row_n;
     int pduType = TYPE_REPORT_DATA;
     int rc, ret = M1_PROTOCOL_OK;
+    char * devName = NULL;
+    char* pId = NULL;
+    int value = 0;
     char* dev_id = NULL;
-    char* sql = (char*)malloc(300);
+    char* sql = (char*)malloc(500);
     cJSON* devDataJson = NULL;
     cJSON* devIdJson = NULL;
     cJSON* paramTypeJson = NULL;
@@ -950,7 +953,12 @@ static int APP_read_handle(payload_t data)
             sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
             rc = thread_sqlite3_step(&stmt, db);
             if(rc == SQLITE_ROW){
-                cJSON_AddStringToObject(devDataObject, "devName", (const char*)sqlite3_column_text(stmt,0));
+                devName = sqlite3_column_text(stmt,0);
+                if(devName == NULL){
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish;       
+                }
+                cJSON_AddStringToObject(devDataObject, "devName", devName);
             }
             /*添加PID*/
             sprintf(sql, "select PID from all_dev where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
@@ -960,7 +968,12 @@ static int APP_read_handle(payload_t data)
             sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
             rc = thread_sqlite3_step(&stmt, db);
             if(rc == SQLITE_ROW){
-                cJSON_AddStringToObject(devDataObject, "pId", (const char*)sqlite3_column_text(stmt,0));
+                pId = sqlite3_column_text(stmt,0);
+                if(pId == NULL){
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish;   
+                }
+                cJSON_AddStringToObject(devDataObject, "pId", pId);
             }
 
             devArray = cJSON_CreateArray();
@@ -995,11 +1008,12 @@ static int APP_read_handle(payload_t data)
                 cJSON_AddItemToArray(devArray, devObject); 
                 cJSON_AddNumberToObject(devObject, "type", paramJson->valueint);
 
-                sqlite3_reset(stmt_1);
+                sqlite3_finalize(stmt_1);
                 sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
                 rc = thread_sqlite3_step(&stmt_1,db);
                 if(rc == SQLITE_ROW){
-                    cJSON_AddNumberToObject(devObject, "value", sqlite3_column_int(stmt_1,0));
+                    value = sqlite3_column_int(stmt_1,0);
+                    cJSON_AddNumberToObject(devObject, "value", value);
                 }
             }
 
@@ -2299,6 +2313,8 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 
     rc = sqlite3_step(*stmt);   
     fprintf(stdout,"step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+    if(rc == SQLITE_MISUSE || rc == SQLITE_LOCKED)
+        sqlite3_close(db);
     return rc;
 }
 
