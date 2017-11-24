@@ -1024,4 +1024,128 @@ int user_login_handle(payload_t data)
 	return 	ret;
 }
 
+/*更改用户登录密码*/
+int app_change_user_key(payload_t data)
+{
+    fprintf(stdout,"app_change_user_key\n");
+    /*sqlite3*/
+    int id;
+    int ret = M1_PROTOCOL_OK;
+    int clientFd;
+    char* key = NULL;
+    char* keyAuth = NULL;
+    char* account = NULL;
+    char* time = (char*)malloc(30);
+    char* sql= (char*)malloc(300);
+    char* sql1 = (char*)malloc(300);
+    sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
+    sqlite3_stmt* stmt1 = NULL;
+    sqlite3_stmt* stmt2 = NULL;
+    cJSON* KeyJson = NULL;
+    cJSON* newKeyJson = NULL;
+    cJSON* confirmKeyJson = NULL;
+    
+    clientFd = data.clientFd;
+    getNowTime(time);
+    KeyJson = cJSON_GetObjectItem(data.pdu, "Key");
+    if(KeyJson == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;   
+    }
+    fprintf(stdout,"Key:%s\n",KeyJson->valuestring);
+    newKeyJson = cJSON_GetObjectItem(data.pdu, "newKey");   
+    if(newKeyJson == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    fprintf(stdout,"newKey:%s\n",newKeyJson->valuestring);
+    confirmKeyJson = cJSON_GetObjectItem(data.pdu, "confirmKey");   
+    if(confirmKeyJson == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    fprintf(stdout,"confirmKey:%s\n",confirmKeyJson->valuestring);
+    if(strcmp(confirmKeyJson->valuestring, newKeyJson->valuestring) != 0){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;    
+    }
+    /*获取数据库*/
+    db = data.db;
+    /*获取用户登录名称*/
+    sprintf(sql1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;", clientFd);
+    fprintf(stdout, "%s\n", sql1);
+    sqlite3_prepare_v2(db, sql1, strlen(sql1), &stmt1, NULL);
+    if(thread_sqlite3_step(&stmt1, db) == SQLITE_ERROR){
+        fprintf(stderr, "SQLITE_ERROR\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    account = sqlite3_column_text(stmt1, 0);
+    if(account == NULL){
+        fprintf(stderr, "get account error\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*获取账户信息*/
+    sprintf(sql,"select KEY, KEY_AUTH from account_table where account = \"%s\" order by ID desc limit 1;", account);
+    fprintf(stdout, "%s\n", sql);
+    //sqlite3_reset(stmt);
+    sqlite3_finalize(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
+        fprintf(stderr, "SQLITE_ERROR\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    key = sqlite3_column_text(stmt, 0);
+    if(key == NULL){
+        fprintf(stderr, "get key error\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    fprintf(stdout, "key:%s\n", key);
+    // id = sqlite3_column_int(stmt, 1);
+    // if(id == NULL){
+    //     fprintf(stderr, "get id error\n");
+    //     ret = M1_PROTOCOL_FAILED;
+    //     goto Finish;
+    // }
+    keyAuth = sqlite3_column_text(stmt, 1);
+    if(keyAuth == NULL){
+        fprintf(stderr, "get keyAuth error\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*验证用户修改权限*/
+    if(strcmp(keyAuth, "on") != 0){
+        fprintf(stderr, "keyAuth not permitied\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*验证密码是否匹配*/
+    if(strcmp(key, KeyJson->valuestring) != 0){
+        fprintf(stderr, "key not match\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    sprintf(sql,"update account_table set KEY = \"%s\" where account = \"%s\";",newKeyJson->valuestring, account);
+    fprintf(stdout, "%s\n", sql);
+    //sqlite3_reset(stmt);
+    // sqlite3_finalize(stmt);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt2, NULL);
+    if(thread_sqlite3_step(&stmt2, db) == SQLITE_ERROR){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
 
+    Finish:
+    free(time);
+    free(sql);
+    free(sql1);
+    sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt1);
+    sqlite3_finalize(stmt2);
+
+    return ret; 
+}

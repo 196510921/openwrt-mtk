@@ -159,6 +159,8 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_APP_CHANGE_DEV_NAME                 0x0023
 /*APP执行场景*/
 #define TYPE_APP_EXEC_SCEN                		 0x0024
+/*APP用户更改登录信息*/
+#define TYPE_APP_USER_KEY_CHANGE               	 0x0025
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/

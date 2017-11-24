@@ -17,5 +17,7 @@ int app_req_dis_scen_name(payload_t data);
 int app_req_dis_name(payload_t data);
 /*APP请求区域下设备*/
 int app_req_dis_dev(payload_t data);
+/*用户更改登录密码*/
+int app_change_user_key(payload_t data);
 
 #endif //_ACCOUNT_CONFIG_H_

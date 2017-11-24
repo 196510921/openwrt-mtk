@@ -16,30 +16,34 @@ void trigger_cb(void* udp, int type, char const* db_name, char const* table_name
 
 static int device_exec(char* data, sqlite3* db)
 {
+	int rc,ret = M1_PROTOCOL_OK;
+    int clientFd;
+    int pduType = TYPE_DEV_WRITE;
+	int type,value,delay;
+	char * p = NULL;
+	char* sql = (char*)malloc(300);
+	char* sql_1 = (char*)malloc(300);
+	char* sql_2 = (char*)malloc(300);
+	char* sql_3 = (char*)malloc(300);
+	char*ap_id = NULL,*dev_id = NULL;
+
 	cJSON * pJsonRoot = NULL; 
     cJSON * pduJsonObject = NULL;
     cJSON * devDataJsonArray = NULL;
     cJSON * devDataObject= NULL;
     cJSON * paramArray = NULL;
     cJSON*  paramObject = NULL;
-
-	char sql[200],sql_1[200],sql_2[200],sql_3[200];
-	char*ap_id = NULL,*dev_id = NULL;
-	int type,value,delay;
 	sqlite3_stmt* stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
  
  	fprintf(stdout,"device_exec\n");
-    int rc;
-    int clientFd;
-    char * p = NULL;
-    int pduType = TYPE_DEV_WRITE;
 
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
         fprintf(stdout,"pJsonRoot NULL\n");
         cJSON_Delete(pJsonRoot);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
@@ -51,7 +55,8 @@ static int device_exec(char* data, sqlite3* db)
     {
         // create object faild, exit
         cJSON_Delete(pduJsonObject);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add pdu to root*/
     cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
@@ -62,7 +67,8 @@ static int device_exec(char* data, sqlite3* db)
     if(NULL == devDataJsonArray)
     {
         cJSON_Delete(devDataJsonArray);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
@@ -87,7 +93,8 @@ static int device_exec(char* data, sqlite3* db)
 	            // create object faild, exit
 	            fprintf(stdout,"devDataObject NULL\n");
 	            cJSON_Delete(devDataObject);
-	            return M1_PROTOCOL_FAILED;
+	            ret = M1_PROTOCOL_FAILED;
+        		goto Finish;
 	        }
 	        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 	       	cJSON_AddStringToObject(devDataObject,"devId",dev_id);
@@ -97,7 +104,8 @@ static int device_exec(char* data, sqlite3* db)
 		    {
 		    	fprintf(stdout,"paramArray NULL\n");
 		        cJSON_Delete(paramArray);
-		        return M1_PROTOCOL_FAILED;
+		        ret = M1_PROTOCOL_FAILED;
+        		goto Finish;
 		    }
 			cJSON_AddItemToObject(devDataObject, "param", paramArray);
 			/*获取参数信息*/
@@ -117,7 +125,8 @@ static int device_exec(char* data, sqlite3* db)
 		            // create object faild, exit
 		            fprintf(stdout,"devDataObject NULL\n");
 		            cJSON_Delete(paramObject);
-		            return M1_PROTOCOL_FAILED;
+		            ret = M1_PROTOCOL_FAILED;
+        			goto Finish;
 		        }
 		        cJSON_AddItemToArray(paramArray, paramObject);
 		        cJSON_AddNumberToObject(paramObject, "type", type);
@@ -131,7 +140,8 @@ static int device_exec(char* data, sqlite3* db)
     	{    
     		fprintf(stdout,"p NULL\n");
         	cJSON_Delete(pJsonRoot);
-        	return M1_PROTOCOL_FAILED;
+        	ret = M1_PROTOCOL_FAILED;
+        	goto Finish;
     	}
     	/*get clientfd*/
     	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
@@ -150,12 +160,18 @@ static int device_exec(char* data, sqlite3* db)
     	
 	}
 
+	Finish:
+	free(sql);
+	free(sql_1);
+	free(sql_2);
+	free(sql_3);
 	sqlite3_finalize(stmt);
 	sqlite3_finalize(stmt_1);
    	sqlite3_finalize(stmt_2);
    	sqlite3_finalize(stmt_3);
 	cJSON_Delete(pJsonRoot);
-	return M1_PROTOCOL_OK;
+	
+	return ret;
 }
 
 int linkage_msg_handle(payload_t data)
@@ -368,13 +384,13 @@ void linkage_task(void)
 {
 	int rc, rc1;
 	uint32_t rowid;
+	char* sql = NULL;
+	sqlite3* db = NULL;
+    sqlite3_stmt* stmt = NULL;
 	char *exec_type = NULL,*exec_id = NULL, *link_name =  NULL;
     while(1){
 	    rc1 = fifo_read(&link_exec_fifo, &rowid);
 	    if(rc1 > 0){
-	    	char* sql = NULL;
-			sqlite3* db = NULL;
-    		sqlite3_stmt* stmt = NULL;
 		    sql = (char*)malloc(300);
 			rc = sqlite3_open("dev_info.db", &db);  
 			if(rc){  

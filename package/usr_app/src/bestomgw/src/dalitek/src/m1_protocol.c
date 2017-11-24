@@ -173,8 +173,9 @@ void data_handle(m1_package_t* package)
         case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
         case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
         case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
+        case TYPE_APP_USER_KEY_CHANGE: rc = app_change_user_key(pdu);break;
 
-            default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
+        default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
 
     if(rc != M1_PROTOCOL_NO_RSP){

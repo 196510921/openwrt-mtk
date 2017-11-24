@@ -48,8 +48,7 @@ int app_get_project_info(payload_t data)
     /*获取项目信息*/
     sql = "select P_NUMBER from project_table;";
     fprintf(stdout, "%s\n", sql);
-    //sqlite3_reset(stmt);
-    sqlite3_finalize(stmt);
+    
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ERROR){
@@ -108,8 +107,6 @@ int app_confirm_project(payload_t data)
 
     sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\";",pNumberJson->valuestring);
     fprintf(stdout, "%s\n", sql);
-    //sqlite3_reset(stmt);
-    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     thread_sqlite3_step(&stmt, db);
     key =  sqlite3_column_text(stmt, 0);
