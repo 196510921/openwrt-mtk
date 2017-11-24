@@ -44,9 +44,9 @@ fifo_t tx_fifo;
 PNode head;
 static uint32_t dev_data_buf[256];
 static uint32_t link_exec_buf[256];
-static uint32_t msg_rd_buf[256];
-static uint32_t msg_wt_buf[256];
-static uint32_t tx_buf[256];
+// static uint32_t msg_rd_buf[256];
+// static uint32_t msg_wt_buf[256];
+// static uint32_t tx_buf[256];
 
 void m1_protocol_init(void)
 {
@@ -58,89 +58,16 @@ void m1_protocol_init(void)
     /*linkage execution fifo*/
     fifo_init(&link_exec_fifo, link_exec_buf, 256);
     /*sql read fifo*/
-    fifo_init(&msg_rd_fifo, msg_rd_buf, 256);
-    /*sql write fifo*/
-    fifo_init(&msg_wt_fifo, msg_wt_buf, 256);
+    // fifo_init(&msg_rd_fifo, msg_rd_buf, 256);
+    // sql write fifo
+    // fifo_init(&msg_wt_fifo, msg_wt_buf, 256);
     /*Tx message fifo*/
-    fifo_init(&tx_fifo, tx_buf, 256);
+    // fifo_init(&tx_fifo, tx_buf, 256);
     Init_PQueue(&head);
     /*初始化接收buf*/
     client_block_init();
 }
 
-#if 0
-void data_handle(m1_package_t* package)
-{
-    fprintf(stdout,"data_handle\n");
-    int pduType;
-    cJSON* rootJson = NULL;
-    cJSON* pduJson = NULL;
-    cJSON* pduTypeJson = NULL;
-
-    //fprintf(stdout,"Rx message:%s\n",package->data);
-    rootJson = cJSON_Parse(package->data);
-    if(NULL == rootJson){
-        fprintf(stdout,"rootJson null\n");
-        return;   
-    }
-    pduJson = cJSON_GetObjectItem(rootJson, "pdu");
-    if(NULL == pduJson){
-        fprintf(stdout,"pdu null\n");
-        return;
-    }
-    pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
-    if(NULL == pduTypeJson){
-        fprintf(stdout,"pduType null\n");
-        return;
-    }
-
-    pduType = pduTypeJson->valueint;
-    switch(pduType){
-            /*sql read*/
-            case TYPE_DEV_READ: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_ADDED_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_DEV_NET_CONTROL: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_AP_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DEV_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_COMMON_RSP: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_SCEN_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_LINK_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DISTRICT_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_SCEN_NAME_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_ACCOUNT_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_ACCOUNT_CONFIG_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_GET_PORJECT_NUMBER: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DIS_SCEN_NAME: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DIS_NAME: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_REQ_DIS_DEV: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_GET_PROJECT_INFO: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_APP_CONFIRM_PROJECT: fifo_write(&msg_rd_fifo, package); break;
-            case TYPE_APP_EXEC_SCEN: fifo_write(&msg_rd_fifo, package); break;
-            /*sql write*/
-            case TYPE_REPORT_DATA: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_DEV_WRITE: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_ECHO_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_AP_REPORT_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_AP_REPORT_AP_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_CREATE_LINKAGE: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_CREATE_SCENARIO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_CREATE_DISTRICT: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_SCENARIO_ALARM: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_COMMON_OPERATE: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_AP_HEARTBEAT_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_LINK_ENABLE_SET: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_APP_LOGIN: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_SEND_ACCOUNT_CONFIG_INFO: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_APP_CREATE_PROJECT: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_PROJECT_KEY_CHANGE: fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_PROJECT_INFO_CHANGE:fifo_write(&msg_wt_fifo, package); break;
-            case TYPE_APP_CHANGE_DEV_NAME: fifo_write(&msg_wt_fifo, package); break;
-
-            default: fprintf(stdout,"pdu type not match\n");break;
-    }
-
-}
-#endif
 void data_handle(m1_package_t* package)
 {
     fprintf(stdout,"data_handle\n");
@@ -2439,5 +2366,79 @@ void sql_wt_handle(void)
         }
         usleep(1000);
     }
+}
+#endif
+
+#if 0
+void data_handle(m1_package_t* package)
+{
+    fprintf(stdout,"data_handle\n");
+    int pduType;
+    cJSON* rootJson = NULL;
+    cJSON* pduJson = NULL;
+    cJSON* pduTypeJson = NULL;
+
+    //fprintf(stdout,"Rx message:%s\n",package->data);
+    rootJson = cJSON_Parse(package->data);
+    if(NULL == rootJson){
+        fprintf(stdout,"rootJson null\n");
+        return;   
+    }
+    pduJson = cJSON_GetObjectItem(rootJson, "pdu");
+    if(NULL == pduJson){
+        fprintf(stdout,"pdu null\n");
+        return;
+    }
+    pduTypeJson = cJSON_GetObjectItem(pduJson, "pduType");
+    if(NULL == pduTypeJson){
+        fprintf(stdout,"pduType null\n");
+        return;
+    }
+
+    pduType = pduTypeJson->valueint;
+    switch(pduType){
+            /*sql read*/
+            case TYPE_DEV_READ: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_ADDED_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_DEV_NET_CONTROL: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_AP_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DEV_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_COMMON_RSP: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_SCEN_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_LINK_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DISTRICT_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_SCEN_NAME_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_ACCOUNT_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_ACCOUNT_CONFIG_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_GET_PORJECT_NUMBER: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DIS_SCEN_NAME: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DIS_NAME: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_REQ_DIS_DEV: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_GET_PROJECT_INFO: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_APP_CONFIRM_PROJECT: fifo_write(&msg_rd_fifo, package); break;
+            case TYPE_APP_EXEC_SCEN: fifo_write(&msg_rd_fifo, package); break;
+            /*sql write*/
+            case TYPE_REPORT_DATA: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_DEV_WRITE: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_ECHO_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_AP_REPORT_DEV_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_AP_REPORT_AP_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_CREATE_LINKAGE: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_CREATE_SCENARIO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_CREATE_DISTRICT: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_SCENARIO_ALARM: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_COMMON_OPERATE: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_AP_HEARTBEAT_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_LINK_ENABLE_SET: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_APP_LOGIN: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_SEND_ACCOUNT_CONFIG_INFO: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_APP_CREATE_PROJECT: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_PROJECT_KEY_CHANGE: fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_PROJECT_INFO_CHANGE:fifo_write(&msg_wt_fifo, package); break;
+            case TYPE_APP_CHANGE_DEV_NAME: fifo_write(&msg_wt_fifo, package); break;
+
+            default: fprintf(stdout,"pdu type not match\n");break;
+    }
+
 }
 #endif
