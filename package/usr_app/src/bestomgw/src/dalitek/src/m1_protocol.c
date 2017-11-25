@@ -123,7 +123,7 @@ void data_handle(m1_package_t* package)
         fprintf(stderr, "Can't open database\n");  
         goto Finish;
     }else{  
-        fprintf(stderr, "Opened database successfully\n");  
+        fprintf(stdout, "Opened database successfully\n");  
     }
 
     /*pdu*/ 
@@ -827,15 +827,10 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
 
     /*get clientFd*/
     sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1;",ap_id);
-    row_n = sql_row_number(db, sql);
-    fprintf(stdout,"row_n:%d\n",row_n);
-    if(row_n > 0){
-        sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
-        rc = thread_sqlite3_step(&stmt_1, db);
-        if(rc == SQLITE_ROW){
-            clientFd = sqlite3_column_int(stmt_1,0);
-        }
-    
+    sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
+    rc = thread_sqlite3_step(&stmt_1, db);
+    if(rc == SQLITE_ROW){
+        clientFd = sqlite3_column_int(stmt_1,0);
 
         char * p = cJSON_PrintUnformatted(data);
         
@@ -850,6 +845,29 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
         /*response to client*/
         socketSeverSend((uint8*)p, strlen(p), clientFd);
     }
+    // row_n = sql_row_number(db, sql);
+    // fprintf(stdout,"row_n:%d\n",row_n);
+    // if(row_n > 0){
+    //     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
+    //     rc = thread_sqlite3_step(&stmt_1, db);
+    //     if(rc == SQLITE_ROW){
+    //         clientFd = sqlite3_column_int(stmt_1,0);
+    //     }
+    
+
+    //     char * p = cJSON_PrintUnformatted(data);
+        
+    //     if(NULL == p)
+    //     {    
+    //         cJSON_Delete(data);
+    //         ret = M1_PROTOCOL_FAILED;
+    //         goto Finish;  
+    //     }
+
+    //     fprintf(stdout,"string:%s\n",p);
+    //     /*response to client*/
+    //     socketSeverSend((uint8*)p, strlen(p), clientFd);
+    // }
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
@@ -2110,7 +2128,8 @@ int sql_row_number(sqlite3* db, char*sql)
     rc = sqlite3_get_table(db, sql, &p_result,&n_row, &n_col, &errmsg);
     /*sqlite3 unlock*/
     //sqlite3_mutex_leave(sqlite3_db_mutex(db));
-    fprintf(stdout,"n_row:%d\n",n_row);
+    if(rc != SQLITE_OK)
+        fprintf(stderr,"sql_row_number failed:%s\n",errmsg);
 
     sqlite3_free(errmsg);
     sqlite3_free_table(p_result);
@@ -2137,6 +2156,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 {
     int sleep_acount = 0;
     int rc;
+    char* errorMsg = NULL;
 
     do{
         rc = sqlite3_step(*stmt);   
@@ -2158,6 +2178,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
         }
     }
 
+    free(errorMsg);
     return rc;
 }
 
