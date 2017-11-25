@@ -179,6 +179,8 @@ void data_handle(m1_package_t* package)
         default: fprintf(stdout,"pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
 
+    sqlite3_close(db);
+
     if(rc != M1_PROTOCOL_NO_RSP){
         if(rc == M1_PROTOCOL_OK)
             rspData.result = RSP_OK;
@@ -192,7 +194,6 @@ void data_handle(m1_package_t* package)
     //     fprintf(stderr, "sql_backup failed\n");
     // }
     cJSON_Delete(rootJson);
-    sqlite3_close(db);
 
 }
 
@@ -796,7 +797,7 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     int rc,ret = M1_PROTOCOL_OK;
     const char* ap_id = NULL;
     char* sql = (char*)malloc(300);
-    sqlite3_stmt* stmt = NULL;
+    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL;
     cJSON* snJson = NULL;
     cJSON* pduJson = NULL;
     cJSON* devDataJson = NULL;
@@ -812,7 +813,7 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     devIdJson = cJSON_GetObjectItem(dataArrayJson, "devId");
     fprintf(stdout,"devId:%s\n",devIdJson->valuestring);
     /*get apId*/
-    sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" limit 1;",devIdJson->valuestring);
+    sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;",devIdJson->valuestring);
     row_n = sql_row_number(db, sql);
     fprintf(stdout,"row_n:%d\n",row_n);
     if(row_n > 0){ 
@@ -825,35 +826,34 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     }
 
     /*get clientFd*/
-    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\" limit 1;",ap_id);
+    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1;",ap_id);
     row_n = sql_row_number(db, sql);
     fprintf(stdout,"row_n:%d\n",row_n);
     if(row_n > 0){
-        //sqlite3_reset(stmt); 
-        sqlite3_finalize(stmt); 
-        sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        rc = thread_sqlite3_step(&stmt, db);
+        sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
+        rc = thread_sqlite3_step(&stmt_1, db);
         if(rc == SQLITE_ROW){
-            clientFd = sqlite3_column_int(stmt,0);
+            clientFd = sqlite3_column_int(stmt_1,0);
         }
-    }
-
-    char * p = cJSON_PrintUnformatted(data);
     
-    if(NULL == p)
-    {    
-        cJSON_Delete(data);
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;  
+
+        char * p = cJSON_PrintUnformatted(data);
+        
+        if(NULL == p)
+        {    
+            cJSON_Delete(data);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;  
+        }
+
+        fprintf(stdout,"string:%s\n",p);
+        /*response to client*/
+        socketSeverSend((uint8*)p, strlen(p), clientFd);
     }
-
-    fprintf(stdout,"string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
-
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt_1);
 
     return ret;
 }
@@ -865,10 +865,10 @@ static int APP_write_handle(payload_t data)
     int row_n,id;
     int rc, ret = M1_PROTOCOL_OK;
     char* errorMsg = NULL;
-    char* time = NULL;
+    char* time = (char*)malloc(30);
     char* sql = NULL;
-    char sql_1[300] = {0};
-    char sql_2[300] = {0};
+    char* sql_1 = (char*)malloc(300);
+    char* sql_2 = (char*)malloc(300);
     const char* dev_name = NULL;
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL,*stmt_1 = NULL;
@@ -885,14 +885,12 @@ static int APP_write_handle(payload_t data)
         goto Finish;
     };
 
-    /*获取系统时间*/
-    time = (char*)malloc(30);
     getNowTime(time);
     /*获取数据库*/
     db = data.db;
     /*关闭写同步*/
-    if(sqlite3_exec(db,"PRAGMA synchronous = OFF;",0,0,0) != SQLITE_OK){
-        fprintf(stderr,"PRAGMA synchronous = OFF falied\n");
+    if(sqlite3_exec(db,"PRAGMA synchronous = OFF;",NULL,NULL,&errorMsg) != SQLITE_OK){
+        fprintf(stderr,"PRAGMA synchronous = OFF falied:%s\n",errorMsg);
         ret = M1_PROTOCOL_FAILED;
         goto Finish;  
     }
@@ -1005,6 +1003,8 @@ static int APP_write_handle(payload_t data)
 
     Finish:
     free(time);
+    free(sql_1);
+    free(sql_2);
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
@@ -2148,6 +2148,15 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
         }
         
     }while((sleep_acount < 10) && ((rc == SQLITE_BUSY) || (rc == SQLITE_LOCKED) || (rc == SQLITE_MISUSE)));
+
+    if(rc == SQLITE_BUSY || rc == SQLITE_MISUSE || rc == SQLITE_LOCKED){
+        if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
+            fprintf(stdout,"ROLLBACK OK\n");
+            sqlite3_free(errorMsg);
+        }else{
+            fprintf(stdout,"ROLLBACK FALIED\n");
+        }
+    }
 
     return rc;
 }

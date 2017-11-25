@@ -1060,12 +1060,10 @@ int user_login_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-    free(sql);
 
 	sql_1 = "select ID from account_info order by ID desc limit 1;";
 	id = sql_id(db, sql_1);
 	/*删除重复用户信息*/
-    sql = (char*)malloc(300);
     sprintf(sql,"delete from account_info where ACCOUNT = \"%s\";",accountJson->valuestring);
     fprintf(stdout,"sql:%s\n",sql);
 	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
