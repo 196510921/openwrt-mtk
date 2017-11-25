@@ -533,6 +533,14 @@ int app_account_config_handle(payload_t data)
         }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
             fprintf(stdout,"END\n");
+        }else{
+            fprintf(stdout,"ROLLBACK\n");
+            if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
+                fprintf(stdout,"ROLLBACK OK\n");
+                sqlite3_free(errorMsg);
+            }else{
+                fprintf(stdout,"ROLLBACK FALIED\n");
+            }
         }
     }else{
         fprintf(stdout,"errorMsg:");

@@ -1714,7 +1714,7 @@ void SRPC_RxCB(int clientFd)
 	int JsonComplete = 0;
 	int len = 0;
 	int rc = 0;
-	char buf[1024*2] = {0};
+	char buf[1024*10] = {0};
 	client_block_t* client_block = NULL;
 
 	printf("SRPC_RxCB++[%x]\n", clientFd);
@@ -1727,6 +1727,10 @@ void SRPC_RxCB(int clientFd)
 	}
 	printf("byteToRead:%d\n",byteToRead);
 
+	if(byteToRead > 10*1024){
+		fprintf(stderr,"SRPC_RxCB: out of rx buffer\n");
+		return;
+	}
 	while(byteToRead > 0)
 	{
 		byteRead = read(clientFd, buf + len, 1024);
@@ -1745,27 +1749,6 @@ void SRPC_RxCB(int clientFd)
 	rc = client_write(&client_block->stack_block, buf, len);
 	if(rc != TCP_SERVER_SUCCESS)
 		fprintf(stdout,"client_write failed\n");
-	// if(JsonFlag == 1){
-	// 	mLen += msg_header_checker(buf + mLen, len - mLen);
-	// 	//fprintf(stdout,"%s\n",buf + mLen);
-	// 	JsonComplete = json_checker(buf + mLen, len - mLen);
-	//     if(1 == JsonComplete){
-	//     	fprintf(stdout, "msg complete!\n");
-	//     	msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
-	//     	msg->clientFd = LiveclientFd;
-	//     	msg->len = len - mLen;
-	//     	msg->data = mem_poll_malloc(msg->len);
-	//     	strcpy(msg->data,buf + mLen);
-	//     	data_handle(msg);
-	//     	JsonFlag = 0;
-	//     }else{
-	//     	if(clientFd != LiveclientFd){
-	//     		JsonFlag = 0;	
-	//     	}else{
-	//     		fprintf(stdout, "msg waiting......\n");
-	//     	}
-	//     }
-	// }
 
 	printf("SRPC_RxCB--\n");
 
@@ -1938,147 +1921,7 @@ void client_read(void)
 		usleep(1000);
 	}
 }
-#if 0
-static int client_write(stack_mem_t* d, char* data, int len)
-{
-	fprintf(stdout, "client_write\n");
-	
-	fprintf(stdout,"pre write: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
-	//fprintf(stdout,"header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
-	if(NULL == d){
-		fprintf(stdout, "NULL == d\n");
-		return TCP_SERVER_FAILED;
-	}
 
-	if((*(uint16_t*)d->rPtr & 0xFFFF) == MSG_HEADER){
-		if(d->wPtr == d->rPtr){
-			d->ringFlag = RING_BUSY;
-			fprintf(stdout, " write d->wPtr == d->rPtr\n");	
-			return TCP_SERVER_FAILED;
-		}
-	}
-
-	if((*(uint8_t*)d->wPtr & 0xFF) != 0x00){
-		if((d->wPtr + len) >= d->rPtr){
-			fprintf(stdout, " write d->wPtr == d->rPtr\n");	
-			return TCP_SERVER_FAILED;
-		}
-	}
-
-	if((d->wPtr + len) > d->end){
-		if(d->rPtr != d->start){
-			if((d->start + len) >= d->rPtr){
-				fprintf(stdout, "(d->start + len) >= d->rPtr\n");
-				return TCP_SERVER_FAILED;
-			}else{
-				memcpy(d->start, data, len);
-				d->wPtr = d->start;		
-				d->ringFlag = RING_IDLE;
-			}
-		}
-	}else{
-		memcpy(d->wPtr, data, len);
-	}
-
-	d->wPtr += len;
-	fprintf(stdout,"client_write end wPtr:%05d\n",d->wPtr);
-
-	return TCP_SERVER_SUCCESS;
-}
-
-void client_read(void)
-{
-	fprintf(stdout, "client_read\n");
-	int i = 0;
-	int len = 0;
-	int distance = 0;
-	char* data = NULL;
-	stack_mem_t* d = NULL;
-
-	while(1){
-		fprintf(stdout,"-------------------------%d read----------------------------\n",i);
-		d = &client_block[i].stack_block;
-		if(client_block[i].clientFd == 0){
-			goto Finish;
-		}
-		fprintf(stdout, "read:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
-		if(d->wPtr == d->rPtr){
-			if(d->ringFlag == RING_IDLE){	
-				fprintf(stdout, "read d->wPtr == d->rPtr\n");
-				goto Finish;
-			}else{
-				d->ringFlag = RING_IDLE;
-			}
-		}
-
-		if(d->wPtr > d->rPtr){
-			fprintf(stdout,"header:%x\n",*(uint16_t*)d->rPtr);
-			if((*(uint16_t*)d->rPtr & 0xFFFF) != MSG_HEADER){
-				fprintf(stderr, "missing header\n");
-				goto Finish;
-			}
-		}else if(d->wPtr < d->rPtr){
-			fprintf(stdout,"header:%x\n",*(uint16_t*)d->rPtr);
-			if((*(uint16_t*)d->rPtr & 0xFFFF) != MSG_HEADER){
-				d->rPtr = d->start;
-			}
-		}
-		len = (*(uint16_t*)(d->rPtr + BLOCK_LEN_OFFSET)) & 0xFFFF;
-		len = (((len << 8) & 0xff00) | ((len >> 8) & 0xff)) & 0xffff;
-
-		data = d->rPtr + 4;
-		fprintf(stdout, "read:len:%x\n",len);
-		//fprintf(stdout,"read message:%s\n",data);
-		client_read_to_data_handle(data, len, client_block[i].clientFd);
-		d->rPtr += (len + 4);
-
-		Finish:
-		i = (i + 1) % STACK_BLOCK_NUM;
-		usleep(1000);
-	}
-
-}
-#endif
-#if 0
-void client_write_test(void)
-{
-	int i = 0;
-	int len = 0;
-	int rc;
-	int clientFd[10] = {1,2,3,4,5,6,7,8,9,10};
-	client_block_t* client_block = NULL;
-	char test_buf[200];
-
-	client_block_init();
-	while(1){
-
-		client_block = client_stack_block_req(clientFd[i]);
-		if(NULL == client_block){
-			fprintf(stderr, "client_write_test error\n");
-			goto Finish;
-		}
-		// fprintf(stdout,"write blockNum:%d,wPtr:%05d,rPtr:%05d,start:%05d,end:%05d\n",client_block->stack_block.blockNum,
-		// client_block->stack_block.wPtr, client_block->stack_block.rPtr, client_block->stack_block.start,
-		// client_block->stack_block.end);
-
-		test_buf[0] = 0xFD;
-		test_buf[1] = 0xFE;
-		test_buf[2] = 0x00;
-		sprintf(&test_buf[4],"-------------------------client write test :%d----------------------------------\n",i);
-		len = strlen(&test_buf[4]);
-		test_buf[2] = len;
-		printf("write len:%05d\n",len);
-		rc = client_write(&client_block->stack_block, test_buf, len + 4);
-		if(rc != TCP_SERVER_SUCCESS)
-			fprintf(stdout,"client_write failed\n");
-
-		Finish:
-		i = (i + 1) % 10;
-		usleep(1000);
-	}
-
-}
-#endif
 /***************************************************************************************************
  * @fn      Closes the TCP port
  *
