@@ -561,13 +561,15 @@ int app_req_dis_name(payload_t data)
     int pdu_type = TYPE_M1_REPORT_DIS_NAME;
     int rc,ret = M1_PROTOCOL_OK;
     char* district = NULL;
+    char* sql = (char*)malloc(300);
+    char* sql_1 = (char*)malloc(300);
     cJSON * pJsonRoot = NULL; 
     cJSON * pduJsonObject = NULL;
     cJSON * devDataObject= NULL;
     cJSON * districtObject= NULL;
     cJSON * devDataJsonArray = NULL;
     sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL;
 
     db = data.db;
     /*get sql data json*/
@@ -606,9 +608,25 @@ int app_req_dis_name(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
+    /*获取用户账户信息*/
+    char* account = NULL;
+    sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
+    fprintf(stdout, "%s\n", sql_1);
+    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt_1, 0);
+    }
+    if(account == NULL){
+        fprintf(stderr, "user account do not exist\n");    
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",data.clientFd, account);
+    }
+
     /*获取项目信息*/
-    char* sql = "select distinct DIS_NAME from district_table";
-    fprintf(stdout, "%s\n", sql);
+    sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account);
+    fprintf(stdout,"sql:%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -635,7 +653,10 @@ int app_req_dis_name(payload_t data)
     fprintf(stdout,"string:%s\n",p);
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
     Finish:
+    free(sql);
+    free(sql_1);
     sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt_1);
     cJSON_Delete(pJsonRoot);
 
     return  ret;
@@ -650,6 +671,7 @@ int app_req_dis_scen_name(payload_t data)
     int rc, ret = M1_PROTOCOL_OK;
     char* scenario = NULL;
     char* sql = (char*)malloc(300);
+    char* sql_1 = (char*)malloc(300);
     cJSON* devDataJson = NULL;
     cJSON* pJsonRoot = NULL;
     cJSON* pduJsonObject = NULL;
@@ -658,7 +680,7 @@ int app_req_dis_scen_name(payload_t data)
     cJSON* scenArray = NULL;
     cJSON* scenJson = NULL;
     sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL;
 
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -703,6 +725,23 @@ int app_req_dis_scen_name(payload_t data)
     /*获取区域*/
     number = cJSON_GetArraySize(data.pdu);
     fprintf(stdout,"number:%d\n",number);
+
+    /*获取用户账户信息*/
+    char* account = NULL;
+    sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
+    fprintf(stdout, "%s\n", sql_1);
+    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt_1, 0);
+    }
+    if(account == NULL){
+        fprintf(stderr, "user account do not exist\n");    
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",data.clientFd, account);
+    }
+
     for(i = 0; i < number; i++){
         devDataJson = cJSON_GetArrayItem(data.pdu, i);
         fprintf(stdout,"district:%s\n",devDataJson->valuestring);
@@ -730,7 +769,7 @@ int app_req_dis_scen_name(payload_t data)
         }
         cJSON_AddItemToObject(devDataObject, "scenario", scenArray);
         /*获取场景*/
-        sprintf(sql,"select distinct SCEN_NAME from scenario_table where DISTRICT = \"%s\";",devDataJson->valuestring);
+        sprintf(sql,"select distinct SCEN_NAME from scenario_table where DISTRICT = \"%s\" and ACCOUNT = \"%s\";",devDataJson->valuestring, account);
         fprintf(stdout, "%s\n", sql);
         //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
@@ -761,7 +800,9 @@ int app_req_dis_scen_name(payload_t data)
     
     Finish:
     free(sql);
+    free(sql_1);
     sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt_1);
     cJSON_Delete(pJsonRoot);
 
     return  ret;
@@ -777,6 +818,7 @@ int app_req_dis_dev(payload_t data)
     char* sql = (char*)malloc(300);
     char* sql_1 = (char*)malloc(300);
     char* sql_2 = (char*)malloc(300);
+    char* sql_3 = (char*)malloc(300);
     char* apId = NULL, *pId = NULL, *devName = NULL, *devId = NULL;
     cJSON* devDataJson = NULL;
     cJSON* pJsonRoot = NULL;
@@ -788,7 +830,7 @@ int app_req_dis_dev(payload_t data)
     cJSON* devArray = NULL;
     cJSON* devObject = NULL;
     sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
+    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
 
     db = data.db;
     if(data.pdu == NULL){
@@ -833,6 +875,23 @@ int app_req_dis_dev(payload_t data)
     /*获取区域*/
     number = cJSON_GetArraySize(data.pdu);
     fprintf(stdout,"number:%d\n",number);
+
+    /*获取用户账户信息*/
+    char* account = NULL;
+    sprintf(sql_3,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
+    fprintf(stdout, "%s\n", sql_3);
+    sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+    if(thread_sqlite3_step(&stmt_3, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt_3, 0);
+    }
+    if(account == NULL){
+        fprintf(stderr, "user account do not exist\n");    
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }else{
+        fprintf(stdout,"clientFd:%03d,account:%s\n",data.clientFd, account);
+    }
+
     for(i = 0; i < number; i++){
         devDataJson = cJSON_GetArrayItem(data.pdu, i);
         fprintf(stdout,"district:%s\n",devDataJson->valuestring);
@@ -860,7 +919,7 @@ int app_req_dis_dev(payload_t data)
         }
         cJSON_AddItemToObject(devDataObject, "apInfo", apInfoArray);
         /*获取场景*/
-        sprintf(sql,"select distinct AP_ID from district_table where DIS_NAME = \"%s\";",devDataJson->valuestring);
+        sprintf(sql,"select distinct AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"%s\";",devDataJson->valuestring, account);
         fprintf(stdout, "%s\n", sql);
         //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
@@ -909,7 +968,7 @@ int app_req_dis_dev(payload_t data)
                 goto Finish;
             }
             cJSON_AddItemToObject(apInfoObject, "dev", devArray);
-            sprintf(sql_2,"select PID, DEV_NAME, DEV_ID from all_dev where AP_ID = \"%s\" and ACCOUNT = \"Dalitek\";",apId);
+            sprintf(sql_2,"select PID, DEV_NAME, DEV_ID from all_dev where AP_ID = \"%s\" and ACCOUNT = \"%s\";",apId, account);
             fprintf(stdout, "%s\n", sql_2);
             //sqlite3_reset(stmt_2);
             sqlite3_finalize(stmt_2);
@@ -955,9 +1014,11 @@ int app_req_dis_dev(payload_t data)
     free(sql);
     free(sql_1);
     free(sql_2);
+    free(sql_3);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
+    sqlite3_finalize(stmt_3);
     cJSON_Delete(pJsonRoot);
 
     return  ret;
@@ -969,7 +1030,7 @@ int user_login_handle(payload_t data)
 
     int rc,ret = M1_PROTOCOL_OK;
     int id;
-    char* sql = (char*)malloc(300);
+    char* sql = NULL;
     char* sql_1 = NULL;
     char* account = NULL,*key = NULL;
 	cJSON* accountJson = NULL;
@@ -986,9 +1047,8 @@ int user_login_handle(payload_t data)
     /*获取数据库*/
     db = data.db;
     /*验证用户信息*/
+    sql = (char*)malloc(300);
     sprintf(sql,"select KEY from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
-    //sqlite3_reset(stmt);
-    sqlite3_finalize(stmt);
 	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 	if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 		key = sqlite3_column_text(stmt, 0);
@@ -1000,10 +1060,12 @@ int user_login_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
+    free(sql);
 
 	sql_1 = "select ID from account_info order by ID desc limit 1;";
 	id = sql_id(db, sql_1);
 	/*删除重复用户信息*/
+    sql = (char*)malloc(300);
     sprintf(sql,"delete from account_info where ACCOUNT = \"%s\";",accountJson->valuestring);
     fprintf(stdout,"sql:%s\n",sql);
 	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);

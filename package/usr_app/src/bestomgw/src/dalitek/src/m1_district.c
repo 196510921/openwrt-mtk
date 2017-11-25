@@ -161,8 +161,6 @@ int app_req_district(payload_t data)
     char* account = NULL;
     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     fprintf(stdout, "%s\n", sql);
-    //sqlite3_reset(stmt_3);
-    sqlite3_finalize(stmt_3);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_3, NULL);
     if(thread_sqlite3_step(&stmt_3, db) == SQLITE_ROW){
         account =  sqlite3_column_text(stmt_3, 0);
