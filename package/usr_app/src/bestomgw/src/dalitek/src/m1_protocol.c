@@ -609,6 +609,7 @@ static int APP_read_handle(payload_t data)
     char * devName = NULL;
     char* pId = NULL;
     int value = 0;
+    int clientFd = 0;
     char* dev_id = NULL;
     char* sql = (char*)malloc(500);
     cJSON* devDataJson = NULL;
@@ -629,6 +630,8 @@ static int APP_read_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
+    
+    clientFd = data.clientFd;
     db = data.db;
 
     /*get sql data json*/
@@ -777,7 +780,7 @@ static int APP_read_handle(payload_t data)
     }
 
     fprintf(stdout,"string:%s\n",p);
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+    socketSeverSend((uint8*)p, strlen(p), clientFd);
     Finish:
     free(p);
     free(sql);
