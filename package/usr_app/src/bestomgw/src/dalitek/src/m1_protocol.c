@@ -15,6 +15,7 @@
 /*Macro**********************************************************************************************************/
 #define M1_PROTOCOL_DEBUG    1
 #define HEAD_LEN    3
+#define SQL_CLEAR_TIME     (2 * 60 * 60)
 /*Private function***********************************************************************************************/
 static int AP_report_data_handle(payload_t data);
 static int APP_read_handle(payload_t data);
@@ -33,7 +34,7 @@ static int ap_heartbeat_handle(payload_t data);
 static int common_rsp_handle(payload_t data);
 static int create_sql_table(void);
 static int app_change_device_name(payload_t data);
-static int sql_backup(sqlite3* db);
+static int sql_backup(void);
 /*variable******************************************************************************************************/
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
@@ -190,9 +191,9 @@ void data_handle(m1_package_t* package)
     }
 
     Finish:
-    // if(sql_backup(db) != M1_PROTOCOL_OK){
-    //     fprintf(stderr, "sql_backup failed\n");
-    // }
+    if(sql_backup() != M1_PROTOCOL_OK){
+        fprintf(stderr, "sql_backup failed\n");
+    }
     cJSON_Delete(rootJson);
 
 }
@@ -630,7 +631,7 @@ static int APP_read_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    
+
     clientFd = data.clientFd;
     db = data.db;
 
@@ -1972,13 +1973,23 @@ static int app_change_device_name(payload_t data)
 }
 
 /*数据库冗余删除*/
-static int sql_history_data_del(char* time, sqlite3* db, char* tableName)
+static int sql_history_data_del(char* time, char* tableName)
 {
+    int rc;
     int ret = M1_PROTOCOL_OK;
     char* errorMsg = NULL;
     char* sql = malloc(300);
+    sqlite3* db = NULL;
 
     fprintf(stdout, "sql_history_data_del\n");
+
+    rc = sqlite3_open(db_path, &db);
+    if( rc != SQLITE_OK){  
+        fprintf(stderr, "Can't open database\n");  
+        goto Finish;
+    }else{  
+        fprintf(stdout, "Opened database successfully\n");  
+    }
 
     sprintf(sql,"delete from \"%s\" where TIME < \"%s\";", tableName, time);
     if(sqlite3_exec(db, sql, NULL, NULL, &errorMsg) == SQLITE_OK){
@@ -1988,15 +1999,19 @@ static int sql_history_data_del(char* time, sqlite3* db, char* tableName)
         fprintf(stdout,"sql_history_data_del falied:%s\n",errorMsg);
     }
 
+    Finish:
     free(errorMsg);
     free(sql);
+
+    sqlite3_close(db);
 
     return ret;
 }
 
 /*sqlite3 数据库备份*/
-static int sql_backup(sqlite3* db)
+static int sql_backup(void)
 {
+    static int time_syc_flag = 0;
     static int preTime = 0;
     int ret = M1_PROTOCOL_OK;
     char* _time = (char*)malloc(30);
@@ -2006,18 +2021,24 @@ static int sql_backup(sqlite3* db)
 
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);  //获取相对于1970到现在的秒数
-    if(time.tv_sec - preTime < 30*60){
+    if(time_syc_flag == 0){
+        time_syc_flag = 1;
+        preTime = time.tv_sec;       
+    }
+
+    fprintf(stdout,"time:%05d, preTime:%05d\n",time.tv_sec, preTime);
+    if(time.tv_sec - preTime < SQL_CLEAR_TIME){
         return ret;
     }else{
         preTime = time.tv_sec;
         /*基于当前时间向后半小时*/
-        time.tv_sec -= 30*60;
+        time.tv_sec -= SQL_CLEAR_TIME;
         localtime_r(&time.tv_sec, &nowTime);    
 
         sprintf(_time, "%04d%02d%02d%02d%02d%02d", nowTime.tm_year + 1900, nowTime.tm_mon+1, nowTime.tm_mday, 
           nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
 
-        ret = sql_history_data_del(_time, db, table);
+        ret = sql_history_data_del(_time, table);
     }
 
     free(_time);
