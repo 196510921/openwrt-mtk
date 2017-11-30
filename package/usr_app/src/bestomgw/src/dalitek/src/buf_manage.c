@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include "buf_manage.h"
+#include "m1_common_log.h"
 
 /*全局变量定义*************************************************************************************************/
 #define FIXED_BUF2_LEN    (1024 * 100)
@@ -40,7 +41,7 @@ uint32_t fifo_read(fifo_t* fifo, uint32_t* d)
 
 void stack_block_init(void)
 {
-	fprintf(stdout,"stack_block_init\n");
+	M1_LOG_DEBUG("stack_block_init\n");
 	int i;
 	
 	for(i = 0; i < STACK_BLOCK_NUM; i++)
@@ -52,7 +53,7 @@ void stack_block_init(void)
 
 int stack_block_req(stack_mem_t* d)
 {
-	fprintf(stdout,"stack_block_req\n");
+	M1_LOG_DEBUG("stack_block_req\n");
 	int i;
 
 	for(i = 0; i < STACK_BLOCK_NUM; i++){
@@ -74,7 +75,7 @@ int stack_block_req(stack_mem_t* d)
 
 int stack_block_destroy(stack_mem_t d)
 {
-	fprintf(stdout,"stack_block_destroy\n");
+	M1_LOG_DEBUG("stack_block_destroy\n");
 	int i = 0;
 
 	i = d.blockNum;
@@ -95,7 +96,7 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 	int exp_count = 0;
 	int remain_count = 0;
 
-	fprintf(stdout, "push begin: d->unitCount:%d\n", d->unitCount);
+	M1_LOG_DEBUG( "push begin: d->unitCount:%d\n", d->unitCount);
 	if(NULL == d){
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
@@ -112,7 +113,7 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 		d->unitCount += ((d->end - d->wPtr) / STACK_UNIT);
 		d->wPtr = d->start;
 	}
-	//fprintf(stdout, "middle:%05d\n", d->unitCount);
+	//M1_LOG_DEBUG( "middle:%05d\n", d->unitCount);
 
 	remain_count = STACK_UNIT_CAPACITY - d->unitCount;
 	if(exp_count > remain_count){
@@ -149,7 +150,7 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 	}
 
 	Finish:
-	fprintf(stdout, "push end: d->unitCount:%d\n", d->unitCount);
+	M1_LOG_DEBUG( "push end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 
@@ -160,7 +161,7 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	int ret = BUF_MANAGE_SUCCESS;
 	int count;
 
-	// fprintf(stdout, "pop begin: d->unitCount:%d\n", d->unitCount);
+	// M1_LOG_DEBUG( "pop begin: d->unitCount:%d\n", d->unitCount);
 	if( NULL == d){
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
@@ -202,7 +203,7 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	Finish:
 	if(ret != BUF_MANAGE_SUCCESS)
 		d->unitCount = d->unitCount + i + j;
-	// fprintf(stdout, "pop end: d->unitCount:%d\n", d->unitCount);
+	// M1_LOG_DEBUG( "pop end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 

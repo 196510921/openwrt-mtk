@@ -8,11 +8,12 @@
 
 #include "m1_protocol.h"
 #include "socket_server.h"
+#include "m1_common_log.h"
 
 
 int district_create_handle(payload_t data)
 {
-	fprintf(stdout,"district_create_handle\n");
+	M1_LOG_DEBUG("district_create_handle\n");
 	int id;
     int rc, ret = M1_PROTOCOL_OK;
     int number1,i;
@@ -39,18 +40,18 @@ int district_create_handle(payload_t data)
 	/*linkage_table*/
 	id = sql_id(db, sql);
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
-        fprintf(stdout,"BEGIN\n");
+        M1_LOG_DEBUG("BEGIN\n");
     	/*获取收到数据包信息*/
         districtNameJson = cJSON_GetObjectItem(data.pdu, "districtName");
-        fprintf(stdout,"districtName:%s\n",districtNameJson->valuestring);
+        M1_LOG_DEBUG("districtName:%s\n",districtNameJson->valuestring);
         apIdArrayJson = cJSON_GetObjectItem(data.pdu, "apId");
         number1 = cJSON_GetArraySize(apIdArrayJson);
-        fprintf(stdout,"number1:%d\n",number1);
+        M1_LOG_DEBUG("number1:%d\n",number1);
 
        	/*删除原有表scenario_table中的旧scenario*/
     	sprintf(sql_1,"select ID from district_table where DIS_NAME = \"%s\";",districtNameJson->valuestring);	
     	row_number = sql_row_number(db, sql_1);
-    	fprintf(stdout,"row_number:%d\n",row_number);
+    	M1_LOG_DEBUG("row_number:%d\n",row_number);
     	if(row_number > 0){
     		sprintf(sql_1,"delete from district_table where DIS_NAME = \"%s\";",districtNameJson->valuestring);				
     		//sqlite3_reset(stmt);
@@ -62,10 +63,10 @@ int district_create_handle(payload_t data)
         /*存取到数据表scenario_table中*/
         for(i = 0; i < number1; i++){
     		apIdJson = cJSON_GetArrayItem(apIdArrayJson, i);
-    		fprintf(stdout,"apId:%s\n",apIdJson->valuestring);
+    		M1_LOG_DEBUG("apId:%s\n",apIdJson->valuestring);
 
     		sql = "insert into district_table(ID, DIS_NAME, AP_ID, ACCOUNT,TIME) values(?,?,?,?,?);";
-    		fprintf(stdout,"sql:%s\n",sql);
+    		M1_LOG_DEBUG("sql:%s\n",sql);
     		//sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
     		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -76,21 +77,21 @@ int district_create_handle(payload_t data)
     		sqlite3_bind_text(stmt, 4, "Dalitek", -1, NULL);
             sqlite3_bind_text(stmt, 5, time, -1, NULL);
     		rc = thread_sqlite3_step(&stmt, db); 
-    		fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+    		M1_LOG_DEBUG("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
         }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
-            fprintf(stdout,"END\n");
+            M1_LOG_DEBUG("END\n");
         }else{
-            fprintf(stdout,"ROLLBACK\n");
+            M1_LOG_DEBUG("ROLLBACK\n");
             if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
-                fprintf(stdout,"ROLLBACK OK\n");
+                M1_LOG_DEBUG("ROLLBACK OK\n");
                 sqlite3_free(errorMsg);
             }else{
-                fprintf(stdout,"ROLLBACK FALIED\n");
+                M1_LOG_ERROR("ROLLBACK FALIED\n");
             }
         }
     }else{
-        fprintf(stdout,"errorMsg:");
+        M1_LOG_ERROR("errorMsg:");
     }
     Finish:
     free(time);
@@ -104,7 +105,7 @@ int district_create_handle(payload_t data)
 
 int app_req_district(payload_t data)
 {
-	fprintf(stdout,"app_req_district\n");
+	M1_LOG_DEBUG("app_req_district\n");
 	/*cJSON*/
     int rc,ret = M1_PROTOCOL_OK;
     char* sql = (char*)malloc(300);
@@ -124,7 +125,7 @@ int app_req_district(payload_t data)
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
-        fprintf(stdout,"pJsonRoot NULL\n");
+        M1_LOG_ERROR("pJsonRoot NULL\n");
         cJSON_Delete(pJsonRoot);
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
@@ -160,24 +161,24 @@ int app_req_district(payload_t data)
     /*获取用户账户信息*/
     char* account = NULL;
     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
-    fprintf(stdout, "%s\n", sql);
+    M1_LOG_DEBUG( "%s\n", sql);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_3, NULL);
     if(thread_sqlite3_step(&stmt_3, db) == SQLITE_ROW){
         account =  sqlite3_column_text(stmt_3, 0);
     }
     if(account == NULL){
-        fprintf(stderr, "user account do not exist\n");    
+        M1_LOG_ERROR( "user account do not exist\n");    
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }else{
-        fprintf(stdout,"clientFd:%03d,account:%s\n",data.clientFd, account);
+        M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
     }
 
     /*取区域名称*/
     char* dist_name = NULL, *ap_id = NULL, *ap_name = NULL;
     int pId;
     sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account);
-   	fprintf(stdout,"sql:%s\n", sql);
+   	M1_LOG_DEBUG("sql:%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -202,13 +203,13 @@ int app_req_district(payload_t data)
 	    }
 	    cJSON_AddItemToObject(devDataObject, "apInfo", apInfoArrayObject);
 	    sprintf(sql_1,"select AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"%s\";",dist_name,account);
-	    fprintf(stdout,"sql_1:%s\n", sql_1);
+	    M1_LOG_DEBUG("sql_1:%s\n", sql_1);
 	    //sqlite3_reset(stmt_1);
         sqlite3_finalize(stmt_1);
 	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
 	    while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 	    	ap_id = sqlite3_column_text(stmt_1,0);
-	    	fprintf(stdout,"ap_id:%s\n",ap_id);
+	    	M1_LOG_DEBUG("ap_id:%s\n",ap_id);
 		    apInfoObject = cJSON_CreateObject();
 		    if(NULL == apInfoObject)
 		    {
@@ -220,16 +221,16 @@ int app_req_district(payload_t data)
 		    cJSON_AddStringToObject(apInfoObject, "apId", ap_id);
 		    /*取出apName*/
 		    sprintf(sql_2,"select DEV_NAME,pId from all_dev where DEV_ID = \"%s\" ;",ap_id);
-		    fprintf(stdout,"sql_2:%s\n", sql_2);
+		    M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 		    //sqlite3_reset(stmt_2);
             sqlite3_finalize(stmt_2);
 		    sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
 		    rc = thread_sqlite3_step(&stmt_2, db); 
-			fprintf(stdout,"step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+			M1_LOG_DEBUG("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
 			if(rc == SQLITE_ROW){
 				ap_name = sqlite3_column_text(stmt_2,0);
                 pId = sqlite3_column_int(stmt_2,1);
-				fprintf(stdout,"ap_name:%s\n, pId:%05d\n",ap_name, pId);
+				M1_LOG_DEBUG("ap_name:%s\n, pId:%05d\n",ap_name, pId);
 				cJSON_AddStringToObject(apInfoObject, "apName", ap_name);
                 cJSON_AddNumberToObject(apInfoObject, "pId", pId);
 			}
@@ -245,7 +246,7 @@ int app_req_district(payload_t data)
         goto Finish;
     }
 
-    fprintf(stdout,"string:%s\n",p);
+    M1_LOG_DEBUG("string:%s\n",p);
     /*response to client*/
     socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     

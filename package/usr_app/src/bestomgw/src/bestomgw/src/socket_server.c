@@ -58,6 +58,7 @@
 #include <malloc.h>
 
 //#include "thpool.h"
+#include "m1_common_log.h"
 #include "socket_server.h"
 #include "m1_protocol.h"
 #include "buf_manage.h"
@@ -119,9 +120,9 @@ int createSocketRec(void)
 	newSocket->socketFd = accept(socketRecordHead->socketFd,
 			(struct sockaddr *) &(newSocket->cli_addr), &(newSocket->clilen));
 
-	//fprintf(stdout,"connected\n");
+	//M1_LOG_DEBUG("connected\n");
 
-	if (newSocket->socketFd < 0) fprintf(stdout,"ERROR on accept");
+	if (newSocket->socketFd < 0) M1_LOG_ERROR("ERROR on accept");
 
 	// Set the socket option SO_REUSEADDR to reduce the chance of a
 	// "Address Already in Use" error on the bind
@@ -129,7 +130,7 @@ int createSocketRec(void)
 	// Set the fd to none blocking
 	fcntl(newSocket->socketFd, F_SETFL, O_NONBLOCK);
 
-	//fprintf(stdout,"New Client Connected fd:%d - IP:%s\n", newSocket->socketFd, inet_ntoa(newSocket->cli_addr.sin_addr));
+	//M1_LOG_DEBUG("New Client Connected fd:%d - IP:%s\n", newSocket->socketFd, inet_ntoa(newSocket->cli_addr.sin_addr));
 
 	newSocket->next = NULL;
 
@@ -172,7 +173,7 @@ void deleteSocketRec(int rmSocketFd)
 
 	if (srchRec->socketFd != rmSocketFd)
 	{
-		fprintf(stdout,"deleteSocketRec: record not found\n");
+		M1_LOG_ERROR("deleteSocketRec: record not found\n");
 		return;
 	}
 
@@ -183,7 +184,7 @@ void deleteSocketRec(int rmSocketFd)
 		if (prevRec == NULL)
 		{
 			//trying to remove first rec, which is always the listining socket
-			fprintf(stdout,
+			M1_LOG_DEBUG(
 					"deleteSocketRec: removing first rec, which is always the listining socket\n");
 			return;
 		}
@@ -217,7 +218,7 @@ int32 socketSeverInit(uint32 port)
 		lsSocket->socketFd = socket(AF_INET, SOCK_STREAM, 0);
 		if (lsSocket->socketFd < 0)
 		{
-			fprintf(stdout,"ERROR opening socket");
+			M1_LOG_ERROR("ERROR opening socket");
 			return -1;
 		}
 
@@ -235,7 +236,7 @@ int32 socketSeverInit(uint32 port)
 				sizeof(serv_addr));
 		if (stat < 0)
 		{
-			fprintf(stdout,"ERROR on binding: %s\n", strerror(errno));
+			M1_LOG_ERROR("ERROR on binding: %s\n", strerror(errno));
 			return -1;
 		}
 		//will have 5 pending open client requests
@@ -286,7 +287,7 @@ void socketSeverGetClientFds(int *fds, int maxFds)
 	// Stop when at the end or max is reached
 	while ((srchRec) && (recordCnt < maxFds))
 	{
-		//fprintf(stdout,"getClientFds: adding fd%d, to idx:%d \n", srchRec->socketFd, recordCnt);
+		//M1_LOG_DEBUG("getClientFds: adding fd%d, to idx:%d \n", srchRec->socketFd, recordCnt);
 		fds[recordCnt++] = srchRec->socketFd;
 
 		srchRec = srchRec->next;
@@ -316,7 +317,7 @@ uint32 socketSeverGetNumClients(void)
 
 	if (srchRec == NULL)
 	{
-		//fprintf(stdout,"socketSeverGetNumClients: socketRecordHead NULL\n");
+		//M1_LOG_DEBUG("socketSeverGetNumClients: socketRecordHead NULL\n");
 		return -1;
 	}
 
@@ -328,7 +329,7 @@ uint32 socketSeverGetNumClients(void)
 		recordCnt++;
 	}
 
-	//fprintf(stdout,"socketSeverGetNumClients %d\n", recordCnt);
+	//M1_LOG_DEBUG("socketSeverGetNumClients %d\n", recordCnt);
 	return (recordCnt);
 }
 
@@ -344,7 +345,7 @@ uint32 socketSeverGetNumClients(void)
  */
 void socketSeverPoll(int clinetFd, int revent)
 {
-	fprintf(stdout,"pollSocket++, revent: %d\n",revent);
+	M1_LOG_DEBUG("pollSocket++, revent: %d\n",revent);
 
 	//is this a new connection on the listening socket
 	if (clinetFd == socketRecordHead->socketFd)
@@ -363,7 +364,7 @@ void socketSeverPoll(int clinetFd, int revent)
 		{
 			uint32 pakcetCnt = 0;
 			//its a Rx event
-			fprintf(stdout,"got Rx on fd %d, pakcetCnt=%d\n", clinetFd, pakcetCnt++);
+			M1_LOG_DEBUG("got Rx on fd %d, pakcetCnt=%d\n", clinetFd, pakcetCnt++);
 			if (socketServerRxCb)
 			{
 				socketServerRxCb(clinetFd);
@@ -372,9 +373,9 @@ void socketSeverPoll(int clinetFd, int revent)
 		}
 		if (revent & POLLRDHUP)
 		{
-			fprintf(stdout,"POLLRDHUP\n");
+			M1_LOG_DEBUG("POLLRDHUP\n");
 			//its a shut down close the socket
-			fprintf(stdout,"Client fd:%d disconnected\n", clinetFd);
+			M1_LOG_DEBUG("Client fd:%d disconnected\n", clinetFd);
 			//remove the record and close the socket
 			delete_account_conn_info(clinetFd);
 			client_block_destory(clinetFd);
@@ -403,33 +404,33 @@ void thread_socketSeverSend(void)
 	uint32_t* msg = NULL;
 	while(1){
 	    if(fifo_read(&tx_fifo, &msg) == 0){
-	    	//fprintf(stdout,"fifo read failed\n");
+	    	//M1_LOG_DEBUG("fifo read failed\n");
 	    	continue;
 	    }
     
 	    if(msg == NULL){
-	    	//fprintf(stdout,"msg NULL\n");
+	    	//M1_LOG_DEBUG("msg NULL\n");
 	    	continue;
 	    }
-	    fprintf(stdout,"thread_socketSeverSend\n");	
+	    M1_LOG_DEBUG("thread_socketSeverSend\n");	
 	    m1_package_t* package = (m1_package_t*)msg;
-	    fprintf(stdout,"socketSeverSend++: writing to socket fd %d\n", package->clientFd);
+	    M1_LOG_DEBUG("socketSeverSend++: writing to socket fd %d\n", package->clientFd);
 		if (package->clientFd)
 		{
 			rtn = write(package->clientFd, package->data, package->len);
 			if (rtn < 0)
 			{
-				fprintf(stdout,"ERROR writing to socket %d\n", package->clientFd);
+				M1_LOG_ERROR("ERROR writing to socket %d\n", package->clientFd);
 			}
 		}
-		fprintf(stdout,"socketSeverSend--\n");		
+		M1_LOG_DEBUG("socketSeverSend--\n");		
 	}
 
 }
 
 int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 {
-fprintf(stdout, "socketSeverSend++\n");
+M1_LOG_DEBUG( "socketSeverSend++\n");
 
 	int rtn;
 	uint16_t header = 0xFEFD;
@@ -450,11 +451,11 @@ fprintf(stdout, "socketSeverSend++\n");
 	// rtn = write(fdClient, buf, len);
 	if (rtn < 0)
 	{
-		fprintf(stdout,"ERROR writing to socket %d\n", fdClient);
+		M1_LOG_ERROR("ERROR writing to socket %d\n", fdClient);
 	}
 
 	free(send_buf);
-	fprintf(stdout, "socketSeverSend--\n");
+	M1_LOG_DEBUG( "socketSeverSend--\n");
 	return 0;
 }
 
@@ -477,12 +478,12 @@ int32 socketSeverSendAllclients(uint8* buf, uint32 len)
 	// Stop when at the end or max is reached
 	while (srchRec)
 	{
-		//fprintf(stdout,"SRPC_Send: client %d\n", cnt++);
+		//M1_LOG_DEBUG("SRPC_Send: client %d\n", cnt++);
 		rtn = write(srchRec->socketFd, buf, len);
 		if (rtn < 0)
 		{
-			fprintf(stdout,"ERROR writing to socket %d\n", srchRec->socketFd);
-			fprintf(stdout,"closing client socket\n");
+			M1_LOG_ERROR("ERROR writing to socket %d\n", srchRec->socketFd);
+			M1_LOG_DEBUG("closing client socket\n");
 			//remove the record and close the socket
 			deleteSocketRec(srchRec->socketFd);
 
@@ -509,14 +510,14 @@ void socketSeverClose(void)
 
 	while (socketSeverGetNumClients() > 1)
 	{
-		fprintf(stdout,"socketSeverClose: Closing socket fd:%d\n", fds[idx]);
+		M1_LOG_DEBUG("socketSeverClose: Closing socket fd:%d\n", fds[idx]);
 		deleteSocketRec(fds[idx++]);
 	}
 
 	//Now remove the listening socket
 	if (fds[0])
 	{
-		fprintf(stdout,"socketSeverClose: Closing the listening socket\n");
+		M1_LOG_DEBUG("socketSeverClose: Closing the listening socket\n");
 		close(fds[0]);
 	}
 }
@@ -536,7 +537,7 @@ static int get_local_ip(char *ip)
             // is a valid IP4 Address  
             tmpAddrPtr = &((struct sockaddr_in *)ifAddrStruct->ifa_addr)->sin_addr;    
             inet_ntop(AF_INET, tmpAddrPtr, ip, INET_ADDRSTRLEN);  
-            fprintf(stdout,"%s IPV4 Address %s\n", ifAddrStruct->ifa_name, ip);   
+            M1_LOG_DEBUG("%s IPV4 Address %s\n", ifAddrStruct->ifa_name, ip);   
         }  
         // else if (ifAddrStruct->ifa_addr->sa_family==AF_INET6)  
         // {   // check it is IP6  
@@ -559,7 +560,7 @@ int udp_broadcast_server(void)
 	pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
-        fprintf(stdout,"pJsonRoot NULL\n");
+        M1_LOG_ERROR("pJsonRoot NULL\n");
         cJSON_Delete(pJsonRoot);
         return M1_PROTOCOL_FAILED;
     }
@@ -573,7 +574,7 @@ int udp_broadcast_server(void)
 
 	if((sock=socket(AF_INET,SOCK_DGRAM,0))==-1)
 	{
-	   	fprintf(stderr, "udp socket error\n");  
+	   	M1_LOG_ERROR( "udp socket error\n");  
 	    return -1;
 	}
 	const int opt=-1;
@@ -581,7 +582,7 @@ int udp_broadcast_server(void)
 	nb=setsockopt(sock,SOL_SOCKET,SO_BROADCAST,(char*)&opt,sizeof(opt));//设置套接字类型
 	if(nb==-1)
 	{
-	    fprintf(stderr, "udp set socket error\n");  
+	    M1_LOG_ERROR( "udp set socket error\n");  
 	    return -1;
 	}
 	struct sockaddr_in addrto;
@@ -590,7 +591,7 @@ int udp_broadcast_server(void)
 	//addrto.sin_addr.s_addr=inet_addr("255.255.255.255");//htonl(INADDR_BROADCAST);//套接字地址为广播地址
 	strcpy(udp_id, msg);
 	set_udp_broadcast_add(udp_id);
-	fprintf(stdout,"udp id:%s\n",udp_id);
+	M1_LOG_DEBUG("udp id:%s\n",udp_id);
 	addrto.sin_addr.s_addr = inet_addr(udp_id);
 	addrto.sin_port=htons(6000);//套接字广播端口号为6000
 	int nlen=sizeof(addrto);
@@ -612,7 +613,7 @@ int udp_broadcast_server(void)
 	    int ret=sendto(sock,ip,strlen(ip),0,(struct sockaddr*)&addrto,nlen);//向广播地址发布消息
 	    if(ret<0)
 	    {
-	        fprintf(stderr, "sendto failed with error\n");  
+	        M1_LOG_ERROR( "sendto failed with error\n");  
 	        continue;
 	    }
 	}

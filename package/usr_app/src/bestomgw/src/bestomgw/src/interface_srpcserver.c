@@ -54,6 +54,7 @@
 #include "interface_devicelist.h"
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
+#include "m1_common_log.h"
 //#include "thpool.h"
 
 #include "hal_defs.h"
@@ -378,7 +379,7 @@ static void srpcSendAll(uint8_t* srpcMsg)
 
 void SRPC_ProcessIncoming(uint8_t *pBuf, unsigned int nlen, uint32_t clientFd)
 {
-	fprintf(stdout,"SRPC_ProcessIncoming:%s\n",pBuf);
+	M1_LOG_DEBUG("SRPC_ProcessIncoming:%s\n",pBuf);
 	//extern threadpool thpool;
 	//m1_package_t* package = malloc(sizeof(m1_package_t));
 	//package->clientFd = clientFd;
@@ -1728,7 +1729,7 @@ void SRPC_RxCB(int clientFd)
 	printf("byteToRead:%d\n",byteToRead);
 
 	if(byteToRead > 10*1024){
-		fprintf(stderr,"SRPC_RxCB: out of rx buffer\n");
+		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
 		return;
 	}
 	while(byteToRead > 0)
@@ -1742,13 +1743,13 @@ void SRPC_RxCB(int clientFd)
 
 	client_block = client_stack_block_req(clientFd);
 	if(NULL == client_block){
-		fprintf(stderr, "client_block null\n");
+		M1_LOG_ERROR( "client_block null\n");
 		return;
 	}
 	printf("rx len:%05d, rx data:%s\n",len, buf+4);
 	rc = client_write(&client_block->stack_block, buf, len);
 	if(rc != TCP_SERVER_SUCCESS)
-		fprintf(stdout,"client_write failed\n");
+		M1_LOG_ERROR("client_write failed\n");
 
 	printf("SRPC_RxCB--\n");
 
@@ -1757,7 +1758,7 @@ void SRPC_RxCB(int clientFd)
 
 static void client_read_to_data_handle(char* data, int len, int clientFd)
 {
-	fprintf(stdout, "client_read_to_data_handle:  len:%05d, data:%s\n",len, data);
+	M1_LOG_DEBUG( "client_read_to_data_handle:  len:%05d, data:%s\n",len, data);
 	// m1_package_t* msg  = NULL;
 
 	// msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
@@ -1780,7 +1781,7 @@ static client_block_t client_block[STACK_BLOCK_NUM];
 
 int client_block_init(void)
 {
-	fprintf(stdout, "client_block_init\n");
+	M1_LOG_DEBUG( "client_block_init\n");
 	int i;
 
 	stack_block_init();
@@ -1793,7 +1794,7 @@ int client_block_init(void)
 
 client_block_t* client_stack_block_req(int clientFd)
 {
-	fprintf(stdout, "client_stack_block_req\n");
+	M1_LOG_DEBUG( "client_stack_block_req\n");
 	int i;
 	int j = -1;
 
@@ -1810,7 +1811,7 @@ client_block_t* client_stack_block_req(int clientFd)
 	if(TCP_SERVER_FAILED == stack_block_req(&client_block[j].stack_block))
 		return NULL;
 
-	// fprintf(stdout,"blockNum:%d,wPtr:%05d,rPtr:%05d,start:%05d,end:%05d\n",client_block[j].stack_block.blockNum,
+	// M1_LOG_DEBUG("blockNum:%d,wPtr:%05d,rPtr:%05d,start:%05d,end:%05d\n",client_block[j].stack_block.blockNum,
 	// 	client_block[j].stack_block.wPtr, client_block[j].stack_block.rPtr, client_block[j].stack_block.start,
 	// 	client_block[j].stack_block.end);
 	return &client_block[j];
@@ -1818,7 +1819,7 @@ client_block_t* client_stack_block_req(int clientFd)
 
 int client_block_destory(int clientFd)
 {
-	fprintf(stdout, "client_block_destory\n");
+	M1_LOG_DEBUG( "client_block_destory\n");
 	int i;
 
 	for(i = 0; i <  STACK_BLOCK_NUM; i++){
@@ -1836,15 +1837,15 @@ int client_block_destory(int clientFd)
 /*client write/read**************************************************************************************/
 static int client_write(stack_mem_t* d, char* data, int len)
 {
-	fprintf(stdout, "client_write\n");
+	M1_LOG_DEBUG( "client_write\n");
 	int rc = 0;
 	int header = 0;
 	int distance = 0;
 
-	fprintf(stdout,"write begin: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
-	//fprintf(stdout,"header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
+	M1_LOG_DEBUG("write begin: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	//M1_LOG_DEBUG("header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
 	if(NULL == d){
-		fprintf(stdout, "NULL == d\n");
+		M1_LOG_ERROR( "NULL == d\n");
 		return TCP_SERVER_FAILED;
 	}
 
@@ -1855,18 +1856,18 @@ static int client_write(stack_mem_t* d, char* data, int len)
 		distance = (((distance << 8) & 0xff00) | ((distance >> 8) & 0xff)) & 0xffff;
 	}
 
-	fprintf(stdout,"len:%05d, distance:%05d\n",len, distance);
+	M1_LOG_DEBUG("len:%05d, distance:%05d\n",len, distance);
 	rc = stack_push(d, data, len ,distance);
 	if(rc != TCP_SERVER_SUCCESS)
-		fprintf(stderr, "client write failed\n");
+		M1_LOG_ERROR( "client write failed\n");
 	
-	fprintf(stdout,"write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	M1_LOG_DEBUG("write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	return rc;
 }
 
 void client_read(void)
 {
-	fprintf(stdout, "client_read\n");
+	M1_LOG_DEBUG( "client_read\n");
 	int i = 0;
 	int rc = TCP_SERVER_SUCCESS;
 	int count = 0;
@@ -1877,9 +1878,9 @@ void client_read(void)
 	stack_mem_t* d = NULL;
 
 	while(1){
-		//fprintf(stdout,"-------------------------%d read----------------------------\n",i);
+		//M1_LOG_DEBUG("-------------------------%d read----------------------------\n",i);
 		d = &client_block[i].stack_block;
-		//fprintf(stdout, "read begin:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
+		//M1_LOG_DEBUG( "read begin:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
 		if(client_block[i].clientFd == 0){
 			goto Finish;
 		}
@@ -1891,12 +1892,12 @@ void client_read(void)
 				goto Finish;
 			header = *(uint16_t*)data;
 			header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
-			//fprintf(stdout,"read header:%x\n", header);
+			//M1_LOG_DEBUG("read header:%x\n", header);
 		}while(header != MSG_HEADER);
 
 		len = *(uint16_t*)&data[2];
 		len = (uint16_t)(((len << 8) & 0xff00) | ((len >> 8) & 0xff)) & 0xffff;
-		//fprintf(stdout,"read len:%05d\n", len);
+		//M1_LOG_DEBUG("read len:%05d\n", len);
 		if(len <= STACK_UNIT){
 			client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
 			goto Finish;
@@ -1913,11 +1914,11 @@ void client_read(void)
 		if(rc != TCP_SERVER_SUCCESS){
 			d->rPtr = headerP;
 			//d->unitCount+=1;
-			//fprintf(stdout,"client read failed\n");
+			//M1_LOG_DEBUG("client read failed\n");
 		}
 		i = (i + 1) % STACK_BLOCK_NUM;
 		memset(data, 0, 2048);
-		//fprintf(stdout, "read end:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
+		//M1_LOG_DEBUG( "read end:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
 		usleep(1000);
 	}
 }

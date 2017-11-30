@@ -45,6 +45,7 @@
 //#include "thpool.h"
 #include <unistd.h>
 
+#include "m1_common_log.h"
 #include "zbSocCmd.h"
 #include "interface_devicelist.h"
 #include "interface_grouplist.h"
@@ -68,8 +69,8 @@ int main(int argc, char* argv[])
 	int retval = 0;
 	pthread_t t1,t2,t3,t4,t5,t6,t7,t8;
 
-	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
-	
+	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
+
 	//printf_redirect();
 	SRPC_Init();
 	m1_protocol_init();
@@ -100,11 +101,11 @@ static void socket_poll(void)
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
-		//fprintf(stdout,"numClientFds:%d\n",numClientFds);
 		//poll on client socket fd's and the ZllSoC serial port for any activity
 		if (numClientFds)
 		{
-			fprintf(stdout,"numClientFds:%d\n",numClientFds);
+			M1_LOG_DEBUG("numClientFds:%d\n",numClientFds);
+		
 			int pollFdIdx;
 			int *client_fds = malloc(numClientFds * sizeof(int));
 			//socket client FD's + zllSoC serial port FD
@@ -119,26 +120,27 @@ static void socket_poll(void)
 				{
 					pollFds[pollFdIdx].fd = client_fds[pollFdIdx];
 					pollFds[pollFdIdx].events = POLLIN | POLLRDHUP;
-					fprintf(stdout,"zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
+					//M1_LOG_DEBUG("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
+					M1_LOG_DEBUG("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
 				}
 
-				fprintf(stdout,"zllMain: waiting for poll()\n");
+				M1_LOG_DEBUG("zllMain: waiting for poll()\n");
 
 				poll(pollFds, (numClientFds), -1);
-				fprintf(stdout,"poll out\n");
+				M1_LOG_DEBUG("poll out\n");
 
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
 					if ((pollFds[pollFdIdx].revents))
 					{
-						fprintf(stdout,"Message from Socket Sever\n");
+						M1_LOG_DEBUG("Message from Socket Sever\n");
 						socketSeverPoll(pollFds[pollFdIdx].fd, pollFds[pollFdIdx].revents);
 					}
 				}
 
 				free(client_fds);
 				free(pollFds);
-				fprintf(stdout,"free client\n");
+				M1_LOG_DEBUG("free client\n");
 			}
 		}
 	}
@@ -154,7 +156,7 @@ static void printf_redirect(void)
      //int fd = open("/home/ubuntu/share/test1.txt",(O_RDWR | O_CREAT), 0644);  
      int fd = open("/tmp/log/test1.txt",(O_RDWR | O_CREAT), 0644);  
      if(fd == -1)
-     	fprintf(stderr, " open file failed\n");
+     	M1_LOG_ERROR( " open file failed\n");
      dup2(fd,STDOUT_FILENO); 
      printf("test file\n");  
 }
@@ -186,7 +188,7 @@ uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo)
 	epInfo_t* oldRec;
 	epInfoExtended_t epInfoEx;
 
-	fprintf(stdout,"zdoSimpleDescRspCb: NwkAddr:0x%04x\n End:0x%02x ", epInfo->nwkAddr,
+	M1_LOG_DEBUG("zdoSimpleDescRspCb: NwkAddr:0x%04x\n End:0x%02x ", epInfo->nwkAddr,
 			epInfo->endpoint);
 
 	//find the IEEE address. Any ep (0xFF), if the is the first simpleDesc for this nwkAddr
@@ -221,7 +223,7 @@ uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo)
 		epInfoEx.type = EP_INFO_TYPE_NEW;
 	}
 
-	fprintf(stdout,"zdoSimpleDescRspCb: NwkAddr:0x%04x Ep:0x%02x Type:0x%02x ", epInfo->nwkAddr,
+	M1_LOG_DEBUG("zdoSimpleDescRspCb: NwkAddr:0x%04x Ep:0x%02x Type:0x%02x ", epInfo->nwkAddr,
 			epInfo->endpoint, epInfoEx.type);
 
 	if (epInfoEx.type != EP_INFO_TYPE_EXISTING)
@@ -287,33 +289,33 @@ static void test(void)
 	for(i = 0; i < 21; i++){
 		rc = stack_block_req(&d[i]);
 		if(rc == 0){
-			fprintf(stdout,"req failed\n");
+			M1_LOG_DEBUG("req failed\n");
 			break;
 		}
-		fprintf(stdout,"d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
+		M1_LOG_DEBUG("d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
 		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
 	}
 	for(i = 0; i < 20; i++){
-		fprintf(stdout,"msg:%s\n",d[i].rPtr);
+		M1_LOG_DEBUG("msg:%s\n",d[i].rPtr);
 	}
 	for(i = 0; i < 20; i+=2){
 		rc = stack_block_destroy(d[i]);
 		if(rc == 0){
-			fprintf(stdout,"destroy failed\n");
+			M1_LOG_DEBUG("destroy failed\n");
 			break;
 		}
 	}
 	for(i = 0; i < 21; i++){
 		rc = stack_block_req(&d[i]);
 		if(rc == 0){
-			fprintf(stdout,"req failed\n");
+			M1_LOG_DEBUG("req failed\n");
 			continue;
 		}
-		fprintf(stdout,"d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
+		M1_LOG_DEBUG("d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
 		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
 	}
 	for(i = 0; i < 20; i++){
-		fprintf(stdout,"msg:%s\n",d[i].rPtr);
+		M1_LOG_DEBUG("msg:%s\n",d[i].rPtr);
 	}
 }
 #endif

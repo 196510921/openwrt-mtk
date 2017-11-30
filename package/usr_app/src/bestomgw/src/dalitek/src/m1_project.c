@@ -4,11 +4,12 @@
 #include <stdint.h>
 #include <string.h>
 #include "m1_project.h"
+#include "m1_common_log.h"
 
 /*app获取项目信息*/
 int app_get_project_info(payload_t data)
 {
-	fprintf(stdout,"app_get_project_info\n");
+	M1_LOG_DEBUG("app_get_project_info\n");
 
     int rc,ret = M1_PROTOCOL_OK;
     int pduType = TYPE_M1_REPORT_PROJECT_NUMBER;
@@ -25,7 +26,7 @@ int app_get_project_info(payload_t data)
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
-        fprintf(stdout,"pJsonRoot NULL\n");
+        M1_LOG_DEBUG("pJsonRoot NULL\n");
         cJSON_Delete(pJsonRoot);
         return M1_PROTOCOL_FAILED;
     }
@@ -47,7 +48,7 @@ int app_get_project_info(payload_t data)
     cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
     /*获取项目信息*/
     sql = "select P_NUMBER from project_table;";
-    fprintf(stdout, "%s\n", sql);
+    M1_LOG_DEBUG( "%s\n", sql);
     
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     rc = thread_sqlite3_step(&stmt, db);
@@ -71,7 +72,7 @@ int app_get_project_info(payload_t data)
     	goto Finish;
     }
 
-    fprintf(stdout,"string:%s\n",p);
+    M1_LOG_DEBUG("string:%s\n",p);
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
 	Finish:
@@ -85,7 +86,7 @@ int app_get_project_info(payload_t data)
 /*验证项目信息*/
 int app_confirm_project(payload_t data)
 {
-	fprintf(stdout,"app_confirm_project\n");
+	M1_LOG_DEBUG("app_confirm_project\n");
 	int rc,row_n;
     char* sql = (char*)malloc(300);
     char* key = NULL;
@@ -99,14 +100,14 @@ int app_confirm_project(payload_t data)
     pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");
     if(pNumberJson == NULL)
         return M1_PROTOCOL_FAILED;   
-    fprintf(stdout,"pNumber:%s\n",pNumberJson->valuestring);
+    M1_LOG_DEBUG("pNumber:%s\n",pNumberJson->valuestring);
     pKeyJson = cJSON_GetObjectItem(data.pdu, "pKey");   
     if(pKeyJson == NULL)
         return M1_PROTOCOL_FAILED;   
-    fprintf(stdout,"pKey:%s\n",pKeyJson->valuestring);
+    M1_LOG_DEBUG("pKey:%s\n",pKeyJson->valuestring);
 
     sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\";",pNumberJson->valuestring);
-    fprintf(stdout, "%s\n", sql);
+    M1_LOG_DEBUG( "%s\n", sql);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     thread_sqlite3_step(&stmt, db);
     key =  sqlite3_column_text(stmt, 0);
@@ -126,7 +127,7 @@ int app_confirm_project(payload_t data)
 /*新建项目*/
 int app_create_project(payload_t data)
 {
-	fprintf(stdout,"app_create_project\n");
+	M1_LOG_DEBUG("app_create_project\n");
     int rc,ret = M1_PROTOCOL_OK;
     int row_n,id;
     char* account = NULL;
@@ -145,28 +146,28 @@ int app_create_project(payload_t data)
 
 	getNowTime(time);
 	pNameJson = cJSON_GetObjectItem(data.pdu, "pName");   
-    fprintf(stdout,"pName:%s\n",pNameJson->valuestring);
+    M1_LOG_DEBUG("pName:%s\n",pNameJson->valuestring);
 	pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");   
-    fprintf(stdout,"pNumber:%s\n",pNumberJson->valuestring);
+    M1_LOG_DEBUG("pNumber:%s\n",pNumberJson->valuestring);
     pCreatorJson = cJSON_GetObjectItem(data.pdu, "pCreator");   
-    fprintf(stdout,"pCreator:%s\n",pCreatorJson->valuestring);
+    M1_LOG_DEBUG("pCreator:%s\n",pCreatorJson->valuestring);
     pManagerJson = cJSON_GetObjectItem(data.pdu, "pManager");   
-    fprintf(stdout,"pManager:%s\n",pManagerJson->valuestring);
+    M1_LOG_DEBUG("pManager:%s\n",pManagerJson->valuestring);
     pTelJson = cJSON_GetObjectItem(data.pdu, "pTel");   
-    fprintf(stdout,"pTel:%s\n",pTelJson->valuestring);
+    M1_LOG_DEBUG("pTel:%s\n",pTelJson->valuestring);
     pAddJson = cJSON_GetObjectItem(data.pdu, "pAdd");   
-    fprintf(stdout,"pAdd:%s\n",pAddJson->valuestring);
+    M1_LOG_DEBUG("pAdd:%s\n",pAddJson->valuestring);
     pBriefJson = cJSON_GetObjectItem(data.pdu, "pBrief");   
-    fprintf(stdout,"pBrief:%s\n",pBriefJson->valuestring);
+    M1_LOG_DEBUG("pBrief:%s\n",pBriefJson->valuestring);
     /*获取数据路*/
     db = data.db;
 
     sql = "select ID from project_table order by ID desc limit 1";
     id = sql_id(db, sql);
-    fprintf(stdout, "get id end\n");
+    M1_LOG_DEBUG( "get id end\n");
     /*获取账户信息*/
     sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %03d;", data.clientFd);
-    fprintf(stdout, "%s\n", sql_1);
+    M1_LOG_DEBUG( "%s\n", sql_1);
     //sqlite3_reset(stmt_1);
     sqlite3_finalize(stmt_1);
     sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
@@ -175,10 +176,10 @@ int app_create_project(payload_t data)
     	goto Finish;
     }
     account = sqlite3_column_text(stmt_1, 0);
-    fprintf(stdout, "account:%s\n", account);
+    M1_LOG_DEBUG( "account:%s\n", account);
     /*插入到项目表中*/
     sql = "insert into project_table(ID,P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT,TIME)values(?,?,?,?,?,?,?,?,?,?,?,?);";
-    fprintf(stdout, "%s\n", sql);
+    M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -209,7 +210,7 @@ int app_create_project(payload_t data)
 /*获取项目配置信息*/
 int app_get_project_config(payload_t data)
 {
-	fprintf(stdout,"app_get_project_config\n");
+	M1_LOG_DEBUG("app_get_project_config\n");
     
     int rc,ret = M1_PROTOCOL_OK;
     int pduType = TYPE_M1_REPORT_PROJECT_CONFIG_INFO;
@@ -227,7 +228,7 @@ int app_get_project_config(payload_t data)
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
-        fprintf(stdout,"pJsonRoot NULL\n");
+        M1_LOG_DEBUG("pJsonRoot NULL\n");
         ret =  M1_PROTOCOL_FAILED;
         goto Finish;
     }
@@ -250,7 +251,7 @@ int app_get_project_config(payload_t data)
     cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
     /*获取项目信息*/
     sql = "select P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_TEL,P_ADD,P_BRIEF,P_EDITOR,TIME from project_table order by ID desc limit 1";
-    fprintf(stdout, "%s\n", sql);
+    M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -296,7 +297,7 @@ int app_get_project_config(payload_t data)
     	goto Finish;
     }
 
-    fprintf(stdout,"string:%s\n",p);
+    M1_LOG_DEBUG("string:%s\n",p);
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
@@ -309,7 +310,7 @@ int app_get_project_config(payload_t data)
 /*更改项目配置*/
 int app_change_project_config(payload_t data)
 {
-	fprintf(stdout,"app_change_project_config\n");
+	M1_LOG_DEBUG("app_change_project_config\n");
 
     int row_n,id;
     int rc, ret = M1_PROTOCOL_OK;
@@ -330,21 +331,21 @@ int app_change_project_config(payload_t data)
 
 	getNowTime(time);
 	pNameJson = cJSON_GetObjectItem(data.pdu, "pName");   
-    fprintf(stdout,"pName:%s\n",pNameJson->valuestring);
+    M1_LOG_DEBUG("pName:%s\n",pNameJson->valuestring);
 	pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");   
-    fprintf(stdout,"pNumber:%s\n",pNumberJson->valuestring);
+    M1_LOG_DEBUG("pNumber:%s\n",pNumberJson->valuestring);
     pCreatorJson = cJSON_GetObjectItem(data.pdu, "pCreator");   
-    fprintf(stdout,"pCreator:%s\n",pCreatorJson->valuestring);
+    M1_LOG_DEBUG("pCreator:%s\n",pCreatorJson->valuestring);
     pManagerJson = cJSON_GetObjectItem(data.pdu, "pManager");   
-    fprintf(stdout,"pManager:%s\n",pManagerJson->valuestring);
+    M1_LOG_DEBUG("pManager:%s\n",pManagerJson->valuestring);
     pTelJson = cJSON_GetObjectItem(data.pdu, "pTel");   
-    fprintf(stdout,"pTel:%s\n",pTelJson->valuestring);
+    M1_LOG_DEBUG("pTel:%s\n",pTelJson->valuestring);
     pAddJson = cJSON_GetObjectItem(data.pdu, "pAdd");   
-    fprintf(stdout,"pAdd:%s\n",pAddJson->valuestring);
+    M1_LOG_DEBUG("pAdd:%s\n",pAddJson->valuestring);
     pBriefJson = cJSON_GetObjectItem(data.pdu, "pBrief");   
-    fprintf(stdout,"pBrief:%s\n",pBriefJson->valuestring);
+    M1_LOG_DEBUG("pBrief:%s\n",pBriefJson->valuestring);
     pEditorJson = cJSON_GetObjectItem(data.pdu, "pEditor");   
-    fprintf(stdout,"pBrief:%s\n",pEditorJson->valuestring);
+    M1_LOG_DEBUG("pBrief:%s\n",pEditorJson->valuestring);
 
     db = data.db;
     sql = "select ID, P_KEY from project_table order by ID desc limit 1";
@@ -364,7 +365,7 @@ int app_change_project_config(payload_t data)
     }
     /*获取账户信息*/
     sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %3d;", data.clientFd);
-    fprintf(stdout, "%s\n", sql_1);
+    M1_LOG_DEBUG( "%s\n", sql_1);
     //sqlite3_reset(stmt_1);
     sqlite3_finalize(stmt_1);
     sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
@@ -373,10 +374,10 @@ int app_change_project_config(payload_t data)
     	goto Finish;
     }
     account = sqlite3_column_text(stmt_1, 0);
-    fprintf(stdout, "account:%s\n", account);
+    M1_LOG_DEBUG( "account:%s\n", account);
     /*插入到项目表中*/
     sql = "insert into project_table(ID,P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT,TIME)values(?,?,?,?,?,?,?,?,?,?,?,?);";
-    fprintf(stdout, "%s\n", sql);
+    M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt_2);
     sqlite3_finalize(stmt_2);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_2, NULL);
@@ -407,7 +408,7 @@ int app_change_project_config(payload_t data)
 /*更改项目密码*/
 int app_change_project_key(payload_t data)
 {
-	fprintf(stdout,"app_change_project_key\n");
+	M1_LOG_DEBUG("app_change_project_key\n");
     /*sqlite3*/
     int id;
     int rc, ret = M1_PROTOCOL_OK;
@@ -426,19 +427,19 @@ int app_change_project_key(payload_t data)
 		ret = M1_PROTOCOL_FAILED;
 		goto Finish;   
 	}
-    fprintf(stdout,"pKey:%s\n",pKeyJson->valuestring);
+    M1_LOG_DEBUG("pKey:%s\n",pKeyJson->valuestring);
 	newKeyJson = cJSON_GetObjectItem(data.pdu, "newKey");   
 	if(newKeyJson == NULL){
 		ret = M1_PROTOCOL_FAILED;
 		goto Finish;
 	}
-    fprintf(stdout,"newKey:%s\n",newKeyJson->valuestring);
+    M1_LOG_DEBUG("newKey:%s\n",newKeyJson->valuestring);
     confirmKeyJson = cJSON_GetObjectItem(data.pdu, "confirmKey");   
     if(confirmKeyJson == NULL){
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;
     }
-    fprintf(stdout,"confirmKey:%s\n",confirmKeyJson->valuestring);
+    M1_LOG_DEBUG("confirmKey:%s\n",confirmKeyJson->valuestring);
     if(strcmp(confirmKeyJson->valuestring, newKeyJson->valuestring) != 0){
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;	
@@ -447,35 +448,35 @@ int app_change_project_key(payload_t data)
     db = data.db;
     /*获取账户信息*/
     sprintf(sql,"select P_KEY,ID from project_table order by ID desc limit 1;");
-    fprintf(stdout, "%s\n", sql);
+    M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
-        fprintf(stderr, "SQLITE_ERROR\n");
+        M1_LOG_ERROR( "SQLITE_ERROR\n");
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;
     }
     key = sqlite3_column_text(stmt, 0);
     if(key == NULL){
-        fprintf(stderr, "get key error\n");
+        M1_LOG_ERROR( "get key error\n");
     	ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    fprintf(stdout, "key:%s\n", key);
+    M1_LOG_DEBUG( "key:%s\n", key);
     id = sqlite3_column_int(stmt, 1);
     if(id == NULL){
-        fprintf(stderr, "get id error\n");
+        M1_LOG_ERROR( "get id error\n");
     	ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     if(strcmp(key, pKeyJson->valuestring) != 0){
-        fprintf(stderr, "key not match\n");
+        M1_LOG_ERROR( "key not match\n");
     	ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     sprintf(sql,"update project_table set P_KEY = \"%s\" where ID = %05d;",newKeyJson->valuestring, id);
-    fprintf(stdout, "%s\n", sql);
+    M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
