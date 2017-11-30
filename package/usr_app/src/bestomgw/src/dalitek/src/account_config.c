@@ -1056,6 +1056,11 @@ int user_login_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
 	}
+
+    if(key == NULL){
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+    }
 	if(strcmp(key,keyJson->valuestring) != 0){
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
@@ -1064,7 +1069,7 @@ int user_login_handle(payload_t data)
 	sql_1 = "select ID from account_info order by ID desc limit 1;";
 	id = sql_id(db, sql_1);
 	/*删除重复用户信息*/
-    sprintf(sql,"delete from account_info where ACCOUNT = \"%s\";",accountJson->valuestring);
+    sprintf(sql,"delete from account_info where ACCOUNT = \"%s\" and CLIENT_FD = %03d;",accountJson->valuestring, data.clientFd);
     fprintf(stdout,"sql:%s\n",sql);
 	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
 	if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){

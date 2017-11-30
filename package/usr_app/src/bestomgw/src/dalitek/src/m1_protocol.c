@@ -11,11 +11,12 @@
 #include "socket_server.h"
 #include "buf_manage.h"
 #include "m1_project.h"
+#include "sql_backup.h"
 
 /*Macro**********************************************************************************************************/
 #define M1_PROTOCOL_DEBUG    1
 #define HEAD_LEN    3
-#define SQL_CLEAR_TIME     (2 * 60 * 60)
+
 /*Private function***********************************************************************************************/
 static int AP_report_data_handle(payload_t data);
 static int APP_read_handle(payload_t data);
@@ -34,7 +35,6 @@ static int ap_heartbeat_handle(payload_t data);
 static int common_rsp_handle(payload_t data);
 static int create_sql_table(void);
 static int app_change_device_name(payload_t data);
-static int sql_backup(void);
 /*variable******************************************************************************************************/
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
@@ -191,9 +191,9 @@ void data_handle(m1_package_t* package)
     }
 
     Finish:
-    if(sql_backup() != M1_PROTOCOL_OK){
-        fprintf(stderr, "sql_backup failed\n");
-    }
+    // if(sql_backup() != M1_PROTOCOL_OK){
+    //     fprintf(stderr, "sql_backup failed\n");
+    // }
     cJSON_Delete(rootJson);
 
 }
@@ -1350,7 +1350,7 @@ static int APP_net_control(payload_t data)
 
     fprintf(stdout,"string:%s\n",p);
     /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+    socketSeverSend((uint8*)p, strlen(p), clientFd);
     
     Finish:
     free(sql);
@@ -1891,8 +1891,6 @@ void delete_account_conn_info(int clientFd)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
 
-    sprintf(sql,"delete from account_info where CLIENT_FD = %03d;",clientFd);
-    fprintf(stdout,"string:%s\n",sql);
     rc = sqlite3_open("dev_info.db", &db);  
     if( rc ){  
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));  
@@ -1900,7 +1898,15 @@ void delete_account_conn_info(int clientFd)
     }else{  
         fprintf(stderr, "Opened database successfully\n");  
     }
-    //sqlite3_reset(stmt);
+
+    sprintf(sql,"delete from account_info where CLIENT_FD = %03d;",clientFd);
+    fprintf(stdout,"string:%s\n",sql);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    thread_sqlite3_step(&stmt, db);
+
+    /*删除链接信息*/
+    sprintf(sql,"delete from conn_info where CLIENT_FD = %03d;",clientFd);
+    fprintf(stdout,"string:%s\n",sql);
     sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     thread_sqlite3_step(&stmt, db);
@@ -1968,80 +1974,6 @@ static int app_change_device_name(payload_t data)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
-
-    return ret;
-}
-
-/*数据库冗余删除*/
-static int sql_history_data_del(char* time, char* tableName)
-{
-    int rc;
-    int ret = M1_PROTOCOL_OK;
-    char* errorMsg = NULL;
-    char* sql = malloc(300);
-    sqlite3* db = NULL;
-
-    fprintf(stdout, "sql_history_data_del\n");
-
-    rc = sqlite3_open(db_path, &db);
-    if( rc != SQLITE_OK){  
-        fprintf(stderr, "Can't open database\n");  
-        goto Finish;
-    }else{  
-        fprintf(stdout, "Opened database successfully\n");  
-    }
-
-    sprintf(sql,"delete from \"%s\" where TIME < \"%s\";", tableName, time);
-    if(sqlite3_exec(db, sql, NULL, NULL, &errorMsg) == SQLITE_OK){
-        fprintf(stdout,"sql_history_data_del ok\n");
-    }else{
-        ret = M1_PROTOCOL_FAILED;
-        fprintf(stdout,"sql_history_data_del falied:%s\n",errorMsg);
-    }
-
-    Finish:
-    free(errorMsg);
-    free(sql);
-
-    sqlite3_close(db);
-
-    return ret;
-}
-
-/*sqlite3 数据库备份*/
-static int sql_backup(void)
-{
-    static int time_syc_flag = 0;
-    static int preTime = 0;
-    int ret = M1_PROTOCOL_OK;
-    char* _time = (char*)malloc(30);
-    char* table = "param_table";
-    /*获取当前时间*/
-    struct tm nowTime;
-
-    struct timespec time;
-    clock_gettime(CLOCK_REALTIME, &time);  //获取相对于1970到现在的秒数
-    if(time_syc_flag == 0){
-        time_syc_flag = 1;
-        preTime = time.tv_sec;       
-    }
-
-    fprintf(stdout,"time:%05d, preTime:%05d\n",time.tv_sec, preTime);
-    if(time.tv_sec - preTime < SQL_CLEAR_TIME){
-        return ret;
-    }else{
-        preTime = time.tv_sec;
-        /*基于当前时间向后半小时*/
-        time.tv_sec -= SQL_CLEAR_TIME;
-        localtime_r(&time.tv_sec, &nowTime);    
-
-        sprintf(_time, "%04d%02d%02d%02d%02d%02d", nowTime.tm_year + 1900, nowTime.tm_mon+1, nowTime.tm_mday, 
-          nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
-
-        ret = sql_history_data_del(_time, table);
-    }
-
-    free(_time);
 
     return ret;
 }
@@ -2224,98 +2156,108 @@ static int create_sql_table(void)
     /*account_info*/
     sprintf(sql,"create table account_info(ID INT PRIMARY KEY NOT NULL, ACCOUNT TEXT NOT NULL, CLIENT_FD INT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create account_info fail: %s\n",errmsg);
+        sprintf(sql,"delete from account_info;");
+         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+            fprintf(stderr,"delete from account_info failed: %s\n",errmsg);
+        }
     }
     sqlite3_free(errmsg);
     /*account_table*/
     sprintf(sql,"create table account_table(ID INT PRIMARY KEY NOT NULL, ACCOUNT TEXT NOT NULL, KEY TEXT NOT NULL,KEY_AUTH TEXT NOT NULL,REMOTE_AUTH TEXT NOT NULL,TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create account_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*all_dev*/
     sprintf(sql,"create table all_dev(ID INT PRIMARY KEY NOT NULL, DEV_ID TEXT NOT NULL, DEV_NAME TEXT NOT NULL,AP_ID TEXT NOT NULL,PID INT NOT NULL,ADDED INT NOT NULL,NET INT NOT NULL, STATUS TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create all_dev fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*conn_info*/
     sprintf(sql,"create table conn_info(ID INT PRIMARY KEY NOT NULL, AP_ID TEXT NOT NULL, CLIENT_FD INT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create conn_info fail: %s\n",errmsg);
+        sprintf(sql,"delete from conn_info;");
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK){
+            fprintf(stderr,"delete from conn_info failed: %s\n",errmsg);
+        }
     }
     sqlite3_free(errmsg);
     /*district_table*/
     sprintf(sql,"CREATE TABLE district_table(ID INT PRIMARY KEY NOT NULL, DIS_NAME TEXT NOT NULL, AP_ID TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create district_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*link_exec_table*/
     sprintf(sql,"CREATE TABLE link_exec_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, DELAY INT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create link_exec_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*link_trigger_table*/
     sprintf(sql,"CREATE TABLE link_trigger_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL,DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, THRESHOLD INT NOT NULL,CONDITION TEXT NOT NULL, LOGICAL TEXT NOT NULL, STATUS TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create link_trigger_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*linkage_table*/
     sprintf(sql,"CREATE TABLE linkage_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, EXEC_TYPE TEXT NOT NULL, EXEC_ID TEXT NOT NULL, STATUS TEXT NOT NULL, ENABLE TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create linkage_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*param_table*/
     sprintf(sql,"CREATE TABLE param_table(ID INT PRIMARY KEY NOT NULL, DEV_ID TEXT NOT NULL, DEV_NAME TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create param_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*scen_alarm_table*/
     sprintf(sql,"CREATE TABLE scen_alarm_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, HOUR INT NOT NULL,MINUTES INT NOT NULL, WEEK TEXT NOT NULL, STATUS TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create scen_alarm_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*scenario_table*/
     sprintf(sql,"CREATE TABLE scenario_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, DELAY INT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create scenario_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*project_table*/
     sprintf(sql,"CREATE TABLE project_table(ID INT PRIMARY KEY NOT NULL, P_NAME TEXT NOT NULL, P_NUMBER TEXT NOT NULL, P_CREATOR TEXT NOT NULL, P_MANAGER TEXT NOT NULL, P_EDITOR TEXT NOT NULL, P_TEL TEXT NOT NULL, P_ADD TEXT NOT NULL, P_BRIEF TEXT NOT NULL, P_KEY TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"create project_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*插入Dalitek账户*/
     sprintf(sql,"insert into account_table(ID, ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH, TIME)values(1,\"Dalitek\",\"root\",\"on\",\"on\",\"20171023110000\");");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"insert into account_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*插入项目信息*/
     sprintf(sql,"insert into project_table(ID, P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT, TIME)values(1,\"M1\",\"00000001\",\"Dalitek\",\"Dalitek\",\"Dalitek\",\"123456789\",\"ShangHai\",\"Brief\",\"123456\",\"Dalitek\",\"20171031161900\");");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK){
         fprintf(stderr,"insert into project_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
