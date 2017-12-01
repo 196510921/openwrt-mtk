@@ -70,8 +70,9 @@ int main(int argc, char* argv[])
 	pthread_t t1,t2,t3,t4,t5,t6,t7,t8;
 
 	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
-
-	//printf_redirect();
+#if DEBUG_LOG_OUTPUT_TO_FD
+	printf_redirect();
+#endif
 	SRPC_Init();
 	m1_protocol_init();
 

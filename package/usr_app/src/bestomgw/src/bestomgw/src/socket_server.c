@@ -375,7 +375,7 @@ void socketSeverPoll(int clinetFd, int revent)
 		{
 			M1_LOG_DEBUG("POLLRDHUP\n");
 			//its a shut down close the socket
-			M1_LOG_DEBUG("Client fd:%d disconnected\n", clinetFd);
+			M1_LOG_INFO("Client fd:%d disconnected\n", clinetFd);
 			//remove the record and close the socket
 			delete_account_conn_info(clinetFd);
 			client_block_destory(clinetFd);
@@ -430,14 +430,14 @@ void thread_socketSeverSend(void)
 
 int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 {
-M1_LOG_DEBUG( "socketSeverSend++\n");
+	M1_LOG_DEBUG( "socketSeverSend++\n");
 
 	int rtn;
 	uint16_t header = 0xFEFD;
 	uint16_t msg_len = 0;
 	char* send_buf = NULL;
 	//char send_buf[4096] = {0};
-
+	M1_LOG_INFO("Tx msg:%s\n",buf);
 	/*大端序*/
 	header = (((header >> 8) & 0xff) | ((header << 8) & 0xff00)) & 0xffff;
 	msg_len = (((len >> 8) & 0xff) | ((len << 8) & 0xff00)) & 0xffff;

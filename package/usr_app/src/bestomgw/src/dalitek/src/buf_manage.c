@@ -98,10 +98,12 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 
 	M1_LOG_DEBUG( "push begin: d->unitCount:%d\n", d->unitCount);
 	if(NULL == d){
+		M1_LOG_ERROR("NULL == d\n");
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
 	}
 	if(d->unitCount == STACK_UNIT_CAPACITY){
+		M1_LOG_ERROR("d->unitCount == STACK_UNIT_CAPACITY\n");
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
 	}
@@ -117,6 +119,7 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 
 	remain_count = STACK_UNIT_CAPACITY - d->unitCount;
 	if(exp_count > remain_count){
+		M1_LOG_ERROR("exp_count > remain_count\n");
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;		
 	}

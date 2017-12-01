@@ -19,6 +19,9 @@ os.chdir(cmd4)
 cmd5 = 'cp -r dalitek/ bestomgw ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
 print cmd5
 os.system(cmd5)
+cmd5_1 = 'cp Makefile ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
+print cmd5_1
+os.system(cmd5_1)
 cmd6 = '../../../../../'
 print cmd6
 os.chdir(cmd6)

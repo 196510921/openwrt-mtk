@@ -1718,15 +1718,15 @@ void SRPC_RxCB(int clientFd)
 	char buf[1024*10] = {0};
 	client_block_t* client_block = NULL;
 
-	printf("SRPC_RxCB++[%x]\n", clientFd);
+	M1_LOG_INFO("SRPC_RxCB++[%x]\n", clientFd);
 
 	rtn = ioctl(clientFd, FIONREAD, &byteToRead);
 
 	if (rtn != 0)
 	{
-		printf("SRPC_RxCB: Socket error\n");
+		M1_LOG_ERROR("SRPC_RxCB: Socket error\n");
 	}
-	printf("byteToRead:%d\n",byteToRead);
+	M1_LOG_INFO("byteToRead:%d\n",byteToRead);
 
 	if(byteToRead > 10*1024){
 		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
@@ -1746,12 +1746,12 @@ void SRPC_RxCB(int clientFd)
 		M1_LOG_ERROR( "client_block null\n");
 		return;
 	}
-	printf("rx len:%05d, rx data:%s\n",len, buf+4);
+	M1_LOG_INFO("rx len:%05d, rx data:%s\n",len, buf+4);
 	rc = client_write(&client_block->stack_block, buf, len);
 	if(rc != TCP_SERVER_SUCCESS)
 		M1_LOG_ERROR("client_write failed\n");
 
-	printf("SRPC_RxCB--\n");
+	M1_LOG_INFO("SRPC_RxCB--\n");
 
 	return;
 }
@@ -1794,7 +1794,7 @@ int client_block_init(void)
 
 client_block_t* client_stack_block_req(int clientFd)
 {
-	M1_LOG_DEBUG( "client_stack_block_req\n");
+	M1_LOG_DEBUG( "block_req\n");
 	int i;
 	int j = -1;
 
@@ -1808,8 +1808,10 @@ client_block_t* client_stack_block_req(int clientFd)
 	}
 
 	client_block[j].clientFd = clientFd;
-	if(TCP_SERVER_FAILED == stack_block_req(&client_block[j].stack_block))
+	if(TCP_SERVER_FAILED == stack_block_req(&client_block[j].stack_block)){
+		M1_LOG_ERROR( "block_req failed\n");
 		return NULL;
+	}
 
 	// M1_LOG_DEBUG("blockNum:%d,wPtr:%05d,rPtr:%05d,start:%05d,end:%05d\n",client_block[j].stack_block.blockNum,
 	// 	client_block[j].stack_block.wPtr, client_block[j].stack_block.rPtr, client_block[j].stack_block.start,
@@ -1819,15 +1821,17 @@ client_block_t* client_stack_block_req(int clientFd)
 
 int client_block_destory(int clientFd)
 {
-	M1_LOG_DEBUG( "client_block_destory\n");
+	M1_LOG_DEBUG( "block_destory\n");
 	int i;
 
 	for(i = 0; i <  STACK_BLOCK_NUM; i++){
 
 		if(clientFd == client_block[i].clientFd){
 			client_block[i].clientFd = 0;
-			if(TCP_SERVER_FAILED == stack_block_destroy(client_block[i].stack_block))
+			if(TCP_SERVER_FAILED == stack_block_destroy(client_block[i].stack_block)){
+				M1_LOG_ERROR("block_destroy failed\n");
 				return TCP_SERVER_FAILED;
+			}
 		}
 	}
 
@@ -1837,7 +1841,6 @@ int client_block_destory(int clientFd)
 /*client write/read**************************************************************************************/
 static int client_write(stack_mem_t* d, char* data, int len)
 {
-	M1_LOG_DEBUG( "client_write\n");
 	int rc = 0;
 	int header = 0;
 	int distance = 0;
@@ -1898,7 +1901,8 @@ void client_read(void)
 		len = *(uint16_t*)&data[2];
 		len = (uint16_t)(((len << 8) & 0xff00) | ((len >> 8) & 0xff)) & 0xffff;
 		//M1_LOG_DEBUG("read len:%05d\n", len);
-		if(len <= STACK_UNIT){
+		//if(len <= STACK_UNIT){
+		if((len+4) <= STACK_UNIT){
 			client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
 			goto Finish;
 		}

@@ -10,7 +10,7 @@
 
 /*宏定义*******************************************************************************************************/
 #define FIXED_BUF_LEN  (100 * 1024)  // 支持300组300字节的有效数据同时存储
-#define STACK_BLOCK_LEN  (4 * 1024)              //单个数据块4k
+#define STACK_BLOCK_LEN  (10 * 1024)              //单个数据块4k
 #define STACK_BLOCK_NUM 50
 #define STACK_UNIT     256
 #define STACK_UNIT_CAPACITY    (STACK_BLOCK_LEN / STACK_UNIT)

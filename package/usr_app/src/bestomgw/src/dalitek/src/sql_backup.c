@@ -11,7 +11,7 @@
 #include "m1_protocol.h"
 
 /*MACRO**********************************************************************************************************/
-#define SQL_CLEAR_TIME     (2 * 60 * 60)
+#define SQL_CLEAR_TIME     (1 * 60 * 60)
 
 /*数据库冗余删除*/
 static int sql_history_data_del(char* time, char* tableName)
