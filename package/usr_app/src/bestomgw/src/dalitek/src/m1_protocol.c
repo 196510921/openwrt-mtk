@@ -116,7 +116,7 @@ void data_handle(m1_package_t* package)
 
     pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
     if(NULL == pduDataJson){
-        M1_LOG_ERROR("devData null”\n");
+        M1_LOG_INFO("devData null”\n");
     }
 
     /*打开读数据库*/

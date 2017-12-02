@@ -11,7 +11,7 @@
 #include "m1_protocol.h"
 
 /*MACRO**********************************************************************************************************/
-#define SQL_CLEAR_TIME     (1 * 60 * 60)
+#define SQL_CLEAR_TIME     (30 * 60)
 
 /*数据库冗余删除*/
 static int sql_history_data_del(char* time, char* tableName)
@@ -26,18 +26,18 @@ static int sql_history_data_del(char* time, char* tableName)
 
     rc = sqlite3_open("dev_info.db", &db);
     if( rc != SQLITE_OK){  
-        fprintf(stderr, "Can't open database\n");  
+        M1_LOG_ERROR("Can't open database\n");  
         goto Finish;
     }else{  
-        fprintf(stdout, "Opened database successfully\n");  
+        M1_LOG_DEBUG("Opened database successfully\n");  
     }
 
     sprintf(sql,"delete from \"%s\" where TIME < \"%s\";", tableName, time);
     if(sqlite3_exec(db, sql, NULL, NULL, &errorMsg) == SQLITE_OK){
-        fprintf(stdout,"sql_history_data_del ok\n");
+        M1_LOG_DEBUG("sql_history_data_del ok\n");
     }else{
         ret = M1_PROTOCOL_FAILED;
-        fprintf(stdout,"sql_history_data_del falied:%s\n",errorMsg);
+        M1_LOG_ERROR("sql_history_data_del falied:%s\n",errorMsg);
     }
 
     Finish:
@@ -67,7 +67,7 @@ int sql_backup(void)
         preTime = time.tv_sec;       
     }
 
-    fprintf(stdout,"time:%05d, preTime:%05d\n",time.tv_sec, preTime);
+    M1_LOG_DEBUG("time:%05d, preTime:%05d\n",time.tv_sec, preTime);
     if(time.tv_sec - preTime < SQL_CLEAR_TIME){
         return ret;
     }else{
@@ -76,7 +76,7 @@ int sql_backup(void)
         time.tv_sec -= SQL_CLEAR_TIME;
         localtime_r(&time.tv_sec, &nowTime);    
 
-        sprintf(_time, "%04d%02d%02d%02d%02d%02d", nowTime.tm_year + 1900, nowTime.tm_mon+1, nowTime.tm_mday, 
+        M1_LOG_DEBUG("%04d%02d%02d%02d%02d%02d", nowTime.tm_year + 1900, nowTime.tm_mon+1, nowTime.tm_mday, 
           nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
 
         ret = sql_history_data_del(_time, table);

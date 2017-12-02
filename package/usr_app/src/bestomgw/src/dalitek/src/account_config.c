@@ -895,6 +895,9 @@ int app_req_dis_dev(payload_t data)
 
     for(i = 0; i < number; i++){
         devDataJson = cJSON_GetArrayItem(data.pdu, i);
+        if(devDataJson->valuestring == NULL){
+            continue;
+        }
         M1_LOG_DEBUG("district:%s\n",devDataJson->valuestring);
         /*添加区域*/
         devDataObject = cJSON_CreateObject();
