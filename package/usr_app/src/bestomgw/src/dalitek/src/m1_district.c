@@ -23,6 +23,7 @@ int district_create_handle(payload_t data)
     char* errorMsg = NULL;
     char* sql = NULL;
     cJSON* districtNameJson = NULL;
+    cJSON* disPicJson = NULL;
 	cJSON* apIdJson = NULL;
 	cJSON* apIdArrayJson = NULL;
 	sqlite3* db = NULL;
@@ -44,6 +45,8 @@ int district_create_handle(payload_t data)
     	/*获取收到数据包信息*/
         districtNameJson = cJSON_GetObjectItem(data.pdu, "districtName");
         M1_LOG_DEBUG("districtName:%s\n",districtNameJson->valuestring);
+        disPicJson = cJSON_GetObjectItem(data.pdu, "disPic");
+        M1_LOG_DEBUG("dis_pic:%s\n",disPicJson->valuestring);
         apIdArrayJson = cJSON_GetObjectItem(data.pdu, "apId");
         number1 = cJSON_GetArraySize(apIdArrayJson);
         M1_LOG_DEBUG("number1:%d\n",number1);
@@ -65,7 +68,7 @@ int district_create_handle(payload_t data)
     		apIdJson = cJSON_GetArrayItem(apIdArrayJson, i);
     		M1_LOG_DEBUG("apId:%s\n",apIdJson->valuestring);
 
-    		sql = "insert into district_table(ID, DIS_NAME, AP_ID, ACCOUNT,TIME) values(?,?,?,?,?);";
+    		sql = "insert into district_table(ID, DIS_NAME, DIS_PIC, AP_ID, ACCOUNT,TIME) values(?,?,?,?,?,?);";
     		M1_LOG_DEBUG("sql:%s\n",sql);
     		//sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
@@ -73,9 +76,10 @@ int district_create_handle(payload_t data)
     		sqlite3_bind_int(stmt, 1, id);
     		id++;
     		sqlite3_bind_text(stmt, 2, districtNameJson->valuestring, -1, NULL);
-    		sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
-    		sqlite3_bind_text(stmt, 4, "Dalitek", -1, NULL);
-            sqlite3_bind_text(stmt, 5, time, -1, NULL);
+            sqlite3_bind_text(stmt, 3, disPicJson->valuestring, -1, NULL);
+    		sqlite3_bind_text(stmt, 4, apIdJson->valuestring, -1, NULL);
+    		sqlite3_bind_text(stmt, 5, "Dalitek", -1, NULL);
+            sqlite3_bind_text(stmt, 6, time, -1, NULL);
     		rc = thread_sqlite3_step(&stmt, db); 
     		M1_LOG_DEBUG("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
         }
@@ -111,6 +115,8 @@ int app_req_district(payload_t data)
     char* sql = (char*)malloc(300);
     char* sql_1 = (char*)malloc(300);
     char* sql_2 = (char*)malloc(300);
+    char* sql_3 = (char*)malloc(300);
+    char* dis_pic = NULL;
     int pduType = TYPE_M1_REPORT_DISTRICT_INFO;
     cJSON * pJsonRoot = NULL;
     cJSON * pduJsonObject = NULL;
@@ -193,7 +199,18 @@ int app_req_district(payload_t data)
 	    }
 	    cJSON_AddItemToArray(devDataJsonArray, devDataObject);
 	    cJSON_AddStringToObject(devDataObject, "district", dist_name);
-	    /*创建ap_info数组*/
+        /*添加区域图片*/
+        sprintf(sql_3,"select DIS_PIC from district_table where DIS_NAME = \"%s\" order by ID desc limit 1;",dist_name);
+        sqlite3_finalize(stmt_3);
+        sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+	    rc = thread_sqlite3_step(&stmt_3, db);
+        if(rc != SQLITE_ROW){
+            continue;   
+        }
+        dis_pic = sqlite3_column_text(stmt_3, 0);
+        cJSON_AddStringToObject(devDataObject, "disPic", dis_pic);
+        M1_LOG_DEBUG("dis_pic:%s\n", dis_pic);
+        /*创建ap_info数组*/
 	    apInfoArrayObject = cJSON_CreateArray();
 	    if(NULL == apInfoArrayObject)
 	    {
@@ -254,6 +271,7 @@ int app_req_district(payload_t data)
     free(sql);
     free(sql_1);
     free(sql_2);
+    free(sql_3);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);

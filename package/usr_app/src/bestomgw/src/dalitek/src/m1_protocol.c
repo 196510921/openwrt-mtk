@@ -2213,7 +2213,7 @@ static int create_sql_table(void)
     }
     sqlite3_free(errmsg);
     /*district_table*/
-    sprintf(sql,"CREATE TABLE district_table(ID INT PRIMARY KEY NOT NULL, DIS_NAME TEXT NOT NULL, AP_ID TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
+    sprintf(sql,"CREATE TABLE district_table(ID INT PRIMARY KEY NOT NULL, DIS_NAME TEXT NOT NULL, DIS_PIC TEXT NOT NULL, AP_ID TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
     if(rc != SQLITE_OK){
         M1_LOG_WARN("district_table already exit: %s\n",errmsg);

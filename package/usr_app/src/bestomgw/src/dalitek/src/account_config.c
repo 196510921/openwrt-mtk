@@ -561,16 +561,17 @@ int app_req_dis_name(payload_t data)
     M1_LOG_DEBUG("app_req_dis_name\n"); 
     int pdu_type = TYPE_M1_REPORT_DIS_NAME;
     int rc,ret = M1_PROTOCOL_OK;
-    char* district = NULL;
+    char* district = NULL, *dis_pic = NULL;
     char* sql = (char*)malloc(300);
     char* sql_1 = (char*)malloc(300);
+    char* sql_2 = (char*)malloc(300);
     cJSON * pJsonRoot = NULL; 
     cJSON * pduJsonObject = NULL;
     cJSON * devDataObject= NULL;
     cJSON * districtObject= NULL;
     cJSON * devDataJsonArray = NULL;
     sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL;
+    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
 
     db = data.db;
     /*get sql data json*/
@@ -632,13 +633,38 @@ int app_req_dis_name(payload_t data)
     sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+        districtObject = cJSON_CreateObject();
+        if(NULL == districtObject)
+        {
+            // create object faild, exit
+            cJSON_Delete(districtObject);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+
+        /*获取区域名称*/
         district = sqlite3_column_text(stmt, 0);
         if(district == NULL){
             M1_LOG_ERROR( "%s\n", district);
             ret = M1_PROTOCOL_FAILED;
             goto Finish;
         }
-        districtObject = cJSON_CreateString(district);
+        M1_LOG_DEBUG("district:%s\n", district);
+        cJSON_AddStringToObject(districtObject, "disName", district);
+        sprintf(sql_2,"select DIS_PIC from district_table where DIS_NAME = \"%s\" order by ID desc limit 1;", district);
+        M1_LOG_DEBUG("sql:%s\n", sql_2);
+        sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        rc = thread_sqlite3_step(&stmt_2, db);
+        if(rc != SQLITE_ROW){
+            continue;
+        }
+        dis_pic = sqlite3_column_text(stmt_2, 0);
+        if(dis_pic == NULL){
+            continue;
+        }
+        M1_LOG_DEBUG("dis_pic:%s\n", dis_pic);
+        cJSON_AddStringToObject(districtObject, "disPic", dis_pic);
+        //districtObject = cJSON_CreateString(district);
         cJSON_AddItemToArray(devDataJsonArray, districtObject);
     }
 
@@ -656,8 +682,10 @@ int app_req_dis_name(payload_t data)
     Finish:
     free(sql);
     free(sql_1);
+    free(sql_2);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
+    sqlite3_finalize(stmt_2);
     cJSON_Delete(pJsonRoot);
 
     return  ret;
