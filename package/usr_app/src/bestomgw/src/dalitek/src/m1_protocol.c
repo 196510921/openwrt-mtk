@@ -2166,7 +2166,7 @@ static int create_sql_table(void)
     char* errmsg = NULL;
 
     sqlite3* db = 0;
-    rc = sqlite3_open("dev_info.db", &db);
+    rc = sqlite3_open_v2("dev_info.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
     if( rc ){  
         M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
         goto Finish;
@@ -2255,7 +2255,7 @@ static int create_sql_table(void)
     }
     sqlite3_free(errmsg);
     /*scenario_table*/
-    sprintf(sql,"CREATE TABLE scenario_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, DELAY INT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
+    sprintf(sql,"CREATE TABLE scenario_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, SCEN_PIC TEXT NOT NULL, DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, DELAY INT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
     if(rc != SQLITE_OK){
         M1_LOG_WARN("scenario_table already exit: %s\n",errmsg);

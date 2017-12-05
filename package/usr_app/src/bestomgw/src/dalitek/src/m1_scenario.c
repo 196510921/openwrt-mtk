@@ -204,6 +204,7 @@ int scenario_create_handle(payload_t data)
 	char* sql_2 = (char*)malloc(300);
 	char* errorMsg = NULL;
 	cJSON* scenNameJson = NULL;
+	cJSON* scenPicJson = NULL;
 	cJSON* districtJson = NULL;
 	cJSON* alarmJson = NULL;
 	cJSON* devJson = NULL;
@@ -234,6 +235,9 @@ int scenario_create_handle(payload_t data)
     /*获取场景名称*/
     scenNameJson = cJSON_GetObjectItem(data.pdu, "scenName");
     M1_LOG_DEBUG("scenName:%s\n",scenNameJson->valuestring);
+	/*获取场景图标*/
+	scenPicJson = cJSON_GetObjectItem(data.pdu, "scenPic");
+    M1_LOG_DEBUG("scenPic:%s\n",scenPicJson->valuestring);
 	/*获取数据包中的alarm信息*/
 	alarmJson = cJSON_GetObjectItem(data.pdu, "alarm");
 
@@ -327,21 +331,22 @@ int scenario_create_handle(payload_t data)
 	    		valueJson = cJSON_GetObjectItem(paramJson, "value");
 	    		M1_LOG_DEBUG("type:%d, value:%d\n",typeJson->valueint, valueJson->valueint);
 	    		
-			    sql = "insert into scenario_table(ID, SCEN_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
+			    sql = "insert into scenario_table(ID, SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?,?);";
 			    M1_LOG_DEBUG("sql:%s\n",sql);
 			    //sqlite3_reset(stmt);
 			    sqlite3_finalize(stmt);
 			    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 				sqlite3_bind_int(stmt, 1, id);
 				sqlite3_bind_text(stmt, 2, scenNameJson->valuestring, -1, NULL);
-				sqlite3_bind_text(stmt, 3, districtJson->valuestring, -1, NULL);
-				sqlite3_bind_text(stmt, 4, apIdJson->valuestring, -1, NULL);
-				sqlite3_bind_text(stmt, 5, devIdJson->valuestring, -1, NULL);
-				sqlite3_bind_int(stmt, 6, typeJson->valueint);
-				sqlite3_bind_int(stmt, 7, valueJson->valueint);
-				sqlite3_bind_int(stmt, 8, delay);
-				sqlite3_bind_text(stmt, 9, "Dalitek",-1,NULL);
-				sqlite3_bind_text(stmt, 10, time, -1, NULL);
+				sqlite3_bind_text(stmt, 3, scenPicJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt, 4, districtJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt, 5, apIdJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt, 6, devIdJson->valuestring, -1, NULL);
+				sqlite3_bind_int(stmt, 7, typeJson->valueint);
+				sqlite3_bind_int(stmt, 8, valueJson->valueint);
+				sqlite3_bind_int(stmt, 9, delay);
+				sqlite3_bind_text(stmt, 10, "Dalitek",-1,NULL);
+				sqlite3_bind_text(stmt, 11, time, -1, NULL);
 				id++;
 				rc = thread_sqlite3_step(&stmt, db); 
 		
@@ -481,7 +486,7 @@ int app_req_scenario(payload_t data)
     char* sql_1 = (char*)malloc(300);
     char* sql_2 = (char*)malloc(300);
     char* scen_name = NULL,*district = NULL,*week = NULL, *alarm_status = NULL;
-   	char* ap_id = NULL, *dev_id = "devId", *dev_name = NULL;
+   	char* ap_id = NULL, *dev_id = "devId", *dev_name = NULL, *scen_pic = NULL;
     cJSON * pJsonRoot = NULL;
     cJSON * pduJsonObject = NULL;
     cJSON * devDataJsonArray = NULL;
@@ -568,7 +573,7 @@ int app_req_scenario(payload_t data)
 	    scen_name = sqlite3_column_text(stmt, 0);
 	    cJSON_AddStringToObject(devDataObject, "scenName", scen_name);
 	    /*根据场景名称选出隶属区域*/
-	    sprintf(sql_1,"select DISTRICT from scenario_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
+	    sprintf(sql_1,"select DISTRICT, SCEN_PIC from scenario_table where SCEN_NAME = \"%s\" limit 1;",scen_name);
 	    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 	    //sqlite3_reset(stmt_1);
 	    sqlite3_finalize(stmt_1);
@@ -577,7 +582,17 @@ int app_req_scenario(payload_t data)
 
 		if(rc == SQLITE_ROW){
 			district = sqlite3_column_text(stmt_1, 0);
+			if(district == NULL){
+				ret = M1_PROTOCOL_FAILED;
+        		goto Finish;
+			}
 			cJSON_AddStringToObject(devDataObject, "district", district);
+			scen_pic = sqlite3_column_text(stmt_1, 1);
+			if(scen_pic == NULL){
+				ret = M1_PROTOCOL_FAILED;
+        		goto Finish;
+			}
+			cJSON_AddStringToObject(devDataObject, "scenPic", scen_pic);
 		}
 		
     	/*选择区域定时执行信息*/

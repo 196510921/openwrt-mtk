@@ -670,9 +670,10 @@ int app_req_dis_scen_name(payload_t data)
     int pduType = TYPE_M1_REPORT_DIS_SCEN_NAME;
     int number, i;
     int rc, ret = M1_PROTOCOL_OK;
-    char* scenario = NULL;
+    char* scenario = NULL, *scen_pic = NULL;
     char* sql = (char*)malloc(300);
     char* sql_1 = (char*)malloc(300);
+    char* sql_2 = (char*)malloc(300);
     cJSON* devDataJson = NULL;
     cJSON* pJsonRoot = NULL;
     cJSON* pduJsonObject = NULL;
@@ -681,7 +682,7 @@ int app_req_dis_scen_name(payload_t data)
     cJSON* scenArray = NULL;
     cJSON* scenJson = NULL;
     sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL;
+    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
 
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -776,13 +777,34 @@ int app_req_dis_scen_name(payload_t data)
         sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
         while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+
+            scenJson = cJSON_CreateObject();
+            if(NULL == scenJson)
+            {
+                // create object faild, exit
+                M1_LOG_ERROR("devDataObject NULL\n");
+                cJSON_Delete(scenJson);
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish;
+            }
+            /*添加场景名称到组中*/
             scenario = sqlite3_column_text(stmt, 0);
             if(scenario == NULL){
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
             M1_LOG_DEBUG( "scenario:%s\n", scenario);
-            scenJson = cJSON_CreateString(scenario);
+            cJSON_AddStringToObject(scenJson, "scenName", scenario);
+            /*添加场景标识到组中*/
+            sprintf(sql_2,"select SCEN_PIC from scenario_table where SCEN_NAME = \"%s\" order by ID desc limit 1;", scenario);
+            sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            rc = thread_sqlite3_step(&stmt_2, db);
+            if(rc != SQLITE_ROW)
+                continue;
+            scen_pic = sqlite3_column_text(stmt_2, 0);
+            M1_LOG_DEBUG( "scen_pic:%s\n", scen_pic);
+            cJSON_AddStringToObject(scenJson, "scenPic", scen_pic);
+
             cJSON_AddItemToArray(scenArray, scenJson);
         }
 
@@ -802,8 +824,10 @@ int app_req_dis_scen_name(payload_t data)
     Finish:
     free(sql);
     free(sql_1);
+    free(sql_2);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
+    sqlite3_finalize(stmt_2);
     cJSON_Delete(pJsonRoot);
 
     return  ret;
