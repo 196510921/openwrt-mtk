@@ -397,7 +397,7 @@ void linkage_task(void)
 	sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
 	char *exec_type = NULL,*exec_id = NULL, *link_name =  NULL;
-    while(1){
+    //while(1){
 	    rc1 = fifo_read(&link_exec_fifo, &rowid);
 	    if(rc1 > 0){
 		    sql = (char*)malloc(300);
@@ -406,7 +406,7 @@ void linkage_task(void)
 			    M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
 			    goto Finish;
 			}else{  
-			    M1_LOG_ERROR( "Opened database successfully\n");  
+			    M1_LOG_DEBUG( "Opened database successfully\n");  
 			}
 
 		   	do{
@@ -438,8 +438,8 @@ void linkage_task(void)
 			sqlite3_close(db);
 		}
 		/*100ms*/
-	    usleep(100000);
-	}
+	//    usleep(100000);
+	//}
 }
 
 static char* linkage_status(char* condition, int threshold, int value)

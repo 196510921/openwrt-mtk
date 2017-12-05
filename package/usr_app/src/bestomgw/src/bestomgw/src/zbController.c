@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
 	//pthread_create(&t5,NULL,sql_rd_handle,NULL);
-	pthread_create(&t6,NULL,linkage_task,NULL);
+	//pthread_create(&t6,NULL,linkage_task,NULL);
 	//pthread_create(&t7,NULL,trigger_cb_handle,NULL);
 	//pthread_create(&t8,NULL,sql_wt_handle,NULL);
 
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
 	//spthread_join(t5, NULL);
-	pthread_join(t6, NULL);
+	//pthread_join(t6, NULL);
 	//pthread_join(t7, NULL);
 	//pthread_join(t8, NULL);
 	

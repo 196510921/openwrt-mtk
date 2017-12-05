@@ -941,9 +941,14 @@ int app_exec_scenario(payload_t data)
 
     db = data.db;
 	scenario = data.pdu->valuestring;
+	if(scenario == NULL){
+		ret = M1_PROTOCOL_FAILED;
+		goto Finish;
+	}
 	M1_LOG_DEBUG( "scenario:%s\n", scenario);
 	ret = scenario_exec(scenario, db);
 
+	Finish:
 	return ret;
 }
 

@@ -9,6 +9,7 @@
 
 #include "sqlite3.h"
 #include "m1_protocol.h"
+#include "m1_common_log.h"
 
 /*MACRO**********************************************************************************************************/
 #define SQL_CLEAR_TIME     (30 * 60)

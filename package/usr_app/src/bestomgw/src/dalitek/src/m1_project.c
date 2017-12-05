@@ -88,6 +88,7 @@ int app_confirm_project(payload_t data)
 {
 	M1_LOG_DEBUG("app_confirm_project\n");
 	int rc,row_n;
+    int ret = M1_PROTOCOL_OK;
     char* sql = (char*)malloc(300);
     char* key = NULL;
     const char* ap_id = NULL;
@@ -98,30 +99,39 @@ int app_confirm_project(payload_t data)
 
     db = data.db;
     pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");
-    if(pNumberJson == NULL)
-        return M1_PROTOCOL_FAILED;   
+    if(pNumberJson == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;   
+    }
     M1_LOG_DEBUG("pNumber:%s\n",pNumberJson->valuestring);
     pKeyJson = cJSON_GetObjectItem(data.pdu, "pKey");   
-    if(pKeyJson == NULL)
-        return M1_PROTOCOL_FAILED;   
+    if(pKeyJson == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;   
+    }
     M1_LOG_DEBUG("pKey:%s\n",pKeyJson->valuestring);
 
-    sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\";",pNumberJson->valuestring);
+    sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\" order by ID desc limit 1;",pNumberJson->valuestring);
     M1_LOG_DEBUG( "%s\n", sql);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-    thread_sqlite3_step(&stmt, db);
-    key =  sqlite3_column_text(stmt, 0);
+    rc = thread_sqlite3_step(&stmt, db);
+    if(rc != SQLITE_ROW){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
 
-    if(strcmp(key,pKeyJson->valuestring) == 0)
- 		rc = M1_PROTOCOL_OK;
- 	else
- 		rc = M1_PROTOCOL_FAILED;
+    key = sqlite3_column_text(stmt, 0);
+
+    if(strcmp(key,pKeyJson->valuestring) != 0){
+        M1_LOG_INFO("Key not match\n");        
+ 		ret = M1_PROTOCOL_FAILED;
+    }
 
     Finish:
     free(sql);
  	sqlite3_finalize(stmt);
 
-    return rc;
+    return ret;
 }
 
 /*新建项目*/

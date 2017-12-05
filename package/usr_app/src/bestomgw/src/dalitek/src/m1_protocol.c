@@ -199,7 +199,7 @@ void data_handle(m1_package_t* package)
     }
 #endif
     cJSON_Delete(rootJson);
-
+    linkage_task();
 }
 
 static int common_rsp_handle(payload_t data)
