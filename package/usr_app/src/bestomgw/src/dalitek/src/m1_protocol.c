@@ -15,7 +15,7 @@
 #include "m1_common_log.h"
 
 /*Macro**********************************************************************************************************/
-#define SQL_BACKUP           0
+#define SQL_BACKUP           1
 #define M1_PROTOCOL_DEBUG    1
 #define HEAD_LEN             3
 

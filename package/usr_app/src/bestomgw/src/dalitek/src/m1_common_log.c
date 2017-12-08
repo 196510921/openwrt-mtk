@@ -5,7 +5,7 @@
 
 #include "m1_common_log.h"
 
-m1_log_level_t m1LogLevel = M1_LOG_LEVEL_INFO;
+m1_log_level_t m1LogLevel = M1_LOG_LEVEL_ERROR;
 
 
 void m1_common_log_set_level(m1_log_level_t m1LogLevel)
