@@ -1785,8 +1785,9 @@ static int common_operate(payload_t data)
                 /*通知ap*/
                 if(m1_del_ap(db, idJson->valuestring) != M1_PROTOCOL_OK)
                     M1_LOG_ERROR("m1_del_ap error\n");
-                /*删除all_dev中的子设备*/
-                sprintf(sql,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
+                ///*删除all_dev中的子设备*/
+                //sprintf(sql,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
+                sprintf(sql,"update all_dev set ADDED = 0 where AP_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
                 /*删除scenario_table中的子设备*/
