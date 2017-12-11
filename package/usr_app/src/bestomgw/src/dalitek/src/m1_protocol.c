@@ -160,7 +160,7 @@ void data_handle(m1_package_t* package)
         case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
         /*write*/
         case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-        case TYPE_DEV_WRITE: rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED) M1_write_to_AP(rootJson, db);break;
+        case TYPE_DEV_WRITE: /*rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED)*/rc = M1_write_to_AP(rootJson, db);break;
         case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
         case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
         case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
@@ -509,10 +509,10 @@ static int AP_report_ap_handle(payload_t data)
     /*获取数据库*/
     db = data.db;
     /*添加update/insert/delete监察*/
-    rc = sqlite3_update_hook(db, trigger_cb, "AP_report_ap_handle");
-    if(rc){
-        M1_LOG_ERROR( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
-    }
+    // rc = sqlite3_update_hook(db, trigger_cb, "AP_report_ap_handle");
+    // if(rc){
+    //     M1_LOG_ERROR( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
+    // }
 
     pIdJson = cJSON_GetObjectItem(data.pdu,"pId");
     if(pIdJson == NULL){
@@ -1498,7 +1498,7 @@ static int M1_report_dev_info(payload_t data)
 {
     M1_LOG_DEBUG(" M1_report_dev_info\n");
     int row_n;
-    int pduType = TYPE_M1_REPORT_DEV_INFO;
+    int pduType = TYPE_COMMON_OPERATE;
     int rc, ret = M1_PROTOCOL_OK;
     char* ap = NULL;
     char* account = NULL;
@@ -1662,6 +1662,8 @@ static int common_operate(payload_t data)
         if(strcmp(typeJson->valuestring, "device") == 0){
             if(strcmp(operateJson->valuestring, "delete") == 0){
                 /*通知到ap*/
+                if(m1_del_dev_from_ap(db, idJson->valuestring) != M1_PROTOCOL_OK)
+                    M1_LOG_ERROR("m1_del_dev_from_ap error\n");
                 /*删除all_dev中的子设备*/
                 sprintf(sql,"delete from all_dev where DEV_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
@@ -1780,6 +1782,9 @@ static int common_operate(payload_t data)
         }else if(strcmp(typeJson->valuestring, "ap") == 0){
             /*删除all_dev中设备*/
             if(strcmp(operateJson->valuestring, "delete") == 0){
+                /*通知ap*/
+                if(m1_del_ap(db, idJson->valuestring) != M1_PROTOCOL_OK)
+                    M1_LOG_ERROR("m1_del_ap error\n");
                 /*删除all_dev中的子设备*/
                 sprintf(sql,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
