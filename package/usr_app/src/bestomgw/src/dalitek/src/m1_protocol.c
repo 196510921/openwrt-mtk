@@ -1095,7 +1095,7 @@ static int APP_echo_dev_info_handle(payload_t data)
         devDataJson = cJSON_GetObjectItem(devdataArrayJson,"devId");
 
         M1_LOG_DEBUG("AP_ID:%s\n",APIdJson->valuestring);            
-        sprintf(sql, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
+        sprintf(sql, "update all_dev set ADDED = 1 and STATUS = \"ON\" where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
         M1_LOG_DEBUG("sql:%s\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errorMsg);
             if(rc != SQLITE_OK){
@@ -1109,7 +1109,7 @@ static int APP_echo_dev_info_handle(payload_t data)
                 devArrayJson = cJSON_GetArrayItem(devDataJson, j);
                 M1_LOG_DEBUG("  devId:%s\n",devArrayJson->valuestring);
 
-                sprintf(sql, "update all_dev set ADDED = 1 where DEV_ID = \"%s\" and AP_ID = \"%s\";",devArrayJson->valuestring,APIdJson->valuestring);
+                sprintf(sql, "update all_dev set ADDED = 1 and STATUS = \"ON\" where DEV_ID = \"%s\" and AP_ID = \"%s\";",devArrayJson->valuestring,APIdJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 //sqlite3_reset(stmt);
                 sqlite3_finalize(stmt);
@@ -1787,7 +1787,7 @@ static int common_operate(payload_t data)
                     M1_LOG_ERROR("m1_del_ap error\n");
                 ///*删除all_dev中的子设备*/
                 //sprintf(sql,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
-                sprintf(sql,"update all_dev set ADDED = 0 where AP_ID = \"%s\";",idJson->valuestring);
+                sprintf(sql,"update all_dev set ADDED = 0 and STATUS = \"OFF\" where AP_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
                 /*删除scenario_table中的子设备*/
