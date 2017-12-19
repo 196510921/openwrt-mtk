@@ -53,6 +53,7 @@
 #include "m1_protocol.h"
 
 #define MAX_DB_FILENAMR_LEN 255
+#define DEBUG_LOG_OUTPUT_TO_FD   0
 
 //全局变量	
 //threadpool thpool;//线程池
@@ -67,7 +68,7 @@ static void socket_poll(void);
 int main(int argc, char* argv[])
 {
 	int retval = 0;
-	pthread_t t1,t2,t3,t4,t5,t6,t7,t8;
+	pthread_t t1,t2,t3,t4;
 
 	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 #if DEBUG_LOG_OUTPUT_TO_FD
@@ -80,19 +81,11 @@ int main(int argc, char* argv[])
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
-	//pthread_create(&t5,NULL,sql_rd_handle,NULL);
-	//pthread_create(&t6,NULL,linkage_task,NULL);
-	//pthread_create(&t7,NULL,trigger_cb_handle,NULL);
-	//pthread_create(&t8,NULL,sql_wt_handle,NULL);
 
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
-	//spthread_join(t5, NULL);
-	//pthread_join(t6, NULL);
-	//pthread_join(t7, NULL);
-	//pthread_join(t8, NULL);
 	
 	return retval;
 }
@@ -152,10 +145,10 @@ static void printf_redirect(void)
 {
 	 fflush(stdout);  
      setvbuf(stdout,NULL,_IONBF,0);  
-     printf("test stdout\n");  
+     printf("log to: /tmp/log/m1_debug_log.txt\n");  
      int save_fd = dup(STDOUT_FILENO); 
      //int fd = open("/home/ubuntu/share/test1.txt",(O_RDWR | O_CREAT), 0644);  
-     int fd = open("/tmp/log/test1.txt",(O_RDWR | O_CREAT), 0644);  
+     int fd = open("/tmp/log/m1_debug_log.txt",(O_RDWR | O_CREAT), 0644);  
      if(fd == -1)
      	M1_LOG_ERROR( " open file failed\n");
      dup2(fd,STDOUT_FILENO); 

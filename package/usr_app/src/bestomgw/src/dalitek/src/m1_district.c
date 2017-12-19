@@ -44,10 +44,22 @@ int district_create_handle(payload_t data)
         M1_LOG_DEBUG("BEGIN\n");
     	/*获取收到数据包信息*/
         districtNameJson = cJSON_GetObjectItem(data.pdu, "districtName");
+        if(districtNameJson == NULL){
+            M1_LOG_DEBUG("districtNameJson NULL\n");
+            goto Finish;
+        }
         M1_LOG_DEBUG("districtName:%s\n",districtNameJson->valuestring);
         disPicJson = cJSON_GetObjectItem(data.pdu, "disPic");
+        if(disPicJson == NULL){
+            M1_LOG_DEBUG("disPicJson NULL\n");
+            goto Finish;
+        }
         M1_LOG_DEBUG("dis_pic:%s\n",disPicJson->valuestring);
         apIdArrayJson = cJSON_GetObjectItem(data.pdu, "apId");
+        if(apIdArrayJson == NULL){
+            M1_LOG_DEBUG("apIdArrayJson NULL\n");
+            goto Finish;
+        }
         number1 = cJSON_GetArraySize(apIdArrayJson);
         M1_LOG_DEBUG("number1:%d\n",number1);
 
@@ -117,6 +129,7 @@ int app_req_district(payload_t data)
     char* sql_2 = (char*)malloc(300);
     char* sql_3 = (char*)malloc(300);
     char* dis_pic = NULL;
+    char* account = NULL;
     int pduType = TYPE_M1_REPORT_DISTRICT_INFO;
     cJSON * pJsonRoot = NULL;
     cJSON * pduJsonObject = NULL;
@@ -125,7 +138,7 @@ int app_req_district(payload_t data)
     cJSON*  apInfoObject= NULL;
     cJSON*  apInfoArrayObject= NULL;
     sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
+    sqlite3_stmt* stmt = NULL, *stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL,*stmt_4 = NULL;
 
     db = data.db;
     pJsonRoot = cJSON_CreateObject();
@@ -165,12 +178,11 @@ int app_req_district(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
     /*获取用户账户信息*/
-    char* account = NULL;
     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     M1_LOG_DEBUG( "%s\n", sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_3, NULL);
-    if(thread_sqlite3_step(&stmt_3, db) == SQLITE_ROW){
-        account =  sqlite3_column_text(stmt_3, 0);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_4, NULL);
+    if(thread_sqlite3_step(&stmt_4, db) == SQLITE_ROW){
+        account =  sqlite3_column_text(stmt_4, 0);
     }
     if(account == NULL){
         M1_LOG_ERROR( "user account do not exist\n");    
@@ -276,6 +288,7 @@ int app_req_district(payload_t data)
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
     sqlite3_finalize(stmt_3);
+    sqlite3_finalize(stmt_4);
     cJSON_Delete(pJsonRoot);
 
     return ret;

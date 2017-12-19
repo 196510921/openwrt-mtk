@@ -12,7 +12,8 @@
 #include "m1_common_log.h"
 
 /*MACRO**********************************************************************************************************/
-#define SQL_CLEAR_TIME     (30 * 60)
+#define SQL_CLEAR_TIME     (20 * 60)
+#define SQL_CLEAR_INTERVAL (1*60)
 
 /*数据库冗余删除*/
 static int sql_history_data_del(char* time, char* tableName)
@@ -34,15 +35,37 @@ static int sql_history_data_del(char* time, char* tableName)
     }
 
     sprintf(sql,"delete from \"%s\" where TIME < \"%s\";", tableName, time);
-    if(sqlite3_exec(db, sql, NULL, NULL, &errorMsg) == SQLITE_OK){
-        M1_LOG_DEBUG("sql_history_data_del ok\n");
+    M1_LOG_FATAL("sql:%s\n",sql);
+#if 0
+    if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
+        M1_LOG_DEBUG("BEGIN\n");
+#endif        
+        if(sqlite3_exec(db, sql, NULL, NULL, &errorMsg) == SQLITE_OK){
+            //M1_LOG_DEBUG("sql_history_data_del ok\n");
+            M1_LOG_FATAL("sql_history_data_del ok\n");
+        }else{
+            ret = M1_PROTOCOL_FAILED;
+            M1_LOG_ERROR("sql_history_data_del falied:%s\n",errorMsg);
+        }
+#if 0
+        if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+                M1_LOG_DEBUG("END\n");
+            }else{
+                M1_LOG_DEBUG("ROLLBACK\n");
+                if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
+                    M1_LOG_DEBUG("ROLLBACK OK\n");
+                    sqlite3_free(errorMsg);
+                }else{
+                    M1_LOG_ERROR("ROLLBACK FALIED\n");
+                }
+            }
     }else{
-        ret = M1_PROTOCOL_FAILED;
-        M1_LOG_ERROR("sql_history_data_del falied:%s\n",errorMsg);
-    }
+        M1_LOG_ERROR("errorMsg:");
+    } 
+#endif
 
     Finish:
-    free(errorMsg);
+    sqlite3_free(errorMsg);
     free(sql);
 
     sqlite3_close(db);
@@ -68,21 +91,22 @@ int sql_backup(void)
         preTime = time.tv_sec;       
     }
 
-    M1_LOG_DEBUG("time:%05d, preTime:%05d\n",time.tv_sec, preTime);
-    if(time.tv_sec - preTime < SQL_CLEAR_TIME){
-        return ret;
+    //M1_LOG_DEBUG("time:%05d, preTime:%05d\n",time.tv_sec, preTime);
+    M1_LOG_FATAL("time:%05d, preTime:%05d\n",time.tv_sec, preTime);
+    if((time.tv_sec - preTime) < SQL_CLEAR_INTERVAL){
+        goto Finish;
     }else{
         preTime = time.tv_sec;
-        /*基于当前时间向后半小时*/
         time.tv_sec -= SQL_CLEAR_TIME;
         localtime_r(&time.tv_sec, &nowTime);    
 
-        M1_LOG_DEBUG("%04d%02d%02d%02d%02d%02d", nowTime.tm_year + 1900, nowTime.tm_mon+1, nowTime.tm_mday, 
+        sprintf(_time,"%04d%02d%02d%02d%02d%02d", nowTime.tm_year + 1900, nowTime.tm_mon+1, nowTime.tm_mday, 
           nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
 
         ret = sql_history_data_del(_time, table);
     }
 
+    Finish:
     free(_time);
 
     return ret;

@@ -13,7 +13,7 @@ int m1_del_dev_from_ap(sqlite3* db, char* devId)
 	M1_LOG_DEBUG("m1_del_dev_from_ap\n");
 	int clientFd = 0;
 	int rc = 0,ret = M1_PROTOCOL_OK;
-	int pduType = TYPE_M1_REPORT_DEV_INFO;
+	int pduType = TYPE_COMMON_OPERATE;
 	char* apId = NULL;
 	char* sql = (char*)malloc(300);
 	sqlite3_stmt* stmt = NULL;
@@ -116,7 +116,7 @@ int m1_del_ap(sqlite3* db, char* apId)
 
 	int clientFd = 0;
 	int rc = 0, ret = M1_PROTOCOL_OK;
-	int pduType = TYPE_M1_REPORT_DEV_INFO;
+	int pduType = TYPE_COMMON_OPERATE;
 	char* sql = (char*)malloc(300);
 	sqlite3_stmt* stmt = NULL;
 	cJSON* pJsonRoot = NULL;

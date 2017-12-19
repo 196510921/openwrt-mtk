@@ -57,7 +57,7 @@
 #include <errno.h>
 #include <malloc.h>
 
-//#include "thpool.h"
+#include "interface_srpcserver.h"
 #include "m1_common_log.h"
 #include "socket_server.h"
 #include "m1_protocol.h"
@@ -421,6 +421,7 @@ void thread_socketSeverSend(void)
 			if (rtn < 0)
 			{
 				M1_LOG_ERROR("ERROR writing to socket %d\n", package->clientFd);
+				client_block_destory(package->clientFd);
 			}
 		}
 		M1_LOG_DEBUG("socketSeverSend--\n");		

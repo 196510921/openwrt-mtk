@@ -55,7 +55,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         if(m1LogLevel <= M1_LOG_LEVEL_ERROR)\
         {\
             printf("[error] %s:%d %s()| "format"\n", __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
-            fflush(stdout);\
+            fflush(stderr);\
         }\
     }
 
@@ -64,7 +64,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         if(m1LogLevel <= M1_LOG_LEVEL_FATAL)\
         {\
             printf("[notice] %s:%d %s()| "format"\n", __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
-            fflush(stdout);\
+            fflush(stderr);\
         }\
     }
 #else
@@ -100,7 +100,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         if(m1LogLevel <= M1_LOG_LEVEL_ERROR)\
         {\
             printf("[error]:%d %s()| "format"\n", __LINE__, __FUNCTION__, ##__VA_ARGS__);\
-            fflush(stdout);\
+            fflush(stderr);\
         }\
     }
 
@@ -109,7 +109,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         if(m1LogLevel <= M1_LOG_LEVEL_FATAL)\
         {\
             printf("[notice]:%d %s()| "format"\n", __LINE__, __FUNCTION__, ##__VA_ARGS__);\
-            fflush(stdout);\
+            fflush(stderr);\
         }\
     }
 

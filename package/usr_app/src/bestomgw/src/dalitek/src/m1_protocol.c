@@ -18,7 +18,7 @@
 #define SQL_BACKUP           0
 #define M1_PROTOCOL_DEBUG    1
 #define HEAD_LEN             3
-#define AP_HEARTBEAT_HANDLE  1
+#define AP_HEARTBEAT_HANDLE  0
 /*Private function***********************************************************************************************/
 static int AP_report_data_handle(payload_t data);
 static int APP_read_handle(payload_t data);
@@ -259,7 +259,6 @@ static int AP_report_data_handle(payload_t data)
     }
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         M1_LOG_DEBUG("BEGIN\n");
-        sqlite3_free(errorMsg);
 
         id = sql_id(db, sql);
         M1_LOG_DEBUG("id:%d\n",id);
@@ -866,29 +865,7 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
         /*response to client*/
         socketSeverSend((uint8*)p, strlen(p), clientFd);
     }
-    // row_n = sql_row_number(db, sql);
-    // M1_LOG_DEBUG("row_n:%d\n",row_n);
-    // if(row_n > 0){
-    //     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL);
-    //     rc = thread_sqlite3_step(&stmt_1, db);
-    //     if(rc == SQLITE_ROW){
-    //         clientFd = sqlite3_column_int(stmt_1,0);
-    //     }
-    
 
-    //     char * p = cJSON_PrintUnformatted(data);
-        
-    //     if(NULL == p)
-    //     {    
-    //         cJSON_Delete(data);
-    //         ret = M1_PROTOCOL_FAILED;
-    //         goto Finish;  
-    //     }
-
-    //     M1_LOG_DEBUG("string:%s\n",p);
-    //     /*response to client*/
-    //     socketSeverSend((uint8*)p, strlen(p), clientFd);
-    // }
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
@@ -1096,7 +1073,7 @@ static int APP_echo_dev_info_handle(payload_t data)
         devDataJson = cJSON_GetObjectItem(devdataArrayJson,"devId");
 
         M1_LOG_DEBUG("AP_ID:%s\n",APIdJson->valuestring);            
-        sprintf(sql, "update all_dev set ADDED = 1 and STATUS = \"ON\" where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
+        sprintf(sql, "update all_dev set ADDED = 1, STATUS = \"ON\" where DEV_ID = \"%s\" and AP_ID = \"%s\";",APIdJson->valuestring,APIdJson->valuestring);
         M1_LOG_DEBUG("sql:%s\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errorMsg);
             if(rc != SQLITE_OK){
@@ -1110,7 +1087,7 @@ static int APP_echo_dev_info_handle(payload_t data)
                 devArrayJson = cJSON_GetArrayItem(devDataJson, j);
                 M1_LOG_DEBUG("  devId:%s\n",devArrayJson->valuestring);
 
-                sprintf(sql, "update all_dev set ADDED = 1 and STATUS = \"ON\" where DEV_ID = \"%s\" and AP_ID = \"%s\";",devArrayJson->valuestring,APIdJson->valuestring);
+                sprintf(sql, "update all_dev set ADDED = 1, STATUS = \"ON\" where DEV_ID = \"%s\" and AP_ID = \"%s\";",devArrayJson->valuestring,APIdJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 //sqlite3_reset(stmt);
                 sqlite3_finalize(stmt);
@@ -1499,7 +1476,7 @@ static int M1_report_dev_info(payload_t data)
 {
     M1_LOG_DEBUG(" M1_report_dev_info\n");
     int row_n;
-    int pduType = TYPE_COMMON_OPERATE;
+    int pduType = TYPE_M1_REPORT_DEV_INFO;
     int rc, ret = M1_PROTOCOL_OK;
     char* ap = NULL;
     char* account = NULL;
@@ -1616,7 +1593,7 @@ static int M1_report_dev_info(payload_t data)
 static int common_operate(payload_t data)
 {
     M1_LOG_DEBUG("common_operate\n");
-
+    int pduType = TYPE_COMMON_OPERATE;
     int id;
     int rc,ret = M1_PROTOCOL_OK; 
     int number1,i;
@@ -1788,7 +1765,7 @@ static int common_operate(payload_t data)
                     M1_LOG_ERROR("m1_del_ap error\n");
                 ///*删除all_dev中的子设备*/
                 //sprintf(sql,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
-                sprintf(sql,"update all_dev set ADDED = 0 and STATUS = \"OFF\" where AP_ID = \"%s\";",idJson->valuestring);
+                sprintf(sql,"update all_dev set ADDED = 0, STATUS = \"OFF\" where AP_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
                 /*删除scenario_table中的子设备*/
@@ -1990,9 +1967,9 @@ static int ap_heartbeat_handle(payload_t data)
     Finish:
     free(sql);
     free(time);
-#endif
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
+#endif
     return M1_PROTOCOL_OK;
 }
 
