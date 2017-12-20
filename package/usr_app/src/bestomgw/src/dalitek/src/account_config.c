@@ -573,14 +573,15 @@ int app_req_dis_name(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
 
+
     db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
         M1_LOG_ERROR("pJsonRoot NULL\n");
-        cJSON_Delete(pJsonRoot);
-        return M1_PROTOCOL_FAILED;
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
     }
     cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
     cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
@@ -653,6 +654,7 @@ int app_req_dis_name(payload_t data)
         cJSON_AddStringToObject(districtObject, "disName", district);
         sprintf(sql_2,"select DIS_PIC from district_table where DIS_NAME = \"%s\" order by ID desc limit 1;", district);
         M1_LOG_DEBUG("sql:%s\n", sql_2);
+        sqlite3_finalize(stmt_2);
         sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
         rc = thread_sqlite3_step(&stmt_2, db);
         if(rc != SQLITE_ROW){
@@ -680,6 +682,7 @@ int app_req_dis_name(payload_t data)
     M1_LOG_DEBUG("string:%s\n",p);
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
     Finish:
+    free(p);
     free(sql);
     free(sql_1);
     free(sql_2);
@@ -868,6 +871,7 @@ int app_req_dis_dev(payload_t data)
     int pduType = TYPE_M1_REPORT_DIS_DEV; 
     int number, i;
     int rc,ret = M1_PROTOCOL_OK;
+    char* account = NULL;
     char* sql = (char*)malloc(300);
     char* sql_1 = (char*)malloc(300);
     char* sql_2 = (char*)malloc(300);
@@ -930,7 +934,6 @@ int app_req_dis_dev(payload_t data)
     M1_LOG_DEBUG("number:%d\n",number);
 
     /*获取用户账户信息*/
-    char* account = NULL;
     sprintf(sql_3,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     M1_LOG_DEBUG( "%s\n", sql_3);
     sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
@@ -1006,7 +1009,8 @@ int app_req_dis_dev(payload_t data)
             sqlite3_finalize(stmt_1);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
             rc = thread_sqlite3_step(&stmt_1, db);
-            if(rc != SQLITE_ERROR){
+            //if(rc != SQLITE_ERROR){
+            if(rc == SQLITE_ROW){
                 pId = sqlite3_column_text(stmt_1, 0);
                 if(pId != NULL)
                     cJSON_AddStringToObject(apInfoObject, "pId", pId);
@@ -1067,6 +1071,7 @@ int app_req_dis_dev(payload_t data)
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
+    free(p);
     free(sql);
     free(sql_1);
     free(sql_2);

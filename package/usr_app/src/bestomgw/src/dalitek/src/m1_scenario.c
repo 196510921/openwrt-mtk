@@ -234,13 +234,24 @@ int scenario_create_handle(payload_t data)
 	db = data.db;
     /*获取场景名称*/
     scenNameJson = cJSON_GetObjectItem(data.pdu, "scenName");
+    if(scenNameJson == NULL){
+    	ret = M1_PROTOCOL_FAILED;
+		goto Finish;	
+    }
     M1_LOG_DEBUG("scenName:%s\n",scenNameJson->valuestring);
 	/*获取场景图标*/
 	scenPicJson = cJSON_GetObjectItem(data.pdu, "scenPic");
+    if(scenPicJson == NULL){
+    	ret = M1_PROTOCOL_FAILED;
+		goto Finish;	
+    }
     M1_LOG_DEBUG("scenPic:%s\n",scenPicJson->valuestring);
 	/*获取数据包中的alarm信息*/
 	alarmJson = cJSON_GetObjectItem(data.pdu, "alarm");
-
+	if(alarmJson == NULL){
+    	ret = M1_PROTOCOL_FAILED;
+		goto Finish;	
+    }
 	/*将alarm信息存入alarm表中*/
 	/*获取table id*/
 	sql = "select ID from scen_alarm_table order by ID desc limit 1";

@@ -161,7 +161,7 @@ void data_handle(m1_package_t* package)
         case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
         /*write*/
         case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-        case TYPE_DEV_WRITE: /*rc = APP_write_handle(pdu); if(rc != M1_PROTOCOL_FAILED)*/rc = M1_write_to_AP(rootJson, db);break;
+        case TYPE_DEV_WRITE: rc = M1_write_to_AP(rootJson, db);APP_write_handle(pdu);break;
         case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
         case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
         case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
@@ -820,8 +820,20 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     cJSON* devDataJson = NULL;
     cJSON* dataArrayJson = NULL;
     cJSON* devIdJson = NULL;
+    
+    if(data == NULL){
+        M1_LOG_ERROR("data NULL");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+
     /*更改sn*/
     snJson = cJSON_GetObjectItem(data, "sn");
+    if(snJson == NULL){
+        M1_LOG_ERROR("snJson NULL");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;    
+    }
     cJSON_SetIntValue(snJson, sn);
     /*获取clientFd*/
     pduJson = cJSON_GetObjectItem(data, "pdu");
@@ -911,12 +923,12 @@ static int APP_write_handle(payload_t data)
         goto Finish;  
     }
     /*添加update/insert/delete监察*/
-    rc = sqlite3_update_hook(db, trigger_cb, "APP_write_handle");
-    if(rc){
-        M1_LOG_ERROR( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;  
-    }
+    // rc = sqlite3_update_hook(db, trigger_cb, "APP_write_handle");
+    // if(rc){
+    //     M1_LOG_ERROR( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));
+    //     ret = M1_PROTOCOL_FAILED;
+    //     goto Finish;  
+    // }
 
     sql = "select ID from param_table order by ID desc limit 1";
     id = sql_id(db, sql);
@@ -2283,7 +2295,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 
     do{
         rc = sqlite3_step(*stmt);   
-        M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+        M1_LOG_INFO("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
         if(rc == SQLITE_BUSY || rc == SQLITE_LOCKED || rc == SQLITE_MISUSE){
             sqlite3_reset(*stmt);
             sleep_acount++;
@@ -2294,7 +2306,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 
     if(rc == SQLITE_BUSY || rc == SQLITE_MISUSE || rc == SQLITE_LOCKED){
         if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
-            M1_LOG_DEBUG("ROLLBACK OK\n");
+            M1_LOG_INFO("ROLLBACK OK\n");
             sqlite3_free(errorMsg);
         }else{
             M1_LOG_ERROR("ROLLBACK FALIED\n");

@@ -12,7 +12,7 @@
 #include "m1_common_log.h"
 
 /*MACRO**********************************************************************************************************/
-#define SQL_CLEAR_TIME     (20 * 60)
+#define SQL_CLEAR_TIME     (30 * 60)
 #define SQL_CLEAR_INTERVAL (1*60)
 
 /*数据库冗余删除*/
