@@ -443,7 +443,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	header = (((header >> 8) & 0xff) | ((header << 8) & 0xff00)) & 0xffff;
 	msg_len = (((len >> 8) & 0xff) | ((len << 8) & 0xff00)) & 0xffff;
 
-	M1_LOG_INFO("Msg len:%05d\n",msg_len);
+	M1_LOG_DEBUG("Msg len:%05d\n",msg_len);
 	send_buf = (char*)malloc(len + 4);
 	memcpy(send_buf, &header, 2);
 	memcpy((send_buf+2), &msg_len, 2);

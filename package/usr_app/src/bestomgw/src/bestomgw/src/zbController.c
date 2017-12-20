@@ -61,6 +61,7 @@
 
 static void printf_redirect(void);
 static void socket_poll(void);
+static void debug_switch(void);
 
 #include "interface_srpcserver.h"
 #include "socket_server.h"
@@ -68,12 +69,13 @@ static void socket_poll(void);
 int main(int argc, char* argv[])
 {
 	int retval = 0;
-	pthread_t t1,t2,t3,t4;
+	pthread_t t1,t2,t3,t4,t5;
 
 	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 #if DEBUG_LOG_OUTPUT_TO_FD
 	printf_redirect();
 #endif
+	
 	SRPC_Init();
 	m1_protocol_init();
 
@@ -81,11 +83,17 @@ int main(int argc, char* argv[])
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
+#if (!DEBUG_LOG_OUTPUT_TO_FD)
+	pthread_create(&t5,NULL,debug_switch,NULL);
+#endif
 
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
+#if (!DEBUG_LOG_OUTPUT_TO_FD)
+	pthread_join(t5, NULL);
+#endif
 	
 	return retval;
 }
@@ -154,6 +162,39 @@ static void printf_redirect(void)
      dup2(fd,STDOUT_FILENO); 
      printf("test file\n");  
 }
+
+extern m1_log_level_t m1LogLevel;
+static void debug_switch()
+{
+	char* input_info = (char*)malloc(10); 
+	//rc = read(debug_fd, input_info, 10);
+	while(gets(input_info) != NULL){
+		printf("User input:%s\n",input_info);
+	
+		if(strcmp(input_info,"D") == 0){
+			m1LogLevel = M1_LOG_LEVEL_DEBUG;
+			M1_LOG_DEBUG( " ---------OUTPUT  SWITCH TO DEBUG MODE-------------\n");
+		}else if(strcmp(input_info,"I") == 0){
+			m1LogLevel = M1_LOG_LEVEL_INFO;
+			M1_LOG_DEBUG( " ---------OUTPUT  SWITCH TO DEBUG MODE-------------\n");
+			M1_LOG_INFO( " ---------OUTPUT  SWITCH TO INFO MODE-------------\n");
+		}else if(strcmp(input_info,"W") == 0){
+			m1LogLevel = M1_LOG_LEVEL_WARN;
+			M1_LOG_DEBUG( " ---------OUTPUT  SWITCH TO DEBUG MODE-------------\n");
+			M1_LOG_INFO( " ---------OUTPUT  SWITCH TO INFO MODE-------------\n");
+			M1_LOG_WARN( " ---------OUTPUT  SWITCH TO WARN MODE-------------\n");
+		}else if(strcmp(input_info,"E") == 0){
+			m1LogLevel = M1_LOG_LEVEL_ERROR;
+			M1_LOG_DEBUG( " ---------OUTPUT  SWITCH TO DEBUG MODE-------------\n");
+			M1_LOG_INFO( " ---------OUTPUT  SWITCH TO INFO MODE-------------\n");
+			M1_LOG_WARN( " ---------OUTPUT  SWITCH TO WARN MODE-------------\n");
+			M1_LOG_ERROR( " ---------OUTPUT  SWITCH TO ERROR MODE-------------\n");
+		}
+		sleep(2);
+	}
+	free(input_info);
+}
+
 
 uint8_t tlIndicationCb(epInfo_t *epInfo)
 {

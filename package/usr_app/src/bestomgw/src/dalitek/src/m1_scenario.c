@@ -965,13 +965,19 @@ int app_exec_scenario(payload_t data)
 	int ret = M1_PROTOCOL_OK,rc;
     sqlite3* db = NULL;
 
-    db = data.db;
+    if(data.pdu == NULL){
+    	M1_LOG_DEBUG( "data NULL\n");	
+    	ret = M1_PROTOCOL_FAILED;
+		goto Finish;
+    }
 	scenario = data.pdu->valuestring;
 	if(scenario == NULL){
 		ret = M1_PROTOCOL_FAILED;
 		goto Finish;
 	}
 	M1_LOG_DEBUG( "scenario:%s\n", scenario);
+	
+	db = data.db;
 	ret = scenario_exec(scenario, db);
 
 	Finish:

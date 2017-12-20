@@ -1718,7 +1718,7 @@ void SRPC_RxCB(int clientFd)
 	char buf[1024*10] = {0};
 	client_block_t* client_block = NULL;
 
-	M1_LOG_INFO("SRPC_RxCB++[%x]\n", clientFd);
+	M1_LOG_DEBUG("SRPC_RxCB++[%x]\n", clientFd);
 
 	rtn = ioctl(clientFd, FIONREAD, &byteToRead);
 
@@ -1726,7 +1726,7 @@ void SRPC_RxCB(int clientFd)
 	{
 		M1_LOG_ERROR("SRPC_RxCB: Socket error\n");
 	}
-	M1_LOG_INFO("byteToRead:%d\n",byteToRead);
+	M1_LOG_DEBUG("byteToRead:%d\n",byteToRead);
 
 	if(byteToRead > 10*1024){
 		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
@@ -1751,7 +1751,7 @@ void SRPC_RxCB(int clientFd)
 	if(rc != TCP_SERVER_SUCCESS)
 		M1_LOG_ERROR("client_write failed\n");
 
-	M1_LOG_INFO("SRPC_RxCB--\n");
+	M1_LOG_DEBUG("SRPC_RxCB--\n");
 
 	return;
 }
