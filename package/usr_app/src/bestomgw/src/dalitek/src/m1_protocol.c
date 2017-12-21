@@ -816,7 +816,6 @@ static int APP_read_handle(payload_t data)
     M1_LOG_DEBUG("string:%s\n",p);
     socketSeverSend((uint8*)p, strlen(p), clientFd);
     Finish:
-    free(p);
     free(sql);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
@@ -863,19 +862,16 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
     /*get apId*/
     sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;",devIdJson->valuestring);
-    // row_n = sql_row_number(db, sql);
-    // M1_LOG_DEBUG("row_n:%d\n",row_n);
-    // if(row_n > 0){ 
-        sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        rc = thread_sqlite3_step(&stmt,db);
-        if(rc == SQLITE_ROW){
-            ap_id = sqlite3_column_text(stmt,0);
-            M1_LOG_DEBUG("ap_id%s\n",ap_id);
-        }else{
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish; 
-        }
-    // }
+
+    sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    rc = thread_sqlite3_step(&stmt,db);
+    if(rc == SQLITE_ROW){
+        ap_id = sqlite3_column_text(stmt,0);
+        M1_LOG_DEBUG("ap_id%s\n",ap_id);
+    }else{
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
 
     /*get clientFd*/
     sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1;",ap_id);
@@ -1228,63 +1224,60 @@ static int APP_req_added_dev_info_handle(payload_t data)
     }
     
     sprintf(sql_1,"select * from all_dev where DEV_ID  = AP_ID and ADDED = 1 and ACCOUNT = \"%s\";",account);
-    // row_n = sql_row_number(db, sql_1);
-    // M1_LOG_DEBUG("row_n:%d\n",row_n);
-    // if(row_n > 0){ 
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
-        while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
-            /*add ap infomation: port,ap_id,ap_name,time */
-            devDataObject = cJSON_CreateObject();
-            if(NULL == devDataObject)
-            {
-                // create object faild, exit
-                M1_LOG_ERROR("devDataObject NULL\n");
-                cJSON_Delete(devDataObject);
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish;
-            }
-            cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-            cJSON_AddNumberToObject(devDataObject, "pId", sqlite3_column_int(stmt_1, 4));
-            cJSON_AddStringToObject(devDataObject, "apId",  (const char*)sqlite3_column_text(stmt_1, 3));
-            cJSON_AddStringToObject(devDataObject, "apName", (const char*)sqlite3_column_text(stmt_1, 2));
-            
-            /*create devData array*/
-            devArray = cJSON_CreateArray();
-            if(NULL == devArray)
-            {
-                M1_LOG_ERROR("devArry NULL\n");
-                cJSON_Delete(devArray);
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish;
-            }
-            /*add devData array to pdu pbject*/
-            cJSON_AddItemToObject(devDataObject, "dev", devArray);
-            /*sqlite3*/
-            sprintf(sql_2,"select * from all_dev where AP_ID  = \"%s\" and AP_ID != DEV_ID and ADDED = 1 and ACCOUNT = \"%s\";",sqlite3_column_text(stmt_1, 3),account);
-            M1_LOG_DEBUG("sql_2:%s\n",sql_2);
-            // row_n = sql_row_number(db, sql_1);
-            // M1_LOG_DEBUG("row_n:%d\n",row_n);
-            // if(row_n > 0){ 
-                sqlite3_prepare_v2(db, sql_2, strlen(sql_2),&stmt_2, NULL);
-                while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
-                     /*add ap infomation: port,ap_id,ap_name,time */
-                    devObject = cJSON_CreateObject();
-                    if(NULL == devObject)
-                    {
-                        M1_LOG_ERROR("devObject NULL\n");
-                        cJSON_Delete(devObject);
-                        ret = M1_PROTOCOL_FAILED;
-                        goto Finish;
-                    }
-                    cJSON_AddItemToArray(devArray, devObject); 
-                    cJSON_AddNumberToObject(devObject, "pId", sqlite3_column_int(stmt_2, 4));
-                    cJSON_AddStringToObject(devObject, "devId", (const char*)sqlite3_column_text(stmt_2, 1));
-                    cJSON_AddStringToObject(devObject, "devName", (const char*)sqlite3_column_text(stmt_2, 2));
-                }
-            // }
 
+    sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
+    while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
+        /*add ap infomation: port,ap_id,ap_name,time */
+        devDataObject = cJSON_CreateObject();
+        if(NULL == devDataObject)
+        {
+            // create object faild, exit
+            M1_LOG_ERROR("devDataObject NULL\n");
+            cJSON_Delete(devDataObject);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
         }
-    // }
+        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
+        cJSON_AddNumberToObject(devDataObject, "pId", sqlite3_column_int(stmt_1, 4));
+        cJSON_AddStringToObject(devDataObject, "apId",  (const char*)sqlite3_column_text(stmt_1, 3));
+        cJSON_AddStringToObject(devDataObject, "apName", (const char*)sqlite3_column_text(stmt_1, 2));
+            
+        /*create devData array*/
+        devArray = cJSON_CreateArray();
+        if(NULL == devArray)
+        {
+            M1_LOG_ERROR("devArry NULL\n");
+            cJSON_Delete(devArray);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+        /*add devData array to pdu pbject*/
+        cJSON_AddItemToObject(devDataObject, "dev", devArray);
+        /*sqlite3*/
+        sprintf(sql_2,"select * from all_dev where AP_ID  = \"%s\" and AP_ID != DEV_ID and ADDED = 1 and ACCOUNT = \"%s\";",sqlite3_column_text(stmt_1, 3),account);
+        M1_LOG_DEBUG("sql_2:%s\n",sql_2);
+
+        sqlite3_finalize(stmt_2);
+        sqlite3_prepare_v2(db, sql_2, strlen(sql_2),&stmt_2, NULL);
+        while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
+             /*add ap infomation: port,ap_id,ap_name,time */
+            devObject = cJSON_CreateObject();
+            if(NULL == devObject)
+            {
+                M1_LOG_ERROR("devObject NULL\n");
+                cJSON_Delete(devObject);
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish;
+            }
+            cJSON_AddItemToArray(devArray, devObject); 
+            cJSON_AddNumberToObject(devObject, "pId", sqlite3_column_int(stmt_2, 4));
+            cJSON_AddStringToObject(devObject, "devId", (const char*)sqlite3_column_text(stmt_2, 1));
+            cJSON_AddStringToObject(devObject, "devName", (const char*)sqlite3_column_text(stmt_2, 2));
+        }
+         
+
+    }
+   
 
     char * p = cJSON_PrintUnformatted(pJsonRoot);
     if(NULL == p)
@@ -1344,50 +1337,45 @@ static int APP_net_control(payload_t data)
     M1_LOG_DEBUG("value:%d\n",valueJson->valueint);  
 
     sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",apIdJson->valuestring);
-    // row_n = sql_row_number(db, sql);
-    // M1_LOG_DEBUG("row_n:%d\n",row_n);
-    // if(row_n > 0){ 
-        sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
-        rc = thread_sqlite3_step(&stmt, db);
-        M1_LOG_DEBUG("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
-        if(rc == SQLITE_ROW){
-            clientFd = sqlite3_column_int(stmt,0);
-        }else{
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
-        /*create json*/
-        pJsonRoot = cJSON_CreateObject();
-        if(NULL == pJsonRoot)
-        {
-            M1_LOG_ERROR("pJsonRoot NULL\n");
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
 
-        cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
-        cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
-        cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
-        cJSON_AddNumberToObject(pJsonRoot, "cmdType", 2);
-        /*create pdu object*/
-        pduJsonObject = cJSON_CreateObject();
-        if(NULL == pduJsonObject)
-        {
-            // create object faild, exit
-            cJSON_Delete(pduJsonObject);
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
-        /*add pdu to root*/
-        cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
-        /*add pdu type to pdu object*/
-        cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
-        /*add dev data to pdu object*/
-        cJSON_AddNumberToObject(pduJsonObject, "devData", valueJson->valueint);
+    sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    rc = thread_sqlite3_step(&stmt, db);
+    M1_LOG_DEBUG("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+    if(rc == SQLITE_ROW){
+        clientFd = sqlite3_column_int(stmt,0);
+    }else{
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*create json*/
+    pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        M1_LOG_ERROR("pJsonRoot NULL\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
 
-    // }else{
-        
-    // }
+    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
+    cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "cmdType", 2);
+    /*create pdu object*/
+    pduJsonObject = cJSON_CreateObject();
+    if(NULL == pduJsonObject)
+    {
+        // create object faild, exit
+        cJSON_Delete(pduJsonObject);
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*add pdu to root*/
+    cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
+    /*add pdu type to pdu object*/
+    cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
+    /*add dev data to pdu object*/
+    cJSON_AddNumberToObject(pduJsonObject, "devData", valueJson->valueint);
+
 
     char * p = cJSON_PrintUnformatted(pJsonRoot);
     
@@ -2133,11 +2121,19 @@ static int app_change_device_name(payload_t data)
     cJSON* devIdObject = NULL;
     cJSON* devNameObject = NULL;
 
-    db = data.db;
-    devIdObject = data.pdu;   
-    if(devIdObject == NULL){
+    if(data.pdu == NULL){
+        M1_LOG_ERROR("data NULL\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
+    }
+    db = data.db;   
+
+    /*获取devId*/
+    devIdObject = cJSON_GetObjectItem(data.pdu, "devId");
+    if(devIdObject == NULL){
+        M1_LOG_ERROR("devIdObject NULL\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;   
     }
     M1_LOG_DEBUG("devId:%s\n",devIdObject->valuestring);
     devNameObject = cJSON_GetObjectItem(data.pdu, "devName");   
@@ -2145,7 +2141,7 @@ static int app_change_device_name(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    M1_LOG_DEBUG("devId:%s\n",devNameObject->valuestring);
+    M1_LOG_DEBUG("devName:%s\n",devNameObject->valuestring);
 
     /*修改all_dev设备名称*/
     sprintf(sql,"update all_dev set DEV_NAME = \"%s\" where DEV_ID = \"%s\";",devNameObject->valuestring, devIdObject->valuestring);

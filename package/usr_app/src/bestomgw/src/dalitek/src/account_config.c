@@ -685,7 +685,6 @@ int app_req_dis_name(payload_t data)
     M1_LOG_DEBUG("string:%s\n",p);
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
     Finish:
-    free(p);
     free(sql);
     free(sql_1);
     free(sql_2);
@@ -831,6 +830,7 @@ int app_req_dis_scen_name(payload_t data)
             cJSON_AddStringToObject(scenJson, "scenName", scenario);
             /*添加场景标识到组中*/
             sprintf(sql_2,"select SCEN_PIC from scenario_table where SCEN_NAME = \"%s\" order by ID desc limit 1;", scenario);
+            sqlite3_finalize(stmt_2);
             sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
             rc = thread_sqlite3_step(&stmt_2, db);
             if(rc != SQLITE_ROW)
@@ -1074,7 +1074,6 @@ int app_req_dis_dev(payload_t data)
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
-    free(p);
     free(sql);
     free(sql_1);
     free(sql_2);
@@ -1227,8 +1226,6 @@ int app_change_user_key(payload_t data)
     /*获取账户信息*/
     sprintf(sql,"select KEY, KEY_AUTH from account_table where account = \"%s\" order by ID desc limit 1;", account);
     M1_LOG_DEBUG( "%s\n", sql);
-    //sqlite3_reset(stmt);
-    sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
         M1_LOG_ERROR( "SQLITE_ERROR\n");
@@ -1268,8 +1265,6 @@ int app_change_user_key(payload_t data)
     }
     sprintf(sql,"update account_table set KEY = \"%s\" where account = \"%s\";",newKeyJson->valuestring, account);
     M1_LOG_DEBUG( "%s\n", sql);
-    //sqlite3_reset(stmt);
-    // sqlite3_finalize(stmt);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt2, NULL);
     if(thread_sqlite3_step(&stmt2, db) == SQLITE_ERROR){
         ret = M1_PROTOCOL_FAILED;

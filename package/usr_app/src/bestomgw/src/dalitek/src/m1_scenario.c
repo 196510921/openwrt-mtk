@@ -185,7 +185,7 @@ int scenario_exec(char* data, sqlite3* db)
    	sqlite3_finalize(stmt_2);
    	sqlite3_finalize(stmt_3);
 	cJSON_Delete(pJsonRoot);
-	return M1_PROTOCOL_OK;
+	return ret;
 }
 
 int scenario_create_handle(payload_t data)
@@ -890,6 +890,7 @@ void scenario_alarm_select(void)
  	scen_alarm_t alarm;
  	sqlite3_stmt* stmt = NULL;
  	sqlite3* db = NULL;
+ 	sql = "select SCEN_NAME, HOUR, MINUTES, WEEK, STATUS from scen_alarm_table;";
  	while(1){
 	 	rc = sqlite3_open("dev_info.db", &db);  
 	     if( rc ){  
@@ -898,7 +899,7 @@ void scenario_alarm_select(void)
 	     }else{  
 	         M1_LOG_DEBUG( "Opened database successfully\n");  
 	     }
-	     sql = "select SCEN_NAME, HOUR, MINUTES, WEEK, STATUS from scen_alarm_table;";
+
 	     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 	     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 	     	alarm.scen_name = sqlite3_column_text(stmt, 0);
