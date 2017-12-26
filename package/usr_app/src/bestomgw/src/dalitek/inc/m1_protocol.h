@@ -161,6 +161,10 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_APP_EXEC_SCEN                		 0x0024
 /*APP用户更改登录信息*/
 #define TYPE_APP_USER_KEY_CHANGE               	 0x0025
+/*APP下发设备测试信息*/
+#define TYPE_APP_DOWNLOAD_TESTING_INFO           0x0026
+/*网络参数设置*/
+#define TYPE_NET_PARAM_CONFIG                    0x0027
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
@@ -199,6 +203,8 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_M1_REPORT_DIS_NAME	       	 		 0x1012
 /*M1 上报区域下设备到APP*/
 #define TYPE_M1_REPORT_DIS_DEV	       	 		 0x1013
+/*AP上传设备测试信息*/
+#define TYPE_AP_UPLOAD_TESTING_INFO	       	     0x1014
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005

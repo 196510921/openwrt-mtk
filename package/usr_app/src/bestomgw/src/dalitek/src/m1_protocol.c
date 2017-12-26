@@ -170,6 +170,8 @@ void data_handle(m1_package_t* package)
         case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
         case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
         case TYPE_APP_USER_KEY_CHANGE: rc = app_change_user_key(pdu);break;
+        case TYPE_APP_DOWNLOAD_TESTING_INFO: rc = app_download_testing_to_ap(rootJson,db); break;
+        case TYPE_AP_UPLOAD_TESTING_INFO: rc = ap_upload_testing_to_app(rootJson,db);break;
 
         default: M1_LOG_ERROR("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }

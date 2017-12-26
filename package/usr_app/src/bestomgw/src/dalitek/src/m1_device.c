@@ -195,8 +195,183 @@ int m1_del_ap(sqlite3* db, char* apId)
 	return ret;
 }
 
+/*APP下发测试命令到AP*/
+int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
+{
+    M1_LOG_DEBUG("app_download_testing_to_ap\n");
+    int clientFd = 0;
+    int rc,ret = M1_PROTOCOL_OK;
+    char* ap_id = NULL;
+    char* sql = (char*)malloc(300);
+    char* sql_1 = (char*)malloc(300);
+    cJSON* pduJson = NULL;
+    cJSON* pduDataJson = NULL;
+    cJSON* devIdJson = NULL;
+    sqlite3_stmt* stmt = NULL;
+    sqlite3_stmt* stmt_1 = NULL;
 
+    if(devData == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*获取pdu*/
+    pduJson = cJSON_GetObjectItem(devData, "pdu");
+    if(NULL == pduJson){
+        M1_LOG_ERROR("pdu null\n");
+        goto Finish;
+    }
+    /*获取devData*/
+    pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
+    if(NULL == pduDataJson){
+        M1_LOG_ERROR("devData null”\n");
+        goto Finish;
+    }
+    /*获取AP ID*/
+    devIdJson = cJSON_GetObjectItem(pduDataJson,"devId");
+    if(NULL == devIdJson){
+        M1_LOG_ERROR("apIdJson null”\n");
+        goto Finish;
+    }
+    M1_LOG_DEBUG("apId:%s”\n",devIdJson->valuestring);
 
+    /*数据库查询ap id*/
+    sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" order by ID desc limit 1",devIdJson->valuestring);
+    M1_LOG_DEBUG("sql:%s\n",sql);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    rc = thread_sqlite3_step(&stmt, db);
+    if(rc == SQLITE_ROW){
+        ap_id = sqlite3_column_text(stmt, 0);
+        if(ap_id == NULL){
+            M1_LOG_ERROR("ap_id null”\n");
+            goto Finish;       
+        }
+    }else{
+        M1_LOG_ERROR("select AP_ID failed\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }    
+    /*数据库*/
+    sprintf(sql_1,"select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1", ap_id);
+    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    rc = thread_sqlite3_step(&stmt_1, db);
+    if(rc == SQLITE_ROW){
+        clientFd = sqlite3_column_int(stmt_1, 0);
+    }else{
+        M1_LOG_ERROR("select CLIENT_ID failed\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+
+    /*发送到AP*/
+    char * p = cJSON_PrintUnformatted(devData);
+    
+    if(NULL == p)
+    {    
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+
+    M1_LOG_DEBUG("string:%s\n",p);
+    socketSeverSend((uint8_t*)p, strlen(p), clientFd);
+
+    Finish:
+    free(sql);
+    free(sql_1);
+    sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt_1);
+    
+    return ret;
+
+}
+
+/*AP上传测试命令到APP*/
+int ap_upload_testing_to_app(cJSON* devData, sqlite3* db)
+{
+    M1_LOG_DEBUG("ap_upload_testing_to_app\n");
+    
+    int clientFd = 0;
+    int rc,ret = M1_PROTOCOL_OK;
+    char* p = NULL;
+    char* account = NULL;
+    char* sql = (char*)malloc(300);
+    char* sql_1 = (char*)malloc(300);
+    cJSON* pduJson = NULL;
+    cJSON* pduDataJson = NULL;
+    cJSON* devIdJson = NULL;
+    sqlite3_stmt* stmt = NULL;
+    sqlite3_stmt* stmt_1 = NULL;
+
+    if(devData == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*获取pdu*/
+    pduJson = cJSON_GetObjectItem(devData, "pdu");
+    if(NULL == pduJson){
+        M1_LOG_ERROR("pdu null\n");
+        goto Finish;
+    }
+    /*获取devData*/
+    pduDataJson = cJSON_GetObjectItem(pduJson, "devData");
+    if(NULL == pduDataJson){
+        M1_LOG_ERROR("devData null”\n");
+        goto Finish;
+    }
+    /*获取dev ID*/
+    devIdJson = cJSON_GetObjectItem(pduDataJson,"devId");
+    if(NULL == devIdJson){
+        M1_LOG_ERROR("apIdJson null”\n");
+        goto Finish;
+    }
+    M1_LOG_DEBUG("apId:%s”\n",devIdJson->valuestring);
+
+    /*数据库查询ap id*/
+    sprintf(sql,"select distinct ACCOUNT from all_dev where DEV_ID = \"%s\";",devIdJson->valuestring);
+    M1_LOG_DEBUG("sql:%s\n",sql);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+        account = sqlite3_column_text(stmt, 0);
+        if(account == NULL){
+            M1_LOG_ERROR("account null”\n");
+            goto Finish;       
+        }
+        
+        /*数据库*/
+        sprintf(sql_1,"select CLIENT_FD from account_info where ACCOUNT = \"%s\" order by ID desc limit 1",account);
+        M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+        sqlite3_finalize(stmt_1);
+        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        rc = thread_sqlite3_step(&stmt_1, db);
+        if(rc == SQLITE_ROW){
+            clientFd = sqlite3_column_int(stmt_1, 0);
+        }else{
+            M1_LOG_ERROR("select CLIENT_ID failed\n");
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+
+        /*发送到AP*/
+        p = cJSON_PrintUnformatted(devData);
+        
+        if(NULL == p)
+        {    
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+
+        M1_LOG_DEBUG("string:%s\n",p);
+        socketSeverSend((uint8_t*)p, strlen(p), clientFd);
+    }
+
+    Finish:
+    free(sql);
+    free(sql_1);
+    sqlite3_finalize(stmt);
+    sqlite3_finalize(stmt_1);
+    
+    return ret;
+}
 
 
 
