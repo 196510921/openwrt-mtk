@@ -573,10 +573,6 @@ int app_req_dis_name(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
 
-    if(data.pdu == NULL){
-        M1_LOG_ERROR("data NULL\n");
-        ret = M1_PROTOCOL_FAILED;   
-    }
     db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();

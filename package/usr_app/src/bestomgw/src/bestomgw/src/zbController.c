@@ -53,11 +53,9 @@
 #include "m1_protocol.h"
 
 #define MAX_DB_FILENAMR_LEN 255
-#define DEBUG_LOG_OUTPUT_TO_FD   0
+#define DEBUG_LOG_OUTPUT_TO_FD   1
 
 //全局变量	
-//threadpool thpool;//线程池
-//threadpool tx_thpool;//线程池
 
 static void printf_redirect(void);
 static void socket_poll(void);
@@ -83,17 +81,17 @@ int main(int argc, char* argv[])
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
-#if (!DEBUG_LOG_OUTPUT_TO_FD)
+//#if (!DEBUG_LOG_OUTPUT_TO_FD)
 	pthread_create(&t5,NULL,debug_switch,NULL);
-#endif
+//#endif
 
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
-#if (!DEBUG_LOG_OUTPUT_TO_FD)
+//#if (!DEBUG_LOG_OUTPUT_TO_FD)
 	pthread_join(t5, NULL);
-#endif
+//#endif
 	
 	return retval;
 }
@@ -166,7 +164,7 @@ static void printf_redirect(void)
 extern m1_log_level_t m1LogLevel;
 static void debug_switch()
 {
-	char* input_info = (char*)malloc(10); 
+	char input_info[10]; 
 	//rc = read(debug_fd, input_info, 10);
 	while(gets(input_info) != NULL){
 		printf("User input:%s\n",input_info);
@@ -190,9 +188,10 @@ static void debug_switch()
 			M1_LOG_WARN( " ---------OUTPUT  SWITCH TO WARN MODE-------------\n");
 			M1_LOG_ERROR( " ---------OUTPUT  SWITCH TO ERROR MODE-------------\n");
 		}
+		memset(input_info, 0, 10);
 		sleep(2);
 	}
-	free(input_info);
+	
 }
 
 

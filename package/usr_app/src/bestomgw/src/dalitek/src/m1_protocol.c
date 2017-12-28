@@ -15,7 +15,7 @@
 #include "m1_common_log.h"
 
 /*Macro**********************************************************************************************************/
-#define SQL_HISTORY_DEL      0
+#define SQL_HISTORY_DEL      1
 #define M1_PROTOCOL_DEBUG    1
 #define HEAD_LEN             3
 #define AP_HEARTBEAT_HANDLE  0
@@ -188,9 +188,9 @@ void data_handle(m1_package_t* package)
 
     Finish:
 #if SQL_HISTORY_DEL
-    if(sql_backup() != M1_PROTOCOL_OK){
-        M1_LOG_ERROR( "sql_backup failed\n");
-    }
+    // if(sql_backup() != M1_PROTOCOL_OK){
+    //     M1_LOG_ERROR( "sql_backup failed\n");
+    // }
 #endif
     cJSON_Delete(rootJson);
     linkage_task();
@@ -216,10 +216,10 @@ static int AP_report_data_handle(payload_t data)
     char* time = (char*)malloc(30);
     char* errorMsg = NULL;
     char* sql = "select ID from param_table order by ID desc limit 1";
-#if (!SQL_HISTORY_DEL)
+//#if (!SQL_HISTORY_DEL)
     char* sql_1 = (char*)malloc(300);
     sqlite3_stmt* stmt_1 = NULL;
-#endif
+//#endif
     /*sqlite3*/
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
@@ -233,6 +233,7 @@ static int AP_report_data_handle(payload_t data)
     cJSON* valueJson = NULL;
 
     db = data.db;
+ #if 1    
     M1_LOG_DEBUG("AP_report_data_handle\n");
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -247,6 +248,7 @@ static int AP_report_data_handle(payload_t data)
 
     /*获取系统当前时间*/
     getNowTime(time);
+    printf("time1:%s\n",time);
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_data_handle");
     if(rc){
@@ -254,9 +256,12 @@ static int AP_report_data_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
+    getNowTime(time);
+    printf("time1.1:%s\n",time);
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         M1_LOG_DEBUG("BEGIN\n");
-
+        getNowTime(time);
+        printf("time1.2:%s\n",time);
         id = sql_id(db, sql);
         M1_LOG_DEBUG("id:%d\n",id);
         sql = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
@@ -264,6 +269,8 @@ static int AP_report_data_handle(payload_t data)
 
         number1 = cJSON_GetArraySize(data.pdu);
         M1_LOG_DEBUG("number1:%d\n",number1);
+        getNowTime(time);
+        printf("time1.3:%s\n",time);
         for(i = 0; i < number1; i++){
             devDataJson = cJSON_GetArrayItem(data.pdu, i);
             if(devDataJson == NULL){
@@ -289,7 +296,8 @@ static int AP_report_data_handle(payload_t data)
             }
             number2 = cJSON_GetArraySize(paramJson);
             M1_LOG_DEBUG(" number2:%d\n",number2);
-
+            getNowTime(time);
+            printf("time1.4:%s\n",time);
             for(j = 0; j < number2; j++){
                 paramDataJson = cJSON_GetArrayItem(paramJson, j);
                 if(paramDataJson == NULL){
@@ -313,9 +321,17 @@ static int AP_report_data_handle(payload_t data)
                 sprintf(sql_1,"update param_table set VALUE = %05d where DEV_ID = \"%s\" and TYPE = %05d;",valueJson->valueint,devIdJson->valuestring,typeJson->valueint);
                 M1_LOG_DEBUG("sql_1:%s\n",sql_1);
                 sqlite3_finalize(stmt_1);
+                printf("time1.4.1:%s\n",time);
                 sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+                
+                getNowTime(time);
+                printf("time1.4.2:%s\n",time);
                 rc = thread_sqlite3_step(&stmt_1, db);
+                getNowTime(time);
+                printf("time1.4.3:%s\n",time);
                 if(rc != SQLITE_ROW){
+                // rc = sqlite3_exec(db, sql_1, NULL, NULL, NULL);
+                // if(rc != SQLITE_OK){
                     M1_LOG_DEBUG("sql:%s\n",sql);
                     sqlite3_reset(stmt); 
                     sqlite3_bind_int(stmt, 1, id);
@@ -324,12 +340,22 @@ static int AP_report_data_handle(payload_t data)
                     sqlite3_bind_text(stmt, 3, devIdJson->valuestring, -1, NULL);
                     sqlite3_bind_int(stmt, 4,typeJson->valueint);
                     sqlite3_bind_int(stmt, 5, valueJson->valueint);
-                    sqlite3_bind_text(stmt, 6,  time, -1, NULL);
-                
+                    sqlite3_bind_text(stmt, 6,  time, -1, NULL);                
                     thread_sqlite3_step(&stmt, db);
                 }
 #else                
                 M1_LOG_WARN("AP data insert\n");
+                /*先删除*/
+                sprintf(sql_1,"delete from param_table where DEV_ID = \"%s\" and TYPE = %05d;",devIdJson->valuestring,typeJson->valueint);
+                M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+                sqlite3_finalize(stmt_1);
+                sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+                
+                rc = thread_sqlite3_step(&stmt_1, db);
+                // if(rc != SQLITE_ROW){
+                //     M1_LOG_WARN("delete failed\n");
+                // }
+                /*再插入*/
                 sqlite3_reset(stmt); 
                 sqlite3_bind_int(stmt, 1, id);
                 id++;
@@ -338,10 +364,12 @@ static int AP_report_data_handle(payload_t data)
                 sqlite3_bind_int(stmt, 4,typeJson->valueint);
                 sqlite3_bind_int(stmt, 5, valueJson->valueint);
                 sqlite3_bind_text(stmt, 6,  time, -1, NULL);
-            
+
                 thread_sqlite3_step(&stmt, db);
 #endif
             }
+            getNowTime(time);
+            printf("time1.5:%s\n",time);
         }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
             M1_LOG_DEBUG("END\n");
@@ -357,16 +385,20 @@ static int AP_report_data_handle(payload_t data)
         }
  
     }
-
+#endif
+    getNowTime(time);
+    printf("time2:%s\n",time);
     Finish:
-#if (!SQL_HISTORY_DEL)
+//#if (!SQL_HISTORY_DEL)
     free(sql_1);
     sqlite3_finalize(stmt_1);
-#endif
-    free(time);
+//#endif
     sqlite3_finalize(stmt);
 
     trigger_cb_handle(db);
+    getNowTime(time);
+    printf("time3:%s\n",time);
+    free(time);
     return ret;
 }
 
@@ -408,12 +440,12 @@ static int AP_report_dev_handle(payload_t data)
         goto Finish;
     }
     /*添加update/insert/delete监察*/
-    rc = sqlite3_update_hook(db, trigger_cb, "AP_report_dev_handle");
-    if(rc){
-        M1_LOG_ERROR( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }
+    // rc = sqlite3_update_hook(db, trigger_cb, "AP_report_dev_handle");
+    // if(rc){
+    //     M1_LOG_ERROR( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
+    //     ret = M1_PROTOCOL_FAILED;
+    //     goto Finish;
+    // }
 
     apIdJson = cJSON_GetObjectItem(data.pdu,"apId");
     M1_LOG_DEBUG("APId:%s\n",apIdJson->valuestring);
