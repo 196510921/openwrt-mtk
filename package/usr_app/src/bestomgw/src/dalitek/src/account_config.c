@@ -342,9 +342,25 @@ int app_account_config_handle(payload_t data)
     db = data.db;
 
     accountJson = cJSON_GetObjectItem(data.pdu,"account");
+    if(accountJson->valuestring == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
     keyJson = cJSON_GetObjectItem(data.pdu,"key");
+    if(keyJson->valuestring == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;    
+    }
     keyAuthJson = cJSON_GetObjectItem(data.pdu,"keyAuthority");
+    if(keyAuthJson->valuestring == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;   
+    }
     remoteAuthJson = cJSON_GetObjectItem(data.pdu,"remoteAuthority");
+    if(remoteAuthJson->valuestring == NULL){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;   
+    }
     M1_LOG_DEBUG( "account:%s,key:%s,keyAuthority:%s,remoteAuthority:%s\n", accountJson->valuestring,
         keyJson->valuestring,keyAuthJson->valuestring,remoteAuthJson->valuestring);
 
@@ -404,17 +420,18 @@ int app_account_config_handle(payload_t data)
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
             while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
                 ap_id = sqlite3_column_text(stmt, 0);
-                sql = "insert into district_table(ID, DIS_NAME, AP_ID, ACCOUNT, TIME)values(?,?,?,?,?);";
-                M1_LOG_DEBUG("sql:%s\n",sql);
+                sql = "insert into district_table(ID, DIS_NAME, DIS_PIC, AP_ID, ACCOUNT, TIME)values(?,?,?,?,?,?);";
+                M1_LOG_DEBUG("sql:%s,id:%05d,dis:%s,apid:%s,account:%s,time:%s\n",sql,id,districtObject->valuestring,ap_id,accountJson->valuestring,time);
                 //sqlite3_reset(stmt_1);
                 sqlite3_finalize(stmt_1);
                 sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
     
                 sqlite3_bind_int(stmt_1, 1, id);
                 sqlite3_bind_text(stmt_1, 2,  districtObject->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_1, 3, ap_id, -1, NULL);
-                sqlite3_bind_text(stmt_1, 4,accountJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_1, 5,  time, -1, NULL);
+                sqlite3_bind_text(stmt_1, 3,  "1.jpg", -1, NULL);
+                sqlite3_bind_text(stmt_1, 4, ap_id, -1, NULL);
+                sqlite3_bind_text(stmt_1, 5,accountJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt_1, 6,  time, -1, NULL);
                 rc = thread_sqlite3_step(&stmt_1, db);
                 if(rc == SQLITE_ERROR){
                     ret = M1_PROTOCOL_FAILED;
@@ -454,7 +471,7 @@ int app_account_config_handle(payload_t data)
                 value = sqlite3_column_int(stmt, 4);
                 delay = sqlite3_column_int(stmt, 5);
                 /*插入到场景表中*/
-                sql = "insert into scenario_table(ID, SCEN_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT, TIME)values(?,?,?,?,?,?,?,?,?,?);";
+                sql = "insert into scenario_table(ID, SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT, TIME)values(?,?,?,?,?,?,?,?,?,?,?);";
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 //sqlite3_reset(stmt_1);
                 sqlite3_finalize(stmt_1);
@@ -462,14 +479,15 @@ int app_account_config_handle(payload_t data)
     
                 sqlite3_bind_int(stmt_1, 1, id);
                 sqlite3_bind_text(stmt_1, 2,  scenObject->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_1, 3,  district, -1, NULL);
-                sqlite3_bind_text(stmt_1, 4,  ap_id, -1, NULL);
-                sqlite3_bind_text(stmt_1, 5,  dev_id, -1, NULL);
-                sqlite3_bind_int(stmt_1, 6, type);
-                sqlite3_bind_int(stmt_1, 7, value);
-                sqlite3_bind_int(stmt_1, 8, delay);
-                sqlite3_bind_text(stmt_1, 9, accountJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_1, 10, time, -1, NULL);
+                sqlite3_bind_text(stmt_1, 3,  "上班", -1, NULL);
+                sqlite3_bind_text(stmt_1, 4,  district, -1, NULL);
+                sqlite3_bind_text(stmt_1, 5,  ap_id, -1, NULL);
+                sqlite3_bind_text(stmt_1, 6,  dev_id, -1, NULL);
+                sqlite3_bind_int(stmt_1, 7, type);
+                sqlite3_bind_int(stmt_1, 8, value);
+                sqlite3_bind_int(stmt_1, 9, delay);
+                sqlite3_bind_text(stmt_1, 10, accountJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt_1, 11, time, -1, NULL);
                 rc = thread_sqlite3_step(&stmt_1, db);
                 if(rc == SQLITE_ERROR){
                     ret = M1_PROTOCOL_FAILED;
@@ -481,7 +499,7 @@ int app_account_config_handle(payload_t data)
         }
         /*添加用户设备信息*/
         sprintf(sql_1,"delete from all_dev where ACCOUNT = \"%s\";",accountJson->valuestring);
-        M1_LOG_DEBUG("sql:%s\n",sql_1);
+        M1_LOG_DEBUG("sql_1:%s\n",sql_1);
         //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
@@ -491,9 +509,17 @@ int app_account_config_handle(payload_t data)
         id = sql_id(db, sql);
         devArray = cJSON_GetObjectItem(data.pdu,"device");
         number = cJSON_GetArraySize(devArray);
+        M1_LOG_DEBUG("number:%05d\n",number);
         for(i = 0; i < number; i++){
             devObject = cJSON_GetArrayItem(devArray, i);
-            devIdObject = cJSON_GetObjectItem(devObject, "devId");
+            devIdObject = devObject;
+            //devIdObject = cJSON_GetObjectItem(devObject, "devId");
+            if(devIdObject->valuestring == NULL){
+                M1_LOG_ERROR("devIdObject->valuestring NULL\n");
+                continue;
+            }
+            M1_LOG_DEBUG("devIdObject->valuestring:%s\n",devIdObject->valuestring);
+
             sprintf(sql_1,"select DEV_NAME,AP_ID,PID,ADDED,NET,STATUS from all_dev where DEV_ID = \"%s\" and ACCOUNT = \"Dalitek\";",devIdObject->valuestring);
             M1_LOG_DEBUG("sql:%s\n",sql_1);
             //sqlite3_reset(stmt);

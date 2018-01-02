@@ -151,10 +151,10 @@ static void printf_redirect(void)
 {
 	 fflush(stdout);  
      setvbuf(stdout,NULL,_IONBF,0);  
-     printf("log to: /tmp/log/m1_debug_log.txt\n");  
+     printf("log to: /mnt/usb1/m1_debug_log.txt\n");  
      int save_fd = dup(STDOUT_FILENO); 
      //int fd = open("/home/ubuntu/share/test1.txt",(O_RDWR | O_CREAT), 0644);  
-     int fd = open("/tmp/log/m1_debug_log.txt",(O_RDWR | O_CREAT), 0644);  
+     int fd = open("/mnt/usb1/m1_debug_log.txt",(O_RDWR | O_CREAT), 0644);  
      if(fd == -1)
      	M1_LOG_ERROR( " open file failed\n");
      dup2(fd,STDOUT_FILENO); 
