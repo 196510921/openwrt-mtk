@@ -321,7 +321,7 @@ int app_account_config_handle(payload_t data)
     char* time = (char*)malloc(30);
     char* errorMsg = NULL;
     char* ap_id = NULL,*dev_id = NULL;
-    char* district = NULL,*dev_name = NULL,*status = NULL;
+    char* district = NULL,*dev_name = NULL,*status = NULL,*dis_pic = NULL,*scen_pic = NULL;
     int type, value, delay, pid,added,net;
     cJSON* districtArray = NULL;
     cJSON* districtObject = NULL;
@@ -413,13 +413,14 @@ int app_account_config_handle(payload_t data)
         for(i = 0; i < number; i++){
             districtObject = cJSON_GetArrayItem(districtArray, i);
             M1_LOG_DEBUG("district:%s\n",districtObject->valuestring);
-            sprintf(sql_1,"select AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"Dalitek\";",districtObject->valuestring);
+            sprintf(sql_1,"select AP_ID, DIS_PIC from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"Dalitek\";",districtObject->valuestring);
             M1_LOG_DEBUG("sql:%s\n",sql_1);
             //sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
             while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
                 ap_id = sqlite3_column_text(stmt, 0);
+                dis_pic = sqlite3_column_text(stmt, 1);
                 sql = "insert into district_table(ID, DIS_NAME, DIS_PIC, AP_ID, ACCOUNT, TIME)values(?,?,?,?,?,?);";
                 M1_LOG_DEBUG("sql:%s,id:%05d,dis:%s,apid:%s,account:%s,time:%s\n",sql,id,districtObject->valuestring,ap_id,accountJson->valuestring,time);
                 //sqlite3_reset(stmt_1);
@@ -428,7 +429,7 @@ int app_account_config_handle(payload_t data)
     
                 sqlite3_bind_int(stmt_1, 1, id);
                 sqlite3_bind_text(stmt_1, 2,  districtObject->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_1, 3,  "1.jpg", -1, NULL);
+                sqlite3_bind_text(stmt_1, 3,  dis_pic, -1, NULL);
                 sqlite3_bind_text(stmt_1, 4, ap_id, -1, NULL);
                 sqlite3_bind_text(stmt_1, 5,accountJson->valuestring, -1, NULL);
                 sqlite3_bind_text(stmt_1, 6,  time, -1, NULL);
@@ -458,7 +459,7 @@ int app_account_config_handle(payload_t data)
         for(i = 0; i < number; i++){
             scenObject = cJSON_GetArrayItem(scenArray, i);
             M1_LOG_DEBUG("scenario:%s\n",scenObject->valuestring);
-            sprintf(sql_1,"select DISTRICT,AP_ID,DEV_ID,TYPE,VALUE,DELAY from scenario_table where SCEN_NAME = \"%s\" and ACCOUNT = \"Dalitek\";",scenObject->valuestring);
+            sprintf(sql_1,"select DISTRICT,AP_ID,DEV_ID,TYPE,VALUE,DELAY,SCEN_PIC from scenario_table where SCEN_NAME = \"%s\" and ACCOUNT = \"Dalitek\";",scenObject->valuestring);
             M1_LOG_DEBUG("sql:%s\n",sql_1);
             //sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
@@ -470,6 +471,7 @@ int app_account_config_handle(payload_t data)
                 type = sqlite3_column_int(stmt, 3);
                 value = sqlite3_column_int(stmt, 4);
                 delay = sqlite3_column_int(stmt, 5);
+                scen_pic = sqlite3_column_text(stmt, 6);
                 /*插入到场景表中*/
                 sql = "insert into scenario_table(ID, SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT, TIME)values(?,?,?,?,?,?,?,?,?,?,?);";
                 M1_LOG_DEBUG("sql:%s\n",sql);
@@ -479,7 +481,7 @@ int app_account_config_handle(payload_t data)
     
                 sqlite3_bind_int(stmt_1, 1, id);
                 sqlite3_bind_text(stmt_1, 2,  scenObject->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_1, 3,  "上班", -1, NULL);
+                sqlite3_bind_text(stmt_1, 3,  scen_pic, -1, NULL);
                 sqlite3_bind_text(stmt_1, 4,  district, -1, NULL);
                 sqlite3_bind_text(stmt_1, 5,  ap_id, -1, NULL);
                 sqlite3_bind_text(stmt_1, 6,  dev_id, -1, NULL);

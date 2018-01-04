@@ -248,7 +248,6 @@ static int AP_report_data_handle(payload_t data)
 
     /*获取系统当前时间*/
     getNowTime(time);
-    printf("time1:%s\n",time);
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_data_handle");
     if(rc){
@@ -256,12 +255,8 @@ static int AP_report_data_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    getNowTime(time);
-    printf("time1.1:%s\n",time);
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         M1_LOG_DEBUG("BEGIN\n");
-        getNowTime(time);
-        printf("time1.2:%s\n",time);
         id = sql_id(db, sql);
         M1_LOG_DEBUG("id:%d\n",id);
         sql = "insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);";
@@ -269,8 +264,6 @@ static int AP_report_data_handle(payload_t data)
 
         number1 = cJSON_GetArraySize(data.pdu);
         M1_LOG_DEBUG("number1:%d\n",number1);
-        getNowTime(time);
-        printf("time1.3:%s\n",time);
         for(i = 0; i < number1; i++){
             devDataJson = cJSON_GetArrayItem(data.pdu, i);
             if(devDataJson == NULL){
@@ -296,8 +289,6 @@ static int AP_report_data_handle(payload_t data)
             }
             number2 = cJSON_GetArraySize(paramJson);
             M1_LOG_DEBUG(" number2:%d\n",number2);
-            getNowTime(time);
-            printf("time1.4:%s\n",time);
             for(j = 0; j < number2; j++){
                 paramDataJson = cJSON_GetArrayItem(paramJson, j);
                 if(paramDataJson == NULL){
@@ -321,14 +312,8 @@ static int AP_report_data_handle(payload_t data)
                 sprintf(sql_1,"update param_table set VALUE = %05d where DEV_ID = \"%s\" and TYPE = %05d;",valueJson->valueint,devIdJson->valuestring,typeJson->valueint);
                 M1_LOG_DEBUG("sql_1:%s\n",sql_1);
                 sqlite3_finalize(stmt_1);
-                printf("time1.4.1:%s\n",time);
                 sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-                
-                getNowTime(time);
-                printf("time1.4.2:%s\n",time);
                 rc = thread_sqlite3_step(&stmt_1, db);
-                getNowTime(time);
-                printf("time1.4.3:%s\n",time);
                 if(rc != SQLITE_ROW){
                 // rc = sqlite3_exec(db, sql_1, NULL, NULL, NULL);
                 // if(rc != SQLITE_OK){
@@ -368,8 +353,6 @@ static int AP_report_data_handle(payload_t data)
                 thread_sqlite3_step(&stmt, db);
 #endif
             }
-            getNowTime(time);
-            printf("time1.5:%s\n",time);
         }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
             M1_LOG_DEBUG("END\n");
@@ -386,8 +369,6 @@ static int AP_report_data_handle(payload_t data)
  
     }
 #endif
-    getNowTime(time);
-    printf("time2:%s\n",time);
     Finish:
 //#if (!SQL_HISTORY_DEL)
     free(sql_1);
@@ -396,8 +377,6 @@ static int AP_report_data_handle(payload_t data)
     sqlite3_finalize(stmt);
 
     trigger_cb_handle(db);
-    getNowTime(time);
-    printf("time3:%s\n",time);
     free(time);
     return ret;
 }

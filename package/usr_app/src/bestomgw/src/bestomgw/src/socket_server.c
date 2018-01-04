@@ -333,6 +333,14 @@ uint32 socketSeverGetNumClients(void)
 	return (recordCnt);
 }
 
+/*清除与clientFd相关的信息*/
+static void delete_socket_clientfd(int clientFd)
+{
+	delete_account_conn_info(clientFd);
+	client_block_destory(clientFd);
+	deleteSocketRec(clientFd);
+}
+
 /*********************************************************************
  * @fn      socketSeverPoll()
  *
@@ -377,9 +385,7 @@ void socketSeverPoll(int clinetFd, int revent)
 			//its a shut down close the socket
 			M1_LOG_INFO("Client fd:%d disconnected\n", clinetFd);
 			//remove the record and close the socket
-			delete_account_conn_info(clinetFd);
-			client_block_destory(clinetFd);
-			deleteSocketRec(clinetFd);
+			delete_socket_clientfd(clinetFd);
 		}
 	}
 
@@ -397,6 +403,7 @@ void socketSeverPoll(int clinetFd, int revent)
  *
  * @return  Status
  */
+#if 0
 extern fifo_t tx_fifo;
 void thread_socketSeverSend(void)
 {
@@ -428,6 +435,7 @@ void thread_socketSeverSend(void)
 	}
 
 }
+#endif
 
 int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 {
@@ -443,17 +451,17 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	header = (((header >> 8) & 0xff) | ((header << 8) & 0xff00)) & 0xffff;
 	msg_len = (((len >> 8) & 0xff) | ((len << 8) & 0xff00)) & 0xffff;
 
-	M1_LOG_DEBUG("Msg len:%05d\n",msg_len);
+	M1_LOG_DEBUG("len:%05d, Msg len:%05d\n",len, msg_len);
 	send_buf = (char*)malloc(len + 4);
 	memcpy(send_buf, &header, 2);
 	memcpy((send_buf+2), &msg_len, 2);
 	memcpy((send_buf+4), buf, len);
 	
 	rtn = write(fdClient, send_buf, len + 4);
-	// rtn = write(fdClient, buf, len);
 	if (rtn < 0)
 	{
-		M1_LOG_ERROR("ERROR writing to socket %d\n", fdClient);
+		M1_LOG_ERROR("ERROR writing to socket %d, errno:%d\n", fdClient,errno);
+		delete_socket_clientfd(fdClient);
 	}
 
 	free(send_buf);
