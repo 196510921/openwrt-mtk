@@ -18,7 +18,7 @@
 #define SQL_HISTORY_DEL      1
 #define M1_PROTOCOL_DEBUG    1
 #define HEAD_LEN             3
-#define AP_HEARTBEAT_HANDLE  0
+#define AP_HEARTBEAT_HANDLE  1
 /*Private function***********************************************************************************************/
 static int AP_report_data_handle(payload_t data);
 static int APP_read_handle(payload_t data);
@@ -38,6 +38,7 @@ static int common_rsp_handle(payload_t data);
 static int create_sql_table(void);
 static int app_change_device_name(payload_t data);
 static uint8_t hex_to_uint8(int h);
+static void check_offline_dev(sqlite3*db);
 /*variable******************************************************************************************************/
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
@@ -176,6 +177,7 @@ void data_handle(m1_package_t* package)
         default: M1_LOG_ERROR("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
 
+    check_offline_dev(db);
     sqlite3_close(db);
 
     if(rc != M1_PROTOCOL_NO_RSP){
@@ -436,7 +438,7 @@ static int AP_report_dev_handle(payload_t data)
     /*事物开始*/
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
         M1_LOG_DEBUG("BEGIN\n");
-        sql = "insert or replace into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
+        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
         sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 
         for(i = 0; i< number; i++){
@@ -464,31 +466,31 @@ static int AP_report_dev_handle(payload_t data)
             }
             M1_LOG_DEBUG("pId:%05d\n", pIdJson->valueint);
             /*判断该设备是否存在*/
-            sprintf(sql_1,"select ID from all_dev where DEV_ID = \"%s\";",idJson->valuestring);
+            sprintf(sql_1,"select ID from all_dev where DEV_ID = \"%s\" and AP_ID = \"%s\";",idJson->valuestring, apIdJson->valuestring);
             /*get id*/
             //sqlite3_reset(stmt_1);
             sqlite3_finalize(stmt_1); 
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
             rc = thread_sqlite3_step(&stmt_1, db);
             if(rc == SQLITE_ROW){
-                    id = (sqlite3_column_int(stmt_1, 0));
+                id = (sqlite3_column_int(stmt_1, 0));
+
             }else{
                 sprintf(sql_1,"select ID from all_dev order by ID desc limit 1");
                 id = sql_id(db, sql_1);
+                sqlite3_reset(stmt); 
+                sqlite3_bind_int(stmt, 1, id);
+                sqlite3_bind_text(stmt, 2,  nameJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 3, idJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
+                sqlite3_bind_int(stmt, 5, pIdJson->valueint);
+                sqlite3_bind_int(stmt, 6, 0);
+                sqlite3_bind_int(stmt, 7, 1);
+                sqlite3_bind_text(stmt, 8,"ON", -1, NULL);
+                sqlite3_bind_text(stmt, 9,  "Dalitek", -1, NULL);
+                sqlite3_bind_text(stmt, 10,  time, -1, NULL);
+                rc = thread_sqlite3_step(&stmt,db);
             }
-
-            sqlite3_reset(stmt); 
-            sqlite3_bind_int(stmt, 1, id);
-            sqlite3_bind_text(stmt, 2,  nameJson->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 3, idJson->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
-            sqlite3_bind_int(stmt, 5, pIdJson->valueint);
-            sqlite3_bind_int(stmt, 6, 0);
-            sqlite3_bind_int(stmt, 7, 1);
-            sqlite3_bind_text(stmt, 8,"ON", -1, NULL);
-            sqlite3_bind_text(stmt, 9,  "Dalitek", -1, NULL);
-            sqlite3_bind_text(stmt, 10,  time, -1, NULL);
-            rc = thread_sqlite3_step(&stmt,db);
         }
 
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
@@ -523,6 +525,7 @@ static int AP_report_ap_handle(payload_t data)
     int rc,ret = M1_PROTOCOL_OK;
     char* sql = NULL; 
     char* sql_1 = (char*)malloc(300);
+    char* sql_2 = (char*)malloc(300);
     char* time = (char*)malloc(30);
     char* errorMsg = NULL;
     cJSON* pIdJson = NULL;
@@ -531,6 +534,7 @@ static int AP_report_ap_handle(payload_t data)
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
     sqlite3_stmt* stmt_1 = NULL;
+    sqlite3_stmt* stmt_2 = NULL;
 
     M1_LOG_DEBUG("AP_report_ap_handle\n");
     if(data.pdu == NULL){
@@ -584,34 +588,67 @@ static int AP_report_ap_handle(payload_t data)
         M1_LOG_DEBUG("exec:%s\n",rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
         if(rc == SQLITE_ERROR){
             ret = M1_PROTOCOL_FAILED;  
+            if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+                M1_LOG_DEBUG("END\n");
+            }else{
+                M1_LOG_DEBUG("ROLLBACK\n");
+                if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
+                    M1_LOG_DEBUG("ROLLBACK OK\n");
+                    sqlite3_free(errorMsg);
+                }else{
+                    M1_LOG_ERROR("ROLLBACK FALIED\n");
+                }
+            }
             goto Finish;       
         };
 
-        /*insert sql*/
-        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
-        sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-        /*判断该设备是否存在*/
-        sprintf(sql_1,"delete from all_dev where DEV_ID = \"%s\";",apIdJson->valuestring);
-        /*get id*/
-        //sqlite3_reset(stmt_1);
-        sqlite3_finalize(stmt_1); 
+        sprintf(sql_1,"select ID from all_dev where DEV_ID = \"%s\";",apIdJson->valuestring);
+        sqlite3_finalize(stmt_1);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-        while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW);
-        
-        sprintf(sql_1,"select ID from all_dev order by ID desc limit 1");
-        id = sql_id(db, sql_1);
+        rc =  thread_sqlite3_step(&stmt_1, db);
+        if(rc != SQLITE_ROW){
+            /*insert sql*/
+            sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
+            M1_LOG_DEBUG("string:%s\n",sql);
+            sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+            /*判断该设备是否存在*/
+            //sprintf(sql_1,"delete from all_dev where DEV_ID = \"%s\";",apIdJson->valuestring);
+            /*get id*/
+            //sqlite3_reset(stmt_1);
+            //sqlite3_finalize(stmt_1); 
+            //sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+            //while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW);
+            
+            sprintf(sql_1,"select ID from all_dev order by ID desc limit 1");
+            id = sql_id(db, sql_1);
 
-        sqlite3_bind_int(stmt, 1, id);
-        sqlite3_bind_text(stmt, 2,  apNameJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
-        sqlite3_bind_int(stmt, 5, pIdJson->valueint);
-        sqlite3_bind_int(stmt, 6, 0);
-        sqlite3_bind_int(stmt, 7, 1);
-        sqlite3_bind_text(stmt, 8,  "ON", -1, NULL);
-        sqlite3_bind_text(stmt, 9,  "Dalitek", -1, NULL);
-        sqlite3_bind_text(stmt, 10,  time, -1, NULL);
-        rc = thread_sqlite3_step(&stmt,db);
+            sqlite3_bind_int(stmt, 1, id);
+            sqlite3_bind_text(stmt, 2,  apNameJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt, 5, pIdJson->valueint);
+            sqlite3_bind_int(stmt, 6, 0);
+            sqlite3_bind_int(stmt, 7, 1);
+            sqlite3_bind_text(stmt, 8,  "ON", -1, NULL);
+            sqlite3_bind_text(stmt, 9,  "Dalitek", -1, NULL);
+            sqlite3_bind_text(stmt, 10,  time, -1, NULL);
+            rc = thread_sqlite3_step(&stmt,db);
+            /*插入AP在线状态*/
+            sprintf(sql_1,"select ID from param_table order by ID desc limit 1");
+            M1_LOG_DEBUG("string:%s\n",sql);
+            id = sql_id(db, sql);
+            /*插入AP在线信息*/
+            sprintf(sql_2,"insert into param_table(ID, DEV_ID, DEV_NAME, TYPE, VALUE, TIME) values(?,?,?,?,?,?);");
+            M1_LOG_DEBUG("string:%s\n",sql_2);
+            sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            sqlite3_bind_int(stmt_2, 1, id);
+            sqlite3_bind_text(stmt_2, 2,  apIdJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt_2, 3,  apNameJson->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt_2, 4, 16404);
+            sqlite3_bind_int(stmt_2, 5, 1);
+            sqlite3_bind_text(stmt_2, 6, time, -1, NULL);
+            thread_sqlite3_step(&stmt_2, db);
+        }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
            M1_LOG_DEBUG("END\n");
         }else{
@@ -630,9 +667,11 @@ static int AP_report_ap_handle(payload_t data)
     Finish:
     free(time);
     free(sql_1);
+    free(sql_2);
     sqlite3_free(errorMsg);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
+    sqlite3_finalize(stmt_2);
 
     return ret;  
 }
@@ -1236,8 +1275,8 @@ static int APP_req_added_dev_info_handle(payload_t data)
         }
     }
     
-    sprintf(sql_1,"select * from all_dev where DEV_ID  = AP_ID and ADDED = 1 and ACCOUNT = \"%s\";",account);
-
+    //sprintf(sql_1,"select * from all_dev where DEV_ID  = AP_ID and ADDED = 1 and ACCOUNT = \"%s\";",account);
+    sprintf(sql_1,"select * from all_dev where DEV_ID  = AP_ID and ACCOUNT = \"%s\";",account);
     sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
     while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
         /*add ap infomation: port,ap_id,ap_name,time */
@@ -1267,7 +1306,8 @@ static int APP_req_added_dev_info_handle(payload_t data)
         /*add devData array to pdu pbject*/
         cJSON_AddItemToObject(devDataObject, "dev", devArray);
         /*sqlite3*/
-        sprintf(sql_2,"select * from all_dev where AP_ID  = \"%s\" and AP_ID != DEV_ID and ADDED = 1 and ACCOUNT = \"%s\";",sqlite3_column_text(stmt_1, 3),account);
+        //sprintf(sql_2,"select * from all_dev where AP_ID  = \"%s\" and AP_ID != DEV_ID and ADDED = 1 and ACCOUNT = \"%s\";",sqlite3_column_text(stmt_1, 3),account);
+        sprintf(sql_2,"select * from all_dev where AP_ID  = \"%s\" and AP_ID != DEV_ID and ACCOUNT = \"%s\";",sqlite3_column_text(stmt_1, 3),account);
         M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 
         sqlite3_finalize(stmt_2);
@@ -1478,7 +1518,7 @@ static int M1_report_ap_info(payload_t data)
         }
     }
 
-    sprintf(sql,"select * from all_dev where DEV_ID  = AP_ID and ACCOUNT = \"%s\";",account);
+    sprintf(sql,"select * from all_dev where DEV_ID = AP_ID and ACCOUNT = \"%s\";",account);
     row_n = sql_row_number(db, sql);
     // M1_LOG_DEBUG("row_n:%d\n",row_n);
     // if(row_n > 0){ 
@@ -1815,8 +1855,8 @@ static int common_operate(payload_t data)
                 if(m1_del_ap(db, idJson->valuestring) != M1_PROTOCOL_OK)
                     M1_LOG_ERROR("m1_del_ap error\n");
                 ///*删除all_dev中的子设备*/
-                //sprintf(sql,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
-                sprintf(sql,"update all_dev set ADDED = 0, STATUS = \"OFF\" where AP_ID = \"%s\";",idJson->valuestring);
+                sprintf(sql,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
+                //sprintf(sql,"update all_dev set ADDED = 0,NET = 0,STATUS = \"OFF\" where AP_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
                 /*删除scenario_table中的子设备*/
@@ -1869,12 +1909,13 @@ static int common_operate(payload_t data)
     return ret;
 }
 
-#define AP_HEART_BEAT_INTERVAL   10   //min
+#define AP_HEART_BEAT_INTERVAL   2   //min
 /*查询离线设备*/
-static void check_offline_dev(sqlite3*db, char* devName, int id)
+static void check_offline_dev(sqlite3*db)
 {
     M1_LOG_DEBUG("check_offline_dev\n");
     int rc = 0;
+    static char preTime[4] = {0};
     char* curTime = (char*)malloc(30);
     char *time = NULL;
     int u8CurTime = 0, u8Time = 0;
@@ -1882,12 +1923,22 @@ static void check_offline_dev(sqlite3*db, char* devName, int id)
     char* errorMsg = NULL;
     char* sql = NULL;
     char* sql_1 = (char*)malloc(300);
-    char* sql_2 = NULL;
+    char* sql_2 = (char*)malloc(300);
     sqlite3_stmt* stmt = NULL;
     sqlite3_stmt* stmt_1 = NULL;
     sqlite3_stmt* stmt_2 = NULL;
 
     getNowTime(curTime);
+    /*当前时间*/
+    M1_LOG_DEBUG("curTime:%x,%x,%x,%x\n",curTime[8],curTime[9],curTime[10],curTime[11]);
+    u8CurTime = (curTime[8] - preTime[0])*60*10 + (curTime[9] - preTime[1]) * 60  + (curTime[10] - preTime[2]) * 10 + curTime[11] - preTime[3];
+    M1_LOG_DEBUG("u8CurTime:%d\n",u8CurTime);
+    
+    if(u8CurTime < 2){
+        goto Finish;
+    }
+    memcpy(preTime, &curTime[8], 4);
+    M1_LOG_DEBUG("preTime:%x,%x,%x,%x\n",preTime[0],preTime[1],preTime[2],preTime[3]);
     /*获取AP ID*/
     sql = "select AP_ID from all_dev where DEV_ID = AP_ID;";
     M1_LOG_DEBUG("string:%s\n",sql);
@@ -1912,27 +1963,18 @@ static void check_offline_dev(sqlite3*db, char* devName, int id)
                 continue;
             }
              M1_LOG_DEBUG("time: %s\n",time);
-            /*当前时间*/
-            u8CurTime = hex_to_uint8(curTime[10]);
-            u8CurTime = u8CurTime * 10 + hex_to_uint8(curTime[11]);
-            M1_LOG_DEBUG("u8CurTime:%d\n",u8CurTime);
             /*获取的上一次时间*/
-            u8Time = hex_to_uint8(time[10]);
-            u8Time = u8Time * 10 + hex_to_uint8(time[11]);
+            u8Time = (curTime[8] - time[8]) * 60 * 10 + (curTime[9] - time[9]) * 60 + (curTime[10] - time[10]) * 10 + curTime[11] - time[11];
             M1_LOG_DEBUG("u8Time:%d\n",u8Time);
-            if(u8Time - u8CurTime > AP_HEART_BEAT_INTERVAL || u8CurTime - u8Time > AP_HEART_BEAT_INTERVAL){
-                /*插入离线状态*/
-                sql_2 = "insert into param_table(ID, DEV_ID, DEV_NAME, TYPE, VALUE, TIME) values(?,?,?,?,?,?);";
+            if(u8Time > AP_HEART_BEAT_INTERVAL){
+                sprintf(sql_2,"update param_table set VALUE = 0 where DEV_ID = \"%s\" and TYPE = 16404;", apId);
                 sqlite3_finalize(stmt_2);
                 sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-                sqlite3_bind_int(stmt_2, 1, id);
-                sqlite3_bind_text(stmt_2, 2,  apId, -1, NULL);
-                sqlite3_bind_text(stmt_2, 3,  devName, -1, NULL);
-                sqlite3_bind_int(stmt_2, 4, 0x4014);
-                sqlite3_bind_int(stmt_2, 5, 0);
-                sqlite3_bind_text(stmt_2, 6, curTime, -1, NULL);
-                thread_sqlite3_step(&stmt_2, db);
-                id++;
+                rc = thread_sqlite3_step(&stmt_2, db);
+                if(rc != SQLITE_ROW){
+                    M1_LOG_DEBUG("update failed\n");
+                    continue;
+                }
             }
         }
 
@@ -1951,8 +1993,11 @@ static void check_offline_dev(sqlite3*db, char* devName, int id)
         M1_LOG_ERROR("errorMsg\n");
     }
 
+    Finish:
+
     free(curTime);
     free(sql_1);
+    free(sql_2);
     sqlite3_finalize(stmt);
     sqlite3_finalize(stmt_1);
     sqlite3_finalize(stmt_2);
@@ -1964,6 +2009,7 @@ static int ap_heartbeat_handle(payload_t data)
 #if AP_HEARTBEAT_HANDLE
     int rc = 0;
     int id = 0;
+    int netValue = 0;
     char* devName = NULL;
     char* time = (char*)malloc(30);
     char* sql = (char*)malloc(300);
@@ -1980,41 +2026,27 @@ static int ap_heartbeat_handle(payload_t data)
 
     getNowTime(time);
     db = data.db;
-    /*获取 dev name*/
-    // apIdJson = cJSON_GetObjectItem(data.pdu, "devData");
-    // if(apIdJson->valuestring == NULL){
-    //     M1_LOG_ERROR("apId NULL\n");
-    //     goto Finish;
-    // }
     apIdJson = data.pdu;
     M1_LOG_DEBUG("apIdJson:%s\n",apIdJson->valuestring);
-    sprintf(sql,"select DEV_NAME from all_dev where DEV_ID = \"%s\";", apIdJson->valuestring);
+    sprintf(sql,"select VALUE from param_table where DEV_ID = \"%s\" and TYPE = %05d;", apIdJson->valuestring,valueType);
     M1_LOG_DEBUG("string:%s\n",sql);
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
-        devName = sqlite3_column_text(stmt, 0);
-        if(devName == NULL)
-            goto Finish;
-    }else{
-        goto Finish;
+        netValue = sqlite3_column_int(stmt, 0);
+        if(netValue != 1){
+            sprintf(sql,"update param_table set VALUE = 1 where DEV_ID = \"%s\" and TYPE = %05d;",apIdJson->valuestring,valueType);
+            M1_LOG_DEBUG("string:%s\n",sql);
+            sqlite3_finalize(stmt);
+            sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+            rc = thread_sqlite3_step(&stmt, db);
+            if(rc != SQLITE_ROW){
+                M1_LOG_WARN("update failed\n");
+            }
+        }
+
     }
-    sprintf(sql,"select ID from param_table order by ID desc limit 1");
-    id = sql_id(db, sql);
-    /*插入AP在线信息*/
-    sql_1 = "insert into param_table(ID, DEV_ID, DEV_NAME, TYPE, VALUE, TIME) values(?,?,?,?,?,?);";
-    M1_LOG_DEBUG("string:%s\n",sql_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-    sqlite3_bind_int(stmt_1, 1, id);
-    sqlite3_bind_text(stmt_1, 2,  apIdJson->valuestring, -1, NULL);
-    sqlite3_bind_text(stmt_1, 3,  devName, -1, NULL);
-    sqlite3_bind_int(stmt_1, 4, valueType);
-    sqlite3_bind_int(stmt_1, 5, 1);
-    sqlite3_bind_text(stmt_1, 6, time, -1, NULL);
-    thread_sqlite3_step(&stmt_1, db);
-    /*查询离线设备*/
-    id++;
-    check_offline_dev(db, devName, id);
+
     Finish:
     free(sql);
     free(time);

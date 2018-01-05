@@ -13,7 +13,7 @@ int app_get_project_info(payload_t data)
 
     int rc,ret = M1_PROTOCOL_OK;
     int pduType = TYPE_M1_REPORT_PROJECT_NUMBER;
-    char* pNumber = NULL;
+    char* pNumber = NULL,*pName = NULL;
     char* sql = NULL;
     cJSON * pJsonRoot = NULL; 
     cJSON * pduJsonObject = NULL;
@@ -46,8 +46,17 @@ int app_get_project_info(payload_t data)
     cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
     /*add pdu type to pdu object*/
     cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
+    /*添加设备信息*/
+    devDataObject = cJSON_CreateObject();
+    if(NULL == devDataObject)
+    {
+        M1_LOG_DEBUG("devDataObject NULL\n");
+        cJSON_Delete(devDataObject);
+        return M1_PROTOCOL_FAILED;
+    }
+    cJSON_AddItemToObject(pduJsonObject, "devData", devDataObject);
     /*获取项目信息*/
-    sql = "select P_NUMBER from project_table;";
+    sql = "select P_NUMBER,P_NAME from project_table;";
     M1_LOG_DEBUG( "%s\n", sql);
     
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -62,7 +71,13 @@ int app_get_project_info(payload_t data)
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;	
     }
-    cJSON_AddStringToObject(pduJsonObject, "devData", pNumber);
+    pName = sqlite3_column_text(stmt, 1);
+    if(pName == SQLITE_ERROR){
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;    
+    }
+    cJSON_AddStringToObject(devDataObject, "proId", pNumber);
+    cJSON_AddStringToObject(devDataObject, "proName", pName);
 
     char* p = cJSON_PrintUnformatted(pJsonRoot);
     
