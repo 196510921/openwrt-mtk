@@ -412,7 +412,7 @@ void linkage_task(void)
 		   	do{
 		   		if(rc1 > 0){
 		   			M1_LOG_DEBUG("linkage_task\n");
-			    	sprintf(sql,"select EXEC_TYPE, EXEC_ID, LINK_NAME from linkage_table where rowid = %05d;",rowid);
+			    	sprintf(sql,"select EXEC_TYPE, EXEC_ID, LINK_NAME from linkage_table where rowid = %05d and STATUS = on;",rowid);
 					M1_LOG_DEBUG("sql:%s\n", sql);
 					//sqlite3_reset(stmt);
 					sqlite3_finalize(stmt);

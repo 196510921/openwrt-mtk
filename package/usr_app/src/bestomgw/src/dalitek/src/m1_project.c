@@ -56,7 +56,7 @@ int app_get_project_info(payload_t data)
     }
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataObject);
     /*获取项目信息*/
-    sql = "select P_NUMBER,P_NAME from project_table;";
+    sql = "select P_NUMBER,P_NAME from project_table order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
     
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);

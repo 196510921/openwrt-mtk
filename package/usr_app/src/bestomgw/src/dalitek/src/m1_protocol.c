@@ -1390,12 +1390,13 @@ static int APP_net_control(payload_t data)
     M1_LOG_DEBUG("value:%d\n",valueJson->valueint);  
 
     sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",apIdJson->valuestring);
-
+    M1_LOG_DEBUG("sql:%s\n",sql);
     sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
     rc = thread_sqlite3_step(&stmt, db);
     M1_LOG_DEBUG("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
     if(rc == SQLITE_ROW){
         clientFd = sqlite3_column_int(stmt,0);
+        M1_LOG_DEBUG("clientFd:%05d\n",clientFd);          
     }else{
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
@@ -1948,7 +1949,7 @@ static void check_offline_dev(sqlite3*db)
         while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
             apId = sqlite3_column_text(stmt, 0);
             /*检查时间*/
-            sprintf(sql_1,"select TIME from param_table where DEV_ID = \"%s\" order by ID desc limit 1;", apId);
+            sprintf(sql_1,"select TIME from param_table where DEV_ID = \"%s\" and TYPE = 16404 order by ID desc limit 1;", apId);
             M1_LOG_DEBUG("string:%s\n",sql_1);
             sqlite3_finalize(stmt_1);
             sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
@@ -1971,8 +1972,8 @@ static void check_offline_dev(sqlite3*db)
                 sqlite3_finalize(stmt_2);
                 sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
                 rc = thread_sqlite3_step(&stmt_2, db);
-                if(rc != SQLITE_ROW){
-                    M1_LOG_DEBUG("update failed\n");
+                if(rc == SQLITE_ERROR){
+                    M1_LOG_WARN("update failed\n");
                     continue;
                 }
             }
@@ -2025,6 +2026,7 @@ static int ap_heartbeat_handle(payload_t data)
     }
 
     getNowTime(time);
+    M1_LOG_DEBUG("now time:%s\n",time);
     db = data.db;
     apIdJson = data.pdu;
     M1_LOG_DEBUG("apIdJson:%s\n",apIdJson->valuestring);
@@ -2033,17 +2035,17 @@ static int ap_heartbeat_handle(payload_t data)
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
-        netValue = sqlite3_column_int(stmt, 0);
-        if(netValue != 1){
-            sprintf(sql,"update param_table set VALUE = 1 where DEV_ID = \"%s\" and TYPE = %05d;",apIdJson->valuestring,valueType);
+        //netValue = sqlite3_column_int(stmt, 0);
+        //if(netValue != 1){
+            sprintf(sql,"update param_table set VALUE = 1 ,TIME = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d;",time, apIdJson->valuestring,valueType);
             M1_LOG_DEBUG("string:%s\n",sql);
             sqlite3_finalize(stmt);
             sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
             rc = thread_sqlite3_step(&stmt, db);
-            if(rc != SQLITE_ROW){
+            if(rc == SQLITE_ERROR){
                 M1_LOG_WARN("update failed\n");
             }
-        }
+        //}
 
     }
 
