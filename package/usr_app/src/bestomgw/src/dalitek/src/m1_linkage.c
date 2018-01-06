@@ -34,6 +34,7 @@ static int device_exec(char* data, sqlite3* db)
     cJSON * devDataObject= NULL;
     cJSON * paramArray = NULL;
     cJSON*  paramObject = NULL;
+    cJSON* dup_data = NULL;
 	sqlite3_stmt* stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
  
  	M1_LOG_DEBUG("device_exec\n");
@@ -118,7 +119,7 @@ static int device_exec(char* data, sqlite3* db)
 			while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
 				type = sqlite3_column_int(stmt_2,0);
 				value = sqlite3_column_int(stmt_2,1);
-				delay = sqlite3_column_int(stmt_2,1);	
+				delay = sqlite3_column_int(stmt_2,2);	
 				M1_LOG_DEBUG("type:%d,value:%d,delay:%d\n", type, value, delay);
 			    paramObject = cJSON_CreateObject();
 		        if(NULL == paramObject)
@@ -134,8 +135,39 @@ static int device_exec(char* data, sqlite3* db)
 		        cJSON_AddNumberToObject(paramObject, "value", value);
 
 			}
+
+			dup_data = cJSON_Duplicate(pJsonRoot, 1);
+			if(NULL == dup_data)
+	    	{    
+	    		M1_LOG_ERROR("dup_data NULL\n");
+	        	cJSON_Delete(dup_data);
+	        	ret = M1_PROTOCOL_FAILED;
+	        	goto Finish;
+	    	}
+			p = cJSON_PrintUnformatted(dup_data);
+			if(NULL == p)
+	    	{    
+	    		M1_LOG_ERROR("p NULL\n");
+	        	cJSON_Delete(pJsonRoot);
+	        	ret = M1_PROTOCOL_FAILED;
+	        	goto Finish;
+	    	}
+	    	/*get clientfd*/
+	    	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
+	    	M1_LOG_DEBUG("sql_3:%s\n", sql_3);
+	    	//sqlite3_reset(stmt_3);
+	    	sqlite3_finalize(stmt_3);
+	    	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+	    	rc = thread_sqlite3_step(&stmt_3,db);
+	    
+	    	if(rc == SQLITE_ROW){
+				clientFd = sqlite3_column_int(stmt_3,0);
+			}		
+	    	
+	    	M1_LOG_DEBUG("string:%s\n",p);
+	    	delay_send(dup_data, delay, clientFd);
 		}
-	
+#if 0	
 	    p = cJSON_PrintUnformatted(pJsonRoot);
     	if(NULL == p)
     	{    
@@ -158,7 +190,7 @@ static int device_exec(char* data, sqlite3* db)
     	
     	M1_LOG_DEBUG("string:%s\n",p);
     	socketSeverSend((uint8*)p, strlen(p), clientFd);
-    	
+#endif    	
 	}
 
 	Finish:
@@ -398,48 +430,46 @@ void linkage_task(void)
     sqlite3_stmt* stmt = NULL;
 	char *exec_type = NULL,*exec_id = NULL, *link_name =  NULL;
     //while(1){
-	    rc1 = fifo_read(&link_exec_fifo, &rowid);
-	    if(rc1 > 0){
-		    sql = (char*)malloc(300);
-			rc = sqlite3_open("dev_info.db", &db);  
-			if(rc){  
-			    M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
-			    goto Finish;
-			}else{  
-			    M1_LOG_DEBUG( "Opened database successfully\n");  
-			}
-
-		   	do{
-		   		if(rc1 > 0){
-		   			M1_LOG_DEBUG("linkage_task\n");
-			    	sprintf(sql,"select EXEC_TYPE, EXEC_ID, LINK_NAME from linkage_table where rowid = %05d and STATUS = on;",rowid);
-					M1_LOG_DEBUG("sql:%s\n", sql);
-					//sqlite3_reset(stmt);
-					sqlite3_finalize(stmt);
-					sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-					rc = thread_sqlite3_step(&stmt, db);
-					if(rc == SQLITE_ROW){
-						exec_type = sqlite3_column_text(stmt,0);
-						exec_id = sqlite3_column_text(stmt,1);
-						link_name = sqlite3_column_text(stmt,2);
-						if(strcmp(exec_type, "scenario") == 0){
-							scenario_exec(exec_id, db);
-						}else{
-							device_exec(link_name, db);			
-						}
-					}
-		   			rc1 = fifo_read(&link_exec_fifo, &rowid);
-		   		}
-		   	}while(rc1 > 0);
-
-			Finish:
-			free(sql);
-			sqlite3_finalize(stmt);
-			sqlite3_close(db);
+    rc1 = fifo_read(&link_exec_fifo, &rowid);
+    if(rc1 > 0){
+	    sql = (char*)malloc(300);
+		rc = sqlite3_open("dev_info.db", &db);  
+		if(rc){  
+		    M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
+		    goto Finish;
+		}else{  
+		    M1_LOG_DEBUG( "Opened database successfully\n");  
 		}
-		/*100ms*/
-	//    usleep(100000);
-	//}
+
+	   	do{
+	   		if(rc1 > 0){
+	   			M1_LOG_DEBUG("linkage_task\n");
+		    	sprintf(sql,"select EXEC_TYPE, EXEC_ID, LINK_NAME from linkage_table where rowid = %05d and ENABLE = \"on\";",rowid);
+				M1_LOG_DEBUG("sql:%s\n", sql);
+				//sqlite3_reset(stmt);
+				sqlite3_finalize(stmt);
+				sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+				rc = thread_sqlite3_step(&stmt, db);
+				if(rc == SQLITE_ROW){
+					exec_type = sqlite3_column_text(stmt,0);
+					exec_id = sqlite3_column_text(stmt,1);
+					link_name = sqlite3_column_text(stmt,2);
+					if(strcmp(exec_type, "scenario") == 0){
+						scenario_exec(exec_id, db);
+					}else{
+						device_exec(link_name, db);			
+					}
+				}
+	   			rc1 = fifo_read(&link_exec_fifo, &rowid);
+	   		}
+	   	}while(rc1 > 0);
+
+		Finish:
+		free(sql);
+		sqlite3_finalize(stmt);
+		sqlite3_close(db);
+	}
+
 }
 
 static char* linkage_status(char* condition, int threshold, int value)

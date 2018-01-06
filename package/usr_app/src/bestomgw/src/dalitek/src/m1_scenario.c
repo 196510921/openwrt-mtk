@@ -147,7 +147,15 @@ int scenario_exec(char* data, sqlite3* db)
 		            cJSON_AddNumberToObject(paramObject, "type", type);
 		            cJSON_AddNumberToObject(paramObject, "value", value);
 	        	}
+	        	
 	        	cJSON* dup_data = cJSON_Duplicate(pJsonRoot, 1);
+	        	if(NULL == dup_data)
+		    	{    
+		    		M1_LOG_ERROR("dup_data NULL\n");
+		        	cJSON_Delete(dup_data);
+		        	ret = M1_PROTOCOL_FAILED;
+		        	goto Finish;
+		    	}
 	         	char* p = cJSON_PrintUnformatted(dup_data);
   			 	if(NULL == p)
   			 	{    
