@@ -474,21 +474,17 @@ void linkage_task(void)
 
 static char* linkage_status(char* condition, int threshold, int value)
 {	
-	char* status = NULL;
-	int tmp;
+	char* status = "OFF";
 
-	tmp = strcmp(condition, "<");
-	if (0 == tmp){ 
-		if(value < threshold)
-			status = "OFF";
-		else 
+	if (0 == strcmp(condition, "<=")){ 
+		if(value <= threshold)
 			status = "ON";
-	}
-	else {
+	}else if(strcmp(condition, "=") == 0){
+		if(value == threshold)
+			status = "ON";
+	}else{
 		if(value >= threshold)
 			status = "ON";
-		else
-			status = "OFF";
 	}
 	M1_LOG_DEBUG("linkage_status:%s, value:%d, threshold:%d\n",status,value, threshold);
 

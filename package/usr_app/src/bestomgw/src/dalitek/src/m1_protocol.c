@@ -177,9 +177,6 @@ void data_handle(m1_package_t* package)
         default: M1_LOG_ERROR("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
 
-    check_offline_dev(db);
-    sqlite3_close(db);
-
     if(rc != M1_PROTOCOL_NO_RSP){
         if(rc == M1_PROTOCOL_OK)
             rspData.result = RSP_OK;
@@ -187,6 +184,8 @@ void data_handle(m1_package_t* package)
             rspData.result = RSP_FAILED;
         common_rsp(rspData);
     }
+    check_offline_dev(db);
+    sqlite3_close(db);
 
     Finish:
 #if SQL_HISTORY_DEL
@@ -331,7 +330,7 @@ static int AP_report_data_handle(payload_t data)
                     thread_sqlite3_step(&stmt, db);
                 }
 #else                
-                M1_LOG_WARN("AP data insert\n");
+                M1_LOG_DEBUG("AP data insert\n");
                 /*先删除*/
                 sprintf(sql_1,"delete from param_table where DEV_ID = \"%s\" and TYPE = %05d;",devIdJson->valuestring,typeJson->valueint);
                 M1_LOG_DEBUG("sql_1:%s\n",sql_1);
@@ -2301,7 +2300,7 @@ void delay_send_task(void)
             if(head.next->item.prio <= 0){
                 Pop(&head, &item);
                 p = cJSON_PrintUnformatted(item.data);
-                printf("delay_send_task data:%s, addr:%x\n",p, item.data);
+                M1_LOG_DEBUG("delay_send_task data:%s, addr:%x\n",p, item.data);
                 socketSeverSend((uint8*)p, strlen(p), item.clientFd);
                 cJSON_Delete(item.data);
             }
