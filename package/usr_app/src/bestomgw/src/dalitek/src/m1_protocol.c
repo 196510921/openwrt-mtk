@@ -2273,13 +2273,10 @@ static void app_update_param_table(update_param_tb_t data, sqlite3* db)
     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
-        sprintf(sql_1,"update param_table set value = %05d where DEV_ID = \"%s\" and TYPE = %05d order by ID desc limit 1;",data.value, data.devId, data.type);
+        sprintf(sql_1,"update param_table set VALUE = %05d where DEV_ID = \"%s\" and TYPE = %05d;",data.value, data.devId, data.type);
         M1_LOG_DEBUG("sql_1:%s\n",sql_1);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-        rc = thread_sqlite3_step(&stmt_1, db);
-        if(rc != SQLITE_ROW){
-            M1_LOG_ERROR("update failed\n");
-        }
+        thread_sqlite3_step(&stmt_1, db);
     }else{
         /*获取param_table 中ID*/
         sprintf(sql, "select ID from param_table order by ID desc limit 1;");
@@ -2289,10 +2286,7 @@ static void app_update_param_table(update_param_tb_t data, sqlite3* db)
         M1_LOG_DEBUG("sql_1:%s\n",sql_1);
         sqlite3_finalize(stmt_1);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-        rc = thread_sqlite3_step(&stmt_1, db);
-        if(rc != SQLITE_ROW){
-            M1_LOG_ERROR("update failed\n");
-        }
+        thread_sqlite3_step(&stmt_1, db);
         dev_name = sqlite3_column_text(stmt_1, 0);
         if(dev_name == NULL)
             goto Finish;
@@ -2311,7 +2305,7 @@ static void app_update_param_table(update_param_tb_t data, sqlite3* db)
         
         rc = thread_sqlite3_step(&stmt_2, db);
         if(rc != SQLITE_ROW){
-            M1_LOG_ERROR("update failed\n");
+            M1_LOG_ERROR("insert failed\n");
         }
     }
 
