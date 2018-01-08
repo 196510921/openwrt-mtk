@@ -39,6 +39,7 @@ static int create_sql_table(void);
 static int app_change_device_name(payload_t data);
 static uint8_t hex_to_uint8(int h);
 static void check_offline_dev(sqlite3*db);
+static void app_update_param_table(update_param_tb_t data, sqlite3* db);
 /*variable******************************************************************************************************/
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
@@ -634,8 +635,8 @@ static int AP_report_ap_handle(payload_t data)
             rc = thread_sqlite3_step(&stmt,db);
             /*插入AP在线状态*/
             sprintf(sql_1,"select ID from param_table order by ID desc limit 1");
-            M1_LOG_DEBUG("string:%s\n",sql);
-            id = sql_id(db, sql);
+            M1_LOG_DEBUG("string:%s\n",sql_1);
+            id = sql_id(db, sql_1);
             /*插入AP在线信息*/
             sprintf(sql_2,"insert into param_table(ID, DEV_ID, DEV_NAME, TYPE, VALUE, TIME) values(?,?,?,?,?,?);");
             M1_LOG_DEBUG("string:%s\n",sql_2);
@@ -1753,10 +1754,22 @@ static int common_operate(payload_t data)
                 sprintf(sql,"update all_dev set STATUS = \"ON\" where DEV_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
+                /*更新启停状态*/
+                update_param_tb_t dev_status;
+                dev_status.devId = idJson->valuestring;
+                dev_status.type = 0x2022;
+                dev_status.value = 1;
+                app_update_param_table(dev_status, db);
             }else if(strcmp(operateJson->valuestring, "off") == 0){
                 sprintf(sql,"update all_dev set STATUS = \"OFF\" where DEV_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
+                /*更新启停状态*/
+                update_param_tb_t dev_status;
+                dev_status.devId = idJson->valuestring;
+                dev_status.type = 0x2022;
+                dev_status.value = 0;
+                app_update_param_table(dev_status, db);
             }
 
         }else if(strcmp(typeJson->valuestring, "linkage") == 0){
@@ -1879,10 +1892,22 @@ static int common_operate(payload_t data)
                 sprintf(sql,"update all_dev set STATUS = \"ON\" where AP_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
+                /*更新启停状态*/
+                update_param_tb_t dev_status;
+                dev_status.devId = idJson->valuestring;
+                dev_status.type = 0x2022;
+                dev_status.value = 1;
+                app_update_param_table(dev_status, db);
             }else if(strcmp(operateJson->valuestring, "off") == 0){
                 sprintf(sql,"update all_dev set STATUS = \"OFF\" where AP_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
+                /*更新启停状态*/
+                update_param_tb_t dev_status;
+                dev_status.devId = idJson->valuestring;
+                dev_status.type = 0x2022;
+                dev_status.value = 0;
+                app_update_param_table(dev_status, db);
             }
         }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
@@ -2223,6 +2248,81 @@ static int app_change_device_name(payload_t data)
     sqlite3_finalize(stmt);
 
     return ret;
+}
+
+/*更新参数表中设备启停信息*/
+static void app_update_param_table(update_param_tb_t data, sqlite3* db)
+{
+    M1_LOG_DEBUG("app_update_param_table\n");
+    
+    int rc = 0;
+    int id = 0;
+    char* sql = (char*)malloc(300);
+    char* sql_1 = (char*)malloc(300);
+    char* sql_2 = (char*)malloc(300);
+    char* time = (char*)malloc(30);
+    char* dev_name = NULL;
+    sqlite3_stmt* stmt = NULL;
+    sqlite3_stmt* stmt_1 = NULL;
+    sqlite3_stmt* stmt_2 = NULL;
+
+    getNowTime(time);
+    /*删除参数表中的参数*/
+    sprintf(sql,"select ID from param_table where DEV_ID = \"%s\" and TYPE = %05d order by ID desc limit 1;",data.devId, data.type);
+    M1_LOG_DEBUG("sql:%s\n",sql);
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    rc = thread_sqlite3_step(&stmt, db);
+    if(rc == SQLITE_ROW){
+        sprintf(sql_1,"update param_table set value = %05d where DEV_ID = \"%s\" and TYPE = %05d order by ID desc limit 1;",data.value, data.devId, data.type);
+        M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        rc = thread_sqlite3_step(&stmt_1, db);
+        if(rc != SQLITE_ROW){
+            M1_LOG_ERROR("update failed\n");
+        }
+    }else{
+        /*获取param_table 中ID*/
+        sprintf(sql, "select ID from param_table order by ID desc limit 1;");
+        id = sql_id(db, sql);
+        /*获取all_dev设备名称*/
+        sprintf(sql_1,"select DEV_NAME from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;",data.devId);
+        M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+        sqlite3_finalize(stmt_1);
+        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        rc = thread_sqlite3_step(&stmt_1, db);
+        if(rc != SQLITE_ROW){
+            M1_LOG_ERROR("update failed\n");
+        }
+        dev_name = sqlite3_column_text(stmt_1, 0);
+        if(dev_name == NULL)
+            goto Finish;
+        M1_LOG_DEBUG("dev_name:%s\n",dev_name);
+        /*插入参数*/
+        sprintf(sql_2,"insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);");
+        M1_LOG_DEBUG("sql_2:%s\n",sql_2);
+        sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+
+        sqlite3_bind_int(stmt_2, 1, id);
+        sqlite3_bind_text(stmt_2, 2,  dev_name, -1, NULL);
+        sqlite3_bind_text(stmt_2, 3, data.devId, -1, NULL);
+        sqlite3_bind_int(stmt_2, 4, data.type);
+        sqlite3_bind_int(stmt_2, 5, data.value);
+        sqlite3_bind_text(stmt_2, 6,  time, -1, NULL);
+        
+        rc = thread_sqlite3_step(&stmt_2, db);
+        if(rc != SQLITE_ROW){
+            M1_LOG_ERROR("update failed\n");
+        }
+    }
+
+    Finish:
+    free(sql);
+    sqlite3_finalize(stmt);
+    free(sql_1);
+    sqlite3_finalize(stmt_1);
+    free(sql_2);
+    sqlite3_finalize(stmt_2);
+    free(time);
 }
 
 void getNowTime(char* _time)

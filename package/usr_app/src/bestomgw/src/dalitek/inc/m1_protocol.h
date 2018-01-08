@@ -57,6 +57,13 @@ typedef struct _scen_alarm_t{
  int minutes;
 }scen_alarm_t;
 
+/*更新param_able参数*/
+typedef struct _update_param_table_t{
+	char* devId;
+	int type;
+	int value;
+}update_param_tb_t;
+
 void data_handle(m1_package_t* package);
 void sql_rd_handle(void);
 void sql_wt_handle(void);
