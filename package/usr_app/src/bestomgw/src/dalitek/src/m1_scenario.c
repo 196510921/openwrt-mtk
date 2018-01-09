@@ -147,7 +147,7 @@ int scenario_exec(char* data, sqlite3* db)
 		            cJSON_AddNumberToObject(paramObject, "type", type);
 		            cJSON_AddNumberToObject(paramObject, "value", value);
 	        	}
-	        	
+
 	        	cJSON* dup_data = cJSON_Duplicate(pJsonRoot, 1);
 	        	if(NULL == dup_data)
 		    	{    
@@ -270,16 +270,16 @@ int scenario_create_handle(payload_t data)
         M1_LOG_DEBUG("BEGIN\n");
 	   	/*删除原有表scenario_table中的旧scenario*/
 	   	if(scenNameJson != NULL){
-			sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
-			row_number = sql_row_number(db, sql_1);
-			M1_LOG_DEBUG("row_number:%d\n",row_number);
-			if(row_number > 0){
+			//sprintf(sql_1,"select ID from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
+			//row_number = sql_row_number(db, sql_1);
+			//M1_LOG_DEBUG("row_number:%d\n",row_number);
+			//if(row_number > 0){
 				sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
 				//sqlite3_reset(stmt);
 				sqlite3_finalize(stmt);
 				sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-				while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW);
-			}
+				thread_sqlite3_step(&stmt,db);
+			//}
 		}
 		if(alarmJson != NULL){	
 			/*获取收到数据包信息*/
@@ -314,16 +314,16 @@ int scenario_create_handle(payload_t data)
 		/*linkage_table*/
 		id = sql_id(db, sql);
 	   	/*删除原有表scenario_table中的旧scenario*/
-		sprintf(sql_1,"select ID from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
-		row_number = sql_row_number(db, sql_1);
-		M1_LOG_DEBUG("row_number:%d\n",row_number);
-		if(row_number > 0){
+		//sprintf(sql_1,"select ID from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);	
+		//row_number = sql_row_number(db, sql_1);
+		//M1_LOG_DEBUG("row_number:%d\n",row_number);
+		//if(row_number > 0){
 			sprintf(sql_1,"delete from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
 			//sqlite3_reset(stmt);
 			sqlite3_finalize(stmt);
 			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-			while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
-		}
+			thread_sqlite3_step(&stmt, db);
+		//}
 
 	    districtJson = cJSON_GetObjectItem(data.pdu, "district");
 	    M1_LOG_DEBUG("district:%s\n",districtJson->valuestring);

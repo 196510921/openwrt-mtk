@@ -13,6 +13,7 @@
 #include "m1_project.h"
 #include "sql_backup.h"
 #include "m1_common_log.h"
+#include "m1_device.h"
 
 /*Macro**********************************************************************************************************/
 #define SQL_HISTORY_DEL      1
@@ -39,7 +40,6 @@ static int create_sql_table(void);
 static int app_change_device_name(payload_t data);
 static uint8_t hex_to_uint8(int h);
 static void check_offline_dev(sqlite3*db);
-static void app_update_param_table(update_param_tb_t data, sqlite3* db);
 /*variable******************************************************************************************************/
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
@@ -1750,6 +1750,12 @@ static int common_operate(payload_t data)
                 sprintf(sql,"delete from link_exec_table where DEV_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
+                #if 0
+                /*删除联动表linkage_table中相关内容*/
+                sprintf(sql,"delete from linkage_table where EXEC_ID = \"%s\";",idJson->valuestring);
+                M1_LOG_DEBUG("sql:%s\n",sql);
+                sql_exec(db, sql);
+                #endif
             }else if(strcmp(operateJson->valuestring, "on") == 0){
                 sprintf(sql,"update all_dev set STATUS = \"ON\" where DEV_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
@@ -1775,9 +1781,11 @@ static int common_operate(payload_t data)
         }else if(strcmp(typeJson->valuestring, "linkage") == 0){
             if(strcmp(operateJson->valuestring, "delete") == 0){
                 /*删除联动表linkage_table中相关内容*/
+                #if 0
                 sprintf(sql,"delete from linkage_table where LINK_NAME = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
+                #endif
                 /*删除联动触发表link_trigger_table相关内容*/
                 sprintf(sql,"delete from link_trigger_table where LINK_NAME = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
@@ -1795,6 +1803,10 @@ static int common_operate(payload_t data)
                 sql_exec(db, sql);
                 /*删除场景定时相关内容*/
                 sprintf(sql,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",idJson->valuestring);
+                M1_LOG_DEBUG("sql:%s\n",sql);
+                sql_exec(db, sql);
+                /*删除联动表linkage_table中相关内容*/
+                sprintf(sql,"delete from linkage_table where EXEC_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
             }
@@ -1867,6 +1879,10 @@ static int common_operate(payload_t data)
                 /*通知ap*/
                 if(m1_del_ap(db, idJson->valuestring) != M1_PROTOCOL_OK)
                     M1_LOG_ERROR("m1_del_ap error\n");
+                /*删除AP下子设备相关连的联动业务*/
+                #if 0
+                clear_ap_related_linkage(idJson->valuestring, db);
+                #endif
                 ///*删除all_dev中的子设备*/
                 sprintf(sql,"delete from all_dev where AP_ID = \"%s\";",idJson->valuestring);
                 //sprintf(sql,"update all_dev set ADDED = 0,NET = 0,STATUS = \"OFF\" where AP_ID = \"%s\";",idJson->valuestring);
@@ -2250,74 +2266,6 @@ static int app_change_device_name(payload_t data)
     return ret;
 }
 
-/*更新参数表中设备启停信息*/
-static void app_update_param_table(update_param_tb_t data, sqlite3* db)
-{
-    M1_LOG_DEBUG("app_update_param_table\n");
-    
-    int rc = 0;
-    int id = 0;
-    char* sql = (char*)malloc(300);
-    char* sql_1 = (char*)malloc(300);
-    char* sql_2 = (char*)malloc(300);
-    char* time = (char*)malloc(30);
-    char* dev_name = NULL;
-    sqlite3_stmt* stmt = NULL;
-    sqlite3_stmt* stmt_1 = NULL;
-    sqlite3_stmt* stmt_2 = NULL;
-
-    getNowTime(time);
-    /*删除参数表中的参数*/
-    sprintf(sql,"select ID from param_table where DEV_ID = \"%s\" and TYPE = %05d order by ID desc limit 1;",data.devId, data.type);
-    M1_LOG_DEBUG("sql:%s\n",sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-    rc = thread_sqlite3_step(&stmt, db);
-    if(rc == SQLITE_ROW){
-        sprintf(sql_1,"update param_table set VALUE = %05d where DEV_ID = \"%s\" and TYPE = %05d;",data.value, data.devId, data.type);
-        M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-        thread_sqlite3_step(&stmt_1, db);
-    }else{
-        /*获取param_table 中ID*/
-        sprintf(sql, "select ID from param_table order by ID desc limit 1;");
-        id = sql_id(db, sql);
-        /*获取all_dev设备名称*/
-        sprintf(sql_1,"select DEV_NAME from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;",data.devId);
-        M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-        sqlite3_finalize(stmt_1);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-        thread_sqlite3_step(&stmt_1, db);
-        dev_name = sqlite3_column_text(stmt_1, 0);
-        if(dev_name == NULL)
-            goto Finish;
-        M1_LOG_DEBUG("dev_name:%s\n",dev_name);
-        /*插入参数*/
-        sprintf(sql_2,"insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);");
-        M1_LOG_DEBUG("sql_2:%s\n",sql_2);
-        sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-
-        sqlite3_bind_int(stmt_2, 1, id);
-        sqlite3_bind_text(stmt_2, 2,  dev_name, -1, NULL);
-        sqlite3_bind_text(stmt_2, 3, data.devId, -1, NULL);
-        sqlite3_bind_int(stmt_2, 4, data.type);
-        sqlite3_bind_int(stmt_2, 5, data.value);
-        sqlite3_bind_text(stmt_2, 6,  time, -1, NULL);
-        
-        rc = thread_sqlite3_step(&stmt_2, db);
-        if(rc != SQLITE_ROW){
-            M1_LOG_ERROR("insert failed\n");
-        }
-    }
-
-    Finish:
-    free(sql);
-    sqlite3_finalize(stmt);
-    free(sql_1);
-    sqlite3_finalize(stmt_1);
-    free(sql_2);
-    sqlite3_finalize(stmt_2);
-    free(time);
-}
 
 void getNowTime(char* _time)
 {
