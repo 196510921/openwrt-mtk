@@ -138,7 +138,7 @@ void data_handle(m1_package_t* package)
         case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
         case TYPE_REQ_AP_INFO: M1_report_ap_info(pdu); break;
         case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
-        case TYPE_COMMON_RSP: common_rsp_handle(pdu);break;
+        case TYPE_COMMON_RSP: common_rsp_handle(pdu);rc = M1_PROTOCOL_NO_RSP;break;
         case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(pdu);break;
         case TYPE_REQ_LINK_INFO: rc = app_req_linkage(pdu);break;
         case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(pdu); break;
@@ -309,28 +309,7 @@ static int AP_report_data_handle(payload_t data)
                     goto Finish;    
                 }
                 M1_LOG_DEBUG("  value:%d\n",valueJson->valueint);
-#if (!SQL_HISTORY_DEL)
-                M1_LOG_WARN("AP data update\n");
-                sprintf(sql_1,"update param_table set VALUE = %05d where DEV_ID = \"%s\" and TYPE = %05d;",valueJson->valueint,devIdJson->valuestring,typeJson->valueint);
-                M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-                sqlite3_finalize(stmt_1);
-                sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-                rc = thread_sqlite3_step(&stmt_1, db);
-                if(rc != SQLITE_ROW){
-                // rc = sqlite3_exec(db, sql_1, NULL, NULL, NULL);
-                // if(rc != SQLITE_OK){
-                    M1_LOG_DEBUG("sql:%s\n",sql);
-                    sqlite3_reset(stmt); 
-                    sqlite3_bind_int(stmt, 1, id);
-                    id++;
-                    sqlite3_bind_text(stmt, 2,  devNameJson->valuestring, -1, NULL);
-                    sqlite3_bind_text(stmt, 3, devIdJson->valuestring, -1, NULL);
-                    sqlite3_bind_int(stmt, 4,typeJson->valueint);
-                    sqlite3_bind_int(stmt, 5, valueJson->valueint);
-                    sqlite3_bind_text(stmt, 6,  time, -1, NULL);                
-                    thread_sqlite3_step(&stmt, db);
-                }
-#else                
+             
                 M1_LOG_DEBUG("AP data insert\n");
                 /*先删除*/
                 sprintf(sql_1,"delete from param_table where DEV_ID = \"%s\" and TYPE = %05d;",devIdJson->valuestring,typeJson->valueint);
@@ -353,7 +332,6 @@ static int AP_report_data_handle(payload_t data)
                 sqlite3_bind_text(stmt, 6,  time, -1, NULL);
 
                 thread_sqlite3_step(&stmt, db);
-#endif
             }
         }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
@@ -1781,11 +1759,10 @@ static int common_operate(payload_t data)
         }else if(strcmp(typeJson->valuestring, "linkage") == 0){
             if(strcmp(operateJson->valuestring, "delete") == 0){
                 /*删除联动表linkage_table中相关内容*/
-                #if 0
                 sprintf(sql,"delete from linkage_table where LINK_NAME = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 sql_exec(db, sql);
-                #endif
+      
                 /*删除联动触发表link_trigger_table相关内容*/
                 sprintf(sql,"delete from link_trigger_table where LINK_NAME = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);

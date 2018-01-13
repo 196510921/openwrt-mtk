@@ -284,12 +284,28 @@ int scenario_create_handle(payload_t data)
 		if(alarmJson != NULL){	
 			/*获取收到数据包信息*/
 		   	hourJson = cJSON_GetObjectItem(alarmJson, "hour");
+		   	if(hourJson == NULL){
+				ret = M1_PROTOCOL_FAILED;
+				goto Finish;	   		
+		   	}
 		    M1_LOG_DEBUG("hour:%d\n",hourJson->valueint);
 		    minutesJson = cJSON_GetObjectItem(alarmJson, "minutes");
+		    if(minutesJson == NULL){
+				ret = M1_PROTOCOL_FAILED;
+				goto Finish;	   		
+		   	}
 		    M1_LOG_DEBUG("minutes:%d\n",minutesJson->valueint);
 		    weekJson = cJSON_GetObjectItem(alarmJson, "week");
+		    if(weekJson == NULL){
+				ret = M1_PROTOCOL_FAILED;
+				goto Finish;	   		
+		   	}
 		    M1_LOG_DEBUG("week:%s\n",weekJson->valuestring);
 		    statusJson = cJSON_GetObjectItem(alarmJson, "status");
+		    if(statusJson == NULL){
+				ret = M1_PROTOCOL_FAILED;
+				goto Finish;	   		
+		   	}
 		    M1_LOG_DEBUG("status:%s\n",statusJson->valuestring);
 		
 
@@ -326,6 +342,10 @@ int scenario_create_handle(payload_t data)
 		//}
 
 	    districtJson = cJSON_GetObjectItem(data.pdu, "district");
+	    if(districtJson == NULL){
+			ret = M1_PROTOCOL_FAILED;
+			goto Finish;	   		
+		}
 	    M1_LOG_DEBUG("district:%s\n",districtJson->valuestring);
 	    devArrayJson = cJSON_GetObjectItem(data.pdu, "device");
 	    number1 = cJSON_GetArraySize(devArrayJson);
@@ -333,9 +353,25 @@ int scenario_create_handle(payload_t data)
 	    /*存取到数据表scenario_table中*/
 	    for(i = 0; i < number1; i++){
 	    	devJson = cJSON_GetArrayItem(devArrayJson, i);
+	    	if(devJson == NULL){
+				ret = M1_PROTOCOL_FAILED;
+				goto Finish;	   		
+			}
 	    	apIdJson = cJSON_GetObjectItem(devJson, "apId");
+	    	if(apIdJson == NULL){
+				ret = M1_PROTOCOL_FAILED;
+				goto Finish;	   		
+			}
 	    	devIdJson = cJSON_GetObjectItem(devJson, "devId");
+	    	if(devIdJson == NULL){
+				ret = M1_PROTOCOL_FAILED;
+				goto Finish;	   		
+			}
 	    	delayArrayJson = cJSON_GetObjectItem(devJson, "delay");
+	    	if(delayArrayJson == NULL){
+				ret = M1_PROTOCOL_FAILED;
+				goto Finish;	   		
+			}
 	    	number2 = cJSON_GetArraySize(delayArrayJson);
 	    	for(j = 0, delay = 0; j < number2; j++){
 	    		delayJson = cJSON_GetArrayItem(delayArrayJson, j);
@@ -346,8 +382,20 @@ int scenario_create_handle(payload_t data)
 	    	number2 = cJSON_GetArraySize(paramArrayJson);
 	    	for(j = 0; j < number2; j++){
 	    		paramJson = cJSON_GetArrayItem(paramArrayJson, j);
+	    		if(paramJson == NULL){
+					ret = M1_PROTOCOL_FAILED;
+					goto Finish;	   		
+				}
 	    		typeJson = cJSON_GetObjectItem(paramJson, "type");
+	    		if(typeJson == NULL){
+					ret = M1_PROTOCOL_FAILED;
+					goto Finish;	   		
+				}
 	    		valueJson = cJSON_GetObjectItem(paramJson, "value");
+	    		if(valueJson == NULL){
+					ret = M1_PROTOCOL_FAILED;
+					goto Finish;	   		
+				}
 	    		M1_LOG_DEBUG("type:%d, value:%d\n",typeJson->valueint, valueJson->valueint);
 	    		
 			    sql = "insert into scenario_table(ID, SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?,?);";

@@ -64,7 +64,6 @@
 #include "m1_protocol.h"
 #include "buf_manage.h"
 
-
 void SRPC_RxCB(int clientFd);
 void SRPC_ConnectCB(int status);
 
@@ -1707,15 +1706,48 @@ static int json_checker(char* str, int len)
 	return 0;
 }
 
+/*接收包header高低字节转换*/
+static int msg_header_check(uint16_t header)
+{
+	int ret = 0;
+	uint16_t TransHeader = 0;
+
+	TransHeader = (((header >> 8) & 0xff) | ((header<< 8) & 0xff00));
+	M1_LOG_DEBUG("TransHeader:%x\n",TransHeader);
+	if(TransHeader == 0xFEFD){
+		ret = 1;
+	}
+
+	return ret;
+}
+/*接收长度高低字节转换*/
+static uint16_t msg_len_get(uint16_t len)
+{
+	uint16_t TransLen = 0;
+	
+	TransLen = (((len >> 8) & 0xff) | ((len<< 8) & 0xff00));
+	M1_LOG_DEBUG("TransLen:%x\n",TransLen);
+
+	return TransLen;	
+}
+
+#if 1
+	char tcpRxBuf[1024*20] = {0};
+#endif
 void SRPC_RxCB(int clientFd)
 {
 	int byteToRead = 0;
 	int byteRead = 0;
 	int rtn = 0;
 	int JsonComplete = 0;
-	int len = 0;
 	int rc = 0;
-	char buf[1024*10] = {0};
+#if 1
+	static int len = 0;
+	static uint16_t exLen = 0;
+#else
+	int len = 0;
+	char tcpRxBuf[1024*20] = {0};
+#endif
 	client_block_t* client_block = NULL;
 
 	M1_LOG_DEBUG("SRPC_RxCB++[%x]\n", clientFd);
@@ -1728,29 +1760,51 @@ void SRPC_RxCB(int clientFd)
 	}
 	M1_LOG_DEBUG("byteToRead:%d\n",byteToRead);
 
-	if(byteToRead > 10*1024){
+	if(byteToRead > 20*1024){
 		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
 		return;
 	}
 	while(byteToRead > 0)
 	{
-		byteRead = read(clientFd, buf + len, 1024);
+		byteRead = read(clientFd, tcpRxBuf + len, 1024);
 		if(byteRead > 0){
+#if 1
+			/*判断是否是头*/
+			if(msg_header_check(*(uint16_t*)(tcpRxBuf + len)) == 1){
+				exLen = msg_len_get(*(uint16_t*)(tcpRxBuf + len + 2));
+				M1_LOG_DEBUG("exLen:%05d\n",exLen);
+				if(len > 0){
+					goto Finish;
+				}
+			}else{
+				M1_LOG_DEBUG("%x,tcpRxBuf:%x,%x.%x.%x,\n",*(uint16_t*)(tcpRxBuf + len + 2),tcpRxBuf[len],tcpRxBuf[len+1],tcpRxBuf[len+2],tcpRxBuf[len+3]);
+			}
+#endif
 			len += byteRead;
 			byteToRead -= byteRead;		
 		}					
 	}
-
+#if 1
+	if(len - 4 < exLen){
+		M1_LOG_INFO("waiting msg...\n");
+		return;
+	}
+	exLen = 0;
+#endif
 	client_block = client_stack_block_req(clientFd);
 	if(NULL == client_block){
 		M1_LOG_ERROR( "client_block null\n");
 		return;
 	}
-	M1_LOG_INFO("rx len:%05d, rx data:%s\n",len, buf+4);
-	rc = client_write(&client_block->stack_block, buf, len);
+	M1_LOG_INFO("rx len:%05d, rx data:%s\n",len, tcpRxBuf+4);
+	rc = client_write(&client_block->stack_block, tcpRxBuf, len);
 	if(rc != TCP_SERVER_SUCCESS)
 		M1_LOG_ERROR("client_write failed\n");
-
+#if 1
+	Finish:
+	len = 0;
+	memset(tcpRxBuf, 0, 1024*20);
+#endif
 	M1_LOG_DEBUG("SRPC_RxCB--\n");
 
 	return;
@@ -1758,7 +1812,7 @@ void SRPC_RxCB(int clientFd)
 
 static void client_read_to_data_handle(char* data, int len, int clientFd)
 {
-	M1_LOG_DEBUG( "client_read_to_data_handle:  len:%05d, data:%s\n",len, data);
+	M1_LOG_INFO( "client_read_to_data_handle:  len:%05d, data:%s\n",len, data);
 	// m1_package_t* msg  = NULL;
 
 	// msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
@@ -1895,13 +1949,11 @@ void client_read(void)
 				goto Finish;
 			header = *(uint16_t*)data;
 			header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
-			//M1_LOG_DEBUG("read header:%x\n", header);
 		}while(header != MSG_HEADER);
 
 		len = *(uint16_t*)&data[2];
 		len = (uint16_t)(((len << 8) & 0xff00) | ((len >> 8) & 0xff)) & 0xffff;
-		//M1_LOG_DEBUG("read len:%05d\n", len);
-		//if(len <= STACK_UNIT){
+
 		if((len+4) <= STACK_UNIT){
 			client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
 			goto Finish;
@@ -1912,13 +1964,10 @@ void client_read(void)
 			goto Finish;
 
 		client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
-		//count = (((len + 4) / STACK_UNIT) + ((len % STACK_UNIT) > 0 ? 1: 0)) * STACK_UNIT;
 
 		Finish:
 		if(rc != TCP_SERVER_SUCCESS){
 			d->rPtr = headerP;
-			//d->unitCount+=1;
-			//M1_LOG_DEBUG("client read failed\n");
 		}
 		i = (i + 1) % STACK_BLOCK_NUM;
 		memset(data, 0, 2048);

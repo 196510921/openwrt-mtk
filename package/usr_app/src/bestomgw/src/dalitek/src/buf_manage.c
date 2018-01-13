@@ -186,7 +186,6 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 			d->rPtr = d->start;
 		memcpy(&data[i * STACK_UNIT], d->rPtr, STACK_UNIT);
 		d->rPtr += STACK_UNIT;
-		//data += STACK_UNIT;
 		d->unitCount--;
 	}
 
