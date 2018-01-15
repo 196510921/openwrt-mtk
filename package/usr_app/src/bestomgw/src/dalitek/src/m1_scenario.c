@@ -10,6 +10,7 @@
 #include "socket_server.h"
 #include "m1_common_log.h"
 
+extern sqlite3* db;
 /*函数定义*************************************************************************************/
 static int scenario_alarm_check(scen_alarm_t alarm_time);
 
@@ -940,42 +941,50 @@ int app_req_scenario_name(payload_t data)
 /*定时执行场景检查*/
 void scenario_alarm_select(void)
 {
- 	printf("scenario_alarm_select\n");
+ 	M1_LOG_DEBUG("scenario_alarm_select\n");
  	int rc;
  	char* sql = NULL;
  	scen_alarm_t alarm;
  	sqlite3_stmt* stmt = NULL;
- 	sqlite3* db = NULL;
+ 	//sqlite3* db = NULL;
  	sql = "select SCEN_NAME, HOUR, MINUTES, WEEK, STATUS from scen_alarm_table;";
  	while(1){
-	 	rc = sqlite3_open("dev_info.db", &db);  
-	     if( rc ){  
+ 	#if 1
+ 		rc = sql_open(); 
+	#else
+	 	rc = sqlite3_open("dev_info.db", &db); 		
+	#endif    
+	    if(rc){  
 	         M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
 	         return M1_PROTOCOL_FAILED;  
 	     }else{  
 	         M1_LOG_DEBUG( "Opened database successfully\n");  
 	     }
 
-	     sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-	     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
-	     	alarm.scen_name = sqlite3_column_text(stmt, 0);
-	     	alarm.hour = sqlite3_column_int(stmt, 1);
-	     	alarm.week = sqlite3_column_text(stmt, 3);
-	     	alarm.minutes = sqlite3_column_int(stmt, 2);
-	     	alarm.status = sqlite3_column_text(stmt, 4);
-	     	rc = scenario_alarm_check(alarm);
-	     	if(rc)
-	     		scenario_exec(alarm.scen_name, db);
-	     }
-	     sqlite3_finalize(stmt);
-	     sqlite3_close(db);
-
+	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+	    	alarm.scen_name = sqlite3_column_text(stmt, 0);
+	    	alarm.hour = sqlite3_column_int(stmt, 1);
+	    	alarm.week = sqlite3_column_text(stmt, 3);
+	    	alarm.minutes = sqlite3_column_int(stmt, 2);
+	    	alarm.status = sqlite3_column_text(stmt, 4);
+	    	rc = scenario_alarm_check(alarm);
+	    	if(rc)
+	    		scenario_exec(alarm.scen_name, db);
+	    }
+	    sqlite3_finalize(stmt);
+ 	#if 1
+ 		sql_close(); 
+	#else
+	    sqlite3_close(db);
+	#endif
 	     sleep(60);
  	}
 }
 
  static int scenario_alarm_check(scen_alarm_t alarm_time)
  {
+ 	M1_LOG_DEBUG("scenario_alarm_check\n");
  	int on_time_flag = 0;
  	char* week = NULL;
  	struct tm nowTime;

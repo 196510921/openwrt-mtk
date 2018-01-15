@@ -41,6 +41,8 @@ static int app_change_device_name(payload_t data);
 static uint8_t hex_to_uint8(int h);
 static void check_offline_dev(sqlite3*db);
 /*variable******************************************************************************************************/
+extern pthread_mutex_t mutex_lock;
+sqlite3* db = NULL;
 char* db_path = "dev_info.db";
 fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
@@ -77,7 +79,9 @@ void data_handle(m1_package_t* package)
     cJSON* pduTypeJson = NULL;
     cJSON* snJson = NULL;
     cJSON* pduDataJson = NULL;
+#if 0
     sqlite3* db = NULL;
+#endif
     payload_t pdu;
     rsp_data_t rspData;
 
@@ -114,14 +118,18 @@ void data_handle(m1_package_t* package)
     }
 
     /*打开读数据库*/
+#if 0
     //rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READONLY, NULL);
     rc = sqlite3_open(db_path, &db);
+#else
+    rc = sql_open();
     if( rc != SQLITE_OK){  
         M1_LOG_ERROR( "Can't open database\n");  
         goto Finish;
     }else{  
         M1_LOG_DEBUG( "Opened database successfully\n");  
     }
+#endif
 
     /*pdu*/ 
     pdu.clientFd = package->clientFd;
@@ -186,7 +194,11 @@ void data_handle(m1_package_t* package)
         common_rsp(rspData);
     }
     check_offline_dev(db);
+#if 0
     sqlite3_close(db);
+#else
+    sql_close();
+#endif
 
     Finish:
 #if SQL_HISTORY_DEL
@@ -830,7 +842,7 @@ static int APP_read_handle(payload_t data)
                     cJSON_AddNumberToObject(devObject, "type", paramJson->valueint);
                     cJSON_AddNumberToObject(devObject, "value", value);
                 }else{
-                    M1_LOG_WARN("value not exit");
+                    M1_LOG_DEBUG("value not exit");
                     continue;
                 }
             // }
@@ -2144,14 +2156,18 @@ static int common_rsp(rsp_data_t data)
     return ret;
 }
 
+extern sqlite3* db;
 void delete_account_conn_info(int clientFd)
 {
     int rc;
     char* sql = (char*)malloc(300);
-    sqlite3* db = NULL;
+    //sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
-
+#if 0
     rc = sqlite3_open("dev_info.db", &db);  
+#else
+    rc = sql_open();
+#endif    
     if( rc ){  
         M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
         goto Finish;
@@ -2174,7 +2190,11 @@ void delete_account_conn_info(int clientFd)
     Finish:
     free(sql);
     sqlite3_finalize(stmt);
+#if 0
     sqlite3_close(db);
+#else
+    sql_close();
+#endif
 }
 
 /*app修改设备名称*/
@@ -2385,6 +2405,38 @@ int sql_exec(sqlite3* db, char*sql)
     }while(rc == SQLITE_ROW);
    
     sqlite3_finalize(stmt);
+    return rc;
+}
+
+/*打开数据库*/
+int sql_open(void)
+{
+    int rc;
+
+    pthread_mutex_lock(&mutex_lock);
+    M1_LOG_DEBUG( "pthread_mutex_lock\n");
+
+    rc = sqlite3_open(db_path, &db);
+    if( rc != SQLITE_OK){  
+        M1_LOG_ERROR( "Can't open database\n");  
+    }else{  
+        M1_LOG_DEBUG( "Opened database successfully\n");  
+    }
+
+    return rc;
+}
+
+/*关闭数据库*/
+int sql_close(void)
+{
+    int rc;
+    
+    M1_LOG_DEBUG( "Sqlite3 close\n");
+    rc = sqlite3_close(db);
+
+    pthread_mutex_unlock(&mutex_lock);
+    M1_LOG_DEBUG( "pthread_mutex_unlock\n");
+
     return rc;
 }
 

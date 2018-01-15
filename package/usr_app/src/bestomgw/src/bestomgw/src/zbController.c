@@ -55,8 +55,9 @@
 #define MAX_DB_FILENAMR_LEN 255
 #define DEBUG_LOG_OUTPUT_TO_FD   1
 
-//全局变量	
-
+/*全局变量***********************************************************************************************/	
+pthread_mutex_t mutex_lock;
+/*静态局部函数****************************************************************************************/
 static void printf_redirect(void);
 static void socket_poll(void);
 static void debug_switch(void);
@@ -77,6 +78,7 @@ int main(int argc, char* argv[])
 	SRPC_Init();
 	m1_protocol_init();
 
+	pthread_mutex_init(&mutex_lock, NULL);
 	pthread_create(&t1,NULL,socket_poll,NULL);
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
@@ -93,6 +95,7 @@ int main(int argc, char* argv[])
 	pthread_join(t5, NULL);
 //#endif
 	
+	pthread_mutex_destroy(&mutex_lock);
 	return retval;
 }
 
