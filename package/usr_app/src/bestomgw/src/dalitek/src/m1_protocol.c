@@ -309,7 +309,9 @@ static int AP_report_data_handle(payload_t data)
                     goto Finish;    
                 }
                 M1_LOG_DEBUG("  value:%d\n",valueJson->valueint);
-             
+                if(typeJson->valueint == 16404){
+                    M1_LOG_WARN("type:%05d,value:%d,dev_id:%s\n",typeJson->valueint,valueJson->valueint,devIdJson->valuestring);    
+                }
                 M1_LOG_DEBUG("AP data insert\n");
                 /*先删除*/
                 sprintf(sql_1,"delete from param_table where DEV_ID = \"%s\" and TYPE = %05d;",devIdJson->valuestring,typeJson->valueint);
@@ -332,6 +334,7 @@ static int AP_report_data_handle(payload_t data)
                 sqlite3_bind_text(stmt, 6,  time, -1, NULL);
 
                 thread_sqlite3_step(&stmt, db);
+
             }
         }
         if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
@@ -2313,7 +2316,6 @@ void delay_send_task(void)
     static uint32_t count = 0;
     Item item;
     char * p = NULL;
-    char str[20];
     while(1){
         if(!IsEmpty(&head)){
             if(head.next->item.prio <= 0){
@@ -2392,7 +2394,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
     int rc;
     char* errorMsg = NULL;
 
-    do{
+    //do{
         rc = sqlite3_step(*stmt);   
         M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
         if(rc == SQLITE_BUSY || rc == SQLITE_LOCKED || rc == SQLITE_MISUSE){
@@ -2401,7 +2403,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
             usleep(100000);
         }
         
-    }while((sleep_acount < 10) && ((rc == SQLITE_BUSY) || (rc == SQLITE_LOCKED) || (rc == SQLITE_MISUSE)));
+    //}while((sleep_acount < 10) && ((rc == SQLITE_BUSY) || (rc == SQLITE_LOCKED) || (rc == SQLITE_MISUSE)));
 
     if(rc == SQLITE_BUSY || rc == SQLITE_MISUSE || rc == SQLITE_LOCKED){
         if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){

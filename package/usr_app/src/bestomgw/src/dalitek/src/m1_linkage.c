@@ -552,88 +552,76 @@ int trigger_cb_handle(sqlite3* db)
 
    	rc1 = fifo_read(&dev_data_fifo, &rowid);
    	if(rc1 > 0){
-   	M1_LOG_DEBUG("trigger_cb_handle\n");
-   	sql = (char*)malloc(300);
-   	sql_1 = (char*)malloc(300);
-   	sql_2 = (char*)malloc(300);
+	   	M1_LOG_DEBUG("trigger_cb_handle\n");
+	   	sql = (char*)malloc(300);
+	   	sql_1 = (char*)malloc(300);
+	   	sql_2 = (char*)malloc(300);
 
-   	/*失使能表更新回调*/
-   	rc = sqlite3_update_hook(db, NULL, NULL);
-    if(rc){
-        M1_LOG_DEBUG( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
-    }
+	   	/*失使能表更新回调*/
+	   	rc = sqlite3_update_hook(db, NULL, NULL);
+	    if(rc){
+	        M1_LOG_DEBUG( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
+	    }
 
-    do{
-    	/*check linkage table*/
-		sprintf(sql,"select VALUE, DEV_ID, TYPE from param_table where rowid = %05d;",rowid);
-		M1_LOG_DEBUG("sql:%s\n",sql);
-		do{
+	    do{
+	    	/*check linkage table*/
+			sprintf(sql,"select VALUE, DEV_ID, TYPE from param_table where rowid = %05d;",rowid);
+			M1_LOG_DEBUG("sql:%s\n",sql);
+
 			sqlite3_finalize(stmt);
-			rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-			if(rc != SQLITE_OK){
-				M1_LOG_ERROR( "sqlite3_prepare_v2 failed,errorNum:%05d\n",rc);  
-				if(rc == SQLITE_LOCKED){
-					M1_LOG_ERROR( "sqlite3 is locked\n");  
-					usleep(100000);
-				}else{
-					goto Finish;
-				}
-			}else{
-				M1_LOG_DEBUG("sqlite3_prepare_v2 ok\n");  		
-			}
-		}while(rc < 0);
-
-		rc = thread_sqlite3_step(&stmt, db);
-		if(rc == SQLITE_ROW){
-		    value = sqlite3_column_int(stmt,0);
-		    devId = sqlite3_column_text(stmt,1);
-		    param_type = sqlite3_column_int(stmt,2);
-		    M1_LOG_DEBUG("value:%05d, devId:%s, param_type%05d:\n",value, devId, param_type);
-		}
-	 	/*检查设备启/停状态*/
-	 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
-	 	//sqlite3_reset(stmt_1);
-	 	sqlite3_finalize(stmt_1);
-	 	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-	 	rc = thread_sqlite3_step(&stmt_1, db);
-		if(rc == SQLITE_ROW){		
-	    	status = sqlite3_column_text(stmt_1,0);
-		    /*设备处于启动状态*/
-		    if(strcmp(status,"ON") == 0){
-			    /*get linkage table*/
-			    sprintf(sql_1,"select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = \"%s\" and TYPE = %05d;",devId,param_type);
-				M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-				//sqlite3_reset(stmt_1);
-				sqlite3_finalize(stmt_1);
-				sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
-				while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
-					threshold = sqlite3_column_int(stmt_1,0);
-			        condition = sqlite3_column_text(stmt_1,1);
-			        link_name = sqlite3_column_text(stmt_1,2);
-			        M1_LOG_DEBUG("threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
-			 		status = linkage_status(condition, threshold, value);
-			 		/*set linkage table*/
-			 		sprintf(sql_2,"update link_trigger_table set STATUS = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d and LINK_NAME = \"%s\" ;",status,devId,param_type,link_name);
-			 		M1_LOG_DEBUG("sql_2:%s\n",sql_2);
-			 		//sqlite3_reset(stmt_2);
-			 		sqlite3_finalize(stmt_2);
-					sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
-					rc = thread_sqlite3_step(&stmt_2, db);
-					/*检查是否满足触发条件*/
-					linkage_check(db, link_name);
-			 	}
+			sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+			rc = thread_sqlite3_step(&stmt, db);
+			if(rc == SQLITE_ROW){
+			    value = sqlite3_column_int(stmt,0);
+			    devId = sqlite3_column_text(stmt,1);
+			    param_type = sqlite3_column_int(stmt,2);
+			    M1_LOG_DEBUG("value:%05d, devId:%s, param_type%05d:\n",value, devId, param_type);
+			 	/*检查设备启/停状态*/
+			 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
+			 	M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+			 	sqlite3_finalize(stmt_1);
+			 	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+			 	rc = thread_sqlite3_step(&stmt_1, db);
+				if(rc == SQLITE_ROW){		
+			    	status = sqlite3_column_text(stmt_1,0);
+				    /*设备处于启动状态*/
+				    if(strcmp(status,"ON") == 0){
+					    /*get linkage table*/
+					    sprintf(sql_1,"select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = \"%s\" and TYPE = %05d;",devId,param_type);
+						M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+						//sqlite3_reset(stmt_1);
+						sqlite3_finalize(stmt_1);
+						sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+						while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
+							threshold = sqlite3_column_int(stmt_1,0);
+					        condition = sqlite3_column_text(stmt_1,1);
+					        link_name = sqlite3_column_text(stmt_1,2);
+					        M1_LOG_DEBUG("threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
+					 		status = linkage_status(condition, threshold, value);
+					 		/*set linkage table*/
+					 		sprintf(sql_2,"update link_trigger_table set STATUS = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d and LINK_NAME = \"%s\" ;",status,devId,param_type,link_name);
+					 		M1_LOG_DEBUG("sql_2:%s\n",sql_2);
+					 		//sqlite3_reset(stmt_2);
+					 		sqlite3_finalize(stmt_2);
+							sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+							rc = thread_sqlite3_step(&stmt_2, db);
+							M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+							/*检查是否满足触发条件*/
+							linkage_check(db, link_name);
+					 	}
+				 	}
+			 	}	
 		 	}
-	 	}	
-    	rc1 = fifo_read(&dev_data_fifo, &rowid);
-    }while(rc1 > 0);
+	    	rc1 = fifo_read(&dev_data_fifo, &rowid);
+	    }while(rc1 > 0);
 
-	    Finish:
-	    free(sql);
-	    free(sql_1);
-	    free(sql_2);
-	    sqlite3_finalize(stmt);
-	 	sqlite3_finalize(stmt_1);
-	 	sqlite3_finalize(stmt_2);
+		    Finish:
+		    free(sql);
+		    free(sql_1);
+		    free(sql_2);
+		    sqlite3_finalize(stmt);
+		 	sqlite3_finalize(stmt_1);
+		 	sqlite3_finalize(stmt_2);
    }
  
 }
@@ -946,7 +934,7 @@ int app_req_linkage(payload_t data)
 				    cJSON_AddItemToArray(paramJsonArray, paramObject);
 					type = sqlite3_column_int(stmt_2, 0);
 				   	cJSON_AddNumberToObject(paramObject, "type", type);
-				   	printf("type:%05d\n");
+				   	M1_LOG_DEBUG("type:%05d\n");
 				   	value = sqlite3_column_int(stmt_2, 1);
 				   	cJSON_AddNumberToObject(paramObject, "value", value);
 				   	M1_LOG_DEBUG("value:%05d\n",value);
