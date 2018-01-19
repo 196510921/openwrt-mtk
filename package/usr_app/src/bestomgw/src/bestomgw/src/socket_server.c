@@ -442,9 +442,12 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	M1_LOG_DEBUG( "socketSeverSend++\n");
 
 	int rtn;
+	int tick = 0;
 	uint16_t header = 0xFEFD;
 	uint16_t msg_len = 0;
+	int bytes_left = 0;
 	char* send_buf = NULL;
+	char* ptr = NULL;
 	//char send_buf[4096] = {0};
 	M1_LOG_INFO("Tx msg:%s\n",buf);
 	/*大端序*/
@@ -457,11 +460,34 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	memcpy((send_buf+2), &msg_len, 2);
 	memcpy((send_buf+4), buf, len);
 	
-	rtn = write(fdClient, send_buf, len + 4);
-	if (rtn < 0)
-	{
-		M1_LOG_ERROR("ERROR writing to socket %d, errno:%d\n", fdClient,errno);
-		delete_socket_clientfd(fdClient);
+	ptr = send_buf;
+	bytes_left = len + 4;
+	while(bytes_left > 0){
+		//rtn = write(fdClient, send_buf, len + 4);
+		rtn = write(fdClient, ptr, bytes_left);
+		if (rtn < 0)
+		{
+			if(errno == EINTR){
+				M1_LOG_WARN("error errno==EINTR continue\n");  //EINTR:4
+				continue;
+			}else if(errno == EAGAIN){                         //EAGAIN:11
+				M1_LOG_WARN("WARN: socket:%d, errno = %d, strerror = %s \n",fdClient, errno, strerror(errno));
+				tick++;
+				if(tick > 300){
+					M1_LOG_ERROR("send timeout!\n");
+					delete_socket_clientfd(fdClient);	
+					break;
+				}
+				/*等待10ms*/
+				usleep(10000);
+			}else{
+				M1_LOG_ERROR("ERROR writing to socket %d, errno:%d:%s\n", fdClient,errno,strerror(errno));
+				delete_socket_clientfd(fdClient);
+				break;
+			}
+		}
+		bytes_left -= rtn;
+		ptr += rtn;
 	}
 
 	free(send_buf);

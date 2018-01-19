@@ -1732,7 +1732,7 @@ static uint16_t msg_len_get(uint16_t len)
 }
 
 #if 1
-	char tcpRxBuf[1024*20] = {0};
+	char tcpRxBuf[1024*60] = {0};
 #endif
 void SRPC_RxCB(int clientFd)
 {
@@ -1760,7 +1760,7 @@ void SRPC_RxCB(int clientFd)
 	}
 	M1_LOG_DEBUG("byteToRead:%d\n",byteToRead);
 
-	if(byteToRead > 20*1024){
+	if(byteToRead > 60*1024){
 		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
 		return;
 	}
@@ -1803,7 +1803,7 @@ void SRPC_RxCB(int clientFd)
 #if 1
 	Finish:
 	len = 0;
-	memset(tcpRxBuf, 0, 1024*20);
+	memset(tcpRxBuf, 0, 1024*60);
 #endif
 	M1_LOG_DEBUG("SRPC_RxCB--\n");
 

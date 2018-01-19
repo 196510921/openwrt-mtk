@@ -446,11 +446,9 @@ int app_account_config_handle(payload_t data)
         /*删除重复用户信息*/
         sprintf(sql_1,"delete from scenario_table where ACCOUNT = \"%s\";",accountJson->valuestring);
         M1_LOG_DEBUG("sql:%s\n",sql_1);
-        //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
         sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
         thread_sqlite3_step(&stmt, db);
-        //while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
     
         sql = "select ID from scenario_table order by ID desc limit 1;";
         id = sql_id(db, sql);
