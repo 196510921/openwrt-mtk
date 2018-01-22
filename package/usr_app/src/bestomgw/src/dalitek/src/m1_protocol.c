@@ -2397,27 +2397,27 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
     int rc;
     char* errorMsg = NULL;
 
-    //do{
-        rc = sqlite3_step(*stmt);   
-        M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-        if(rc == SQLITE_BUSY || rc == SQLITE_LOCKED || rc == SQLITE_MISUSE){
-            sqlite3_reset(*stmt);
-            sleep_acount++;
-            usleep(100000);
-        }
-        
-    //}while((sleep_acount < 10) && ((rc == SQLITE_BUSY) || (rc == SQLITE_LOCKED) || (rc == SQLITE_MISUSE)));
+    rc = sqlite3_step(*stmt);   
+    M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+    if((rc != SQLITE_ROW) && (rc!= SQLITE_DONE)){
+        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+    }
+    // if(rc == SQLITE_BUSY || rc == SQLITE_LOCKED || rc == SQLITE_MISUSE){
+    //     sqlite3_reset(*stmt);
+    //     sleep_acount++;
+    //     usleep(100000);
+    // }
 
-    if(rc == SQLITE_BUSY || rc == SQLITE_MISUSE || rc == SQLITE_LOCKED){
+    if(rc == SQLITE_BUSY || rc == SQLITE_MISUSE || rc == SQLITE_LOCKED || rc == SQLITE_CORRUPT){
         if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
             M1_LOG_INFO("ROLLBACK OK\n");
             sqlite3_free(errorMsg);
         }else{
+            sqlite3_free(errorMsg);
             M1_LOG_ERROR("ROLLBACK FALIED\n");
         }
     }
 
-    free(errorMsg);
     return rc;
 }
 

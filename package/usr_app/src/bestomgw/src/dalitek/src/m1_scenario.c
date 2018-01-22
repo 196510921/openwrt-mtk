@@ -275,8 +275,9 @@ int scenario_create_handle(payload_t data)
 			//sqlite3_reset(stmt);
 			sqlite3_finalize(stmt);
 			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-			thread_sqlite3_step(&stmt,db);
-			
+			rc = thread_sqlite3_step(&stmt,db);
+			if((rc != SQLITE_ROW) && (rc!= SQLITE_DONE))  
+				M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 		}
 		if(alarmJson != NULL){	
 			/*获取收到数据包信息*/
@@ -319,7 +320,9 @@ int scenario_create_handle(payload_t data)
 			sqlite3_bind_text(stmt, 6, statusJson->valuestring, -1, NULL);
 			sqlite3_bind_text(stmt, 7, time, -1, NULL);
 			
-			rc = thread_sqlite3_step(&stmt, db); 
+			rc = thread_sqlite3_step(&stmt, db);
+			if((rc != SQLITE_ROW) && (rc!= SQLITE_DONE)) 
+				M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 		}
 		
 		/*获取联动表 id*/
@@ -331,7 +334,9 @@ int scenario_create_handle(payload_t data)
 		//sqlite3_reset(stmt);
 		sqlite3_finalize(stmt);
 		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
-		thread_sqlite3_step(&stmt, db);
+		rc = thread_sqlite3_step(&stmt, db);
+		if((rc != SQLITE_ROW) && (rc!= SQLITE_DONE))  
+			M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 
 	    districtJson = cJSON_GetObjectItem(data.pdu, "district");
 	    if(districtJson == NULL){
@@ -407,8 +412,9 @@ int scenario_create_handle(payload_t data)
 				sqlite3_bind_text(stmt, 10, "Dalitek",-1,NULL);
 				sqlite3_bind_text(stmt, 11, time, -1, NULL);
 				id++;
-				rc = thread_sqlite3_step(&stmt, db); 
-		
+				rc = thread_sqlite3_step(&stmt, db);
+				if((rc != SQLITE_ROW) && (rc!= SQLITE_DONE))  
+					M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 	    	}	
 	    }
 	    if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){

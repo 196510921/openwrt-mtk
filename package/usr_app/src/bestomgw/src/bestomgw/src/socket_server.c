@@ -209,6 +209,8 @@ int32 socketSeverInit(uint32 port)
 {
 	struct sockaddr_in serv_addr;
 	int stat, tr = 1;
+	int nSendBuf = 64*1024; //发送缓冲区设置为64k
+	int nNetTimeout=3000; //3s
 
 	if (socketRecordHead == NULL)
 	{
@@ -225,6 +227,12 @@ int32 socketSeverInit(uint32 port)
 		// Set the socket option SO_REUSEADDR to reduce the chance of a
 		// "Address Already in Use" error on the bind
 		setsockopt(lsSocket->socketFd, SOL_SOCKET, SO_REUSEADDR, &tr, sizeof(int));
+		//发送缓冲区设置魏64k
+		setsockopt(lsSocket->socketFd, SOL_SOCKET, SO_SNDBUF, (const char*)&nSendBuf, sizeof(int));
+		//设置发送超时
+		setsockopt(lsSocket->socketFd, SOL_SOCKET, SO_SNDTIMEO, (char*)&nNetTimeout, sizeof(int));
+		//设置接收超时
+		setsockopt(lsSocket->socketFd, SOL_SOCKET, SO_RCVTIMEO, (char*)&nNetTimeout, sizeof(int));
 		// Set the fd to none blocking
 		fcntl(lsSocket->socketFd, F_SETFL, O_NONBLOCK);
 
@@ -443,9 +451,9 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 
 	int rtn;
 	int tick = 0;
+	int bytes_left = 0;
 	uint16_t header = 0xFEFD;
 	uint16_t msg_len = 0;
-	int bytes_left = 0;
 	char* send_buf = NULL;
 	char* ptr = NULL;
 	//char send_buf[4096] = {0};
@@ -485,9 +493,10 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 				delete_socket_clientfd(fdClient);
 				break;
 			}
+		}else{
+			bytes_left -= rtn;
+			ptr += rtn;
 		}
-		bytes_left -= rtn;
-		ptr += rtn;
 	}
 
 	free(send_buf);

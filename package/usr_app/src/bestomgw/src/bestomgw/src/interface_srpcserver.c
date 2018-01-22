@@ -1668,20 +1668,6 @@ static int msg_header_checker(char*str, int len){
 			return 0;
 	}
 
-	// while(*(str + i) != '"'){
-	//  	printf("2. %c, i:%03d\n",*(str + i), i);
-	//  	i++;
-	// 	if(i >= len)
-	// 		return 0;
-	// }
-
-	// if(*(str + i + 1) != 's'){
-	// 	printf("3. %c, i:%03d\n",*(str + i + 1), i + 1);
-	// 	_len = msg_header_checker((str + i + 1), len - i);
-	// }else{
-	// 	printf("4. %c, i:%03d\n",*(str + i + 1), i + 1);
-	// }
-
 	printf("\n");
 	printf("mLen:%03d\n", len - _len);
 	return (len - _len);
@@ -1813,13 +1799,7 @@ void SRPC_RxCB(int clientFd)
 static void client_read_to_data_handle(char* data, int len, int clientFd)
 {
 	M1_LOG_INFO( "client_read_to_data_handle:  len:%05d, data:%s\n",len, data);
-	// m1_package_t* msg  = NULL;
 
-	// msg = (m1_package_t*)mem_poll_malloc(sizeof(m1_package_t));
-	// msg->clientFd = clientFd;
-	// msg->len = len;
-	//msg->data = (char*)mem_poll_malloc(len);
-	//strcpy(msg->data, data);
 	m1_package_t msg;
 
 	msg.clientFd = clientFd;
@@ -1931,7 +1911,7 @@ void client_read(void)
 	uint16_t len = 0;
 	uint16_t header = 0;
 	char* headerP = NULL;
-	char data[2048];
+	char data[60*1024] = {0};
 	stack_mem_t* d = NULL;
 
 	while(1){
@@ -1970,7 +1950,7 @@ void client_read(void)
 			d->rPtr = headerP;
 		}
 		i = (i + 1) % STACK_BLOCK_NUM;
-		memset(data, 0, 2048);
+		memset(data, 0, 60*1024);
 		//M1_LOG_DEBUG( "read end:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
 		usleep(10);
 	}
