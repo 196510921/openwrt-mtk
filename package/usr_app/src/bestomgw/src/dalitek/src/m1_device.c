@@ -62,7 +62,11 @@ int m1_del_dev_from_ap(sqlite3* db, char* devId)
 
 	/*获取AP ID*/
 	sprintf(sql, "select AP_ID from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;",devId);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
         apId = sqlite3_column_text(stmt, 0);
@@ -79,7 +83,11 @@ int m1_del_dev_from_ap(sqlite3* db, char* devId)
     /*获取clientFd*/
     sprintf(sql, "select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1;",apId);
     sqlite3_finalize(stmt);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
         clientFd = sqlite3_column_int(stmt, 0);
@@ -165,7 +173,11 @@ int m1_del_ap(sqlite3* db, char* apId)
     /*获取clientFd*/
     sprintf(sql, "select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1;",apId);
     sqlite3_finalize(stmt);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
         clientFd = sqlite3_column_int(stmt, 0);
@@ -237,7 +249,11 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
     /*数据库查询ap id*/
     sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" order by ID desc limit 1",devIdJson->valuestring);
     M1_LOG_DEBUG("sql:%s\n",sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
         ap_id = sqlite3_column_text(stmt, 0);
@@ -253,7 +269,11 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
     /*数据库*/
     sprintf(sql_1,"select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1", ap_id);
     M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     rc = thread_sqlite3_step(&stmt_1, db);
     if(rc == SQLITE_ROW){
         clientFd = sqlite3_column_int(stmt_1, 0);
@@ -338,7 +358,11 @@ int ap_upload_testing_to_app(cJSON* devData, sqlite3* db)
     sprintf(sql,"select CLIENT_FD from account_info");
     M1_LOG_DEBUG("sql:%s\n",sql);
     //sqlite3_finalize(stmt_1);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
         clientFd = sqlite3_column_int(stmt, 0);
         socketSeverSend((uint8_t*)p, strlen(p), clientFd);
@@ -371,12 +395,18 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
     /*删除参数表中的参数*/
     sprintf(sql,"select ID from param_table where DEV_ID = \"%s\" and TYPE = %05d order by ID desc limit 1;",data.devId, data.type);
     M1_LOG_DEBUG("sql:%s\n",sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        goto Finish; 
+    }
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
         sprintf(sql_1,"update param_table set VALUE = %05d where DEV_ID = \"%s\" and TYPE = %05d;",data.value, data.devId, data.type);
         M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            goto Finish; 
+        }
         thread_sqlite3_step(&stmt_1, db);
     }else{
         /*获取param_table 中ID*/
@@ -386,7 +416,10 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         sprintf(sql_1,"select DEV_NAME from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;",data.devId);
         M1_LOG_DEBUG("sql_1:%s\n",sql_1);
         sqlite3_finalize(stmt_1);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            goto Finish; 
+        }
         thread_sqlite3_step(&stmt_1, db);
         dev_name = sqlite3_column_text(stmt_1, 0);
         if(dev_name == NULL)
@@ -395,7 +428,10 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         /*插入参数*/
         sprintf(sql_2,"insert into param_table(ID, DEV_NAME,DEV_ID,TYPE,VALUE,TIME) values(?,?,?,?,?,?);");
         M1_LOG_DEBUG("sql_2:%s\n",sql_2);
-        sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            goto Finish; 
+        }
 
         sqlite3_bind_int(stmt_2, 1, id);
         sqlite3_bind_text(stmt_2, 2,  dev_name, -1, NULL);
@@ -424,15 +460,17 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
 void clear_ap_related_linkage(char* ap_id, sqlite3* db)
 {
     M1_LOG_DEBUG("clear_ap_related_linkage\n");
-    int rc = 0;
     char* dev_id = NULL;
     char* sql = (char*)malloc(300);
     char* sql_1 = (char*)malloc(300);
     sqlite3_stmt* stmt = NULL;
 
     sprintf(sql,"select DEV_ID from all_dev where AP_ID = \"%s\" and AP_ID != DEV_ID and ACCOUNT = \"Dalitek\";", ap_id);
-    M1_LOG_DEBUG("sql:%s\n",sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);    
+    M1_LOG_DEBUG("sql:%s\n",sql);    
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        goto Finish; 
+    }
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
         dev_id = sqlite3_column_text(stmt, 0);
         if(dev_id == NULL){

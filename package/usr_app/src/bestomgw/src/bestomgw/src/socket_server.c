@@ -346,7 +346,9 @@ static void delete_socket_clientfd(int clientFd)
 {
 	delete_account_conn_info(clientFd);
 	client_block_destory(clientFd);
+	M1_LOG_WARN("delete socket ++\n");
 	deleteSocketRec(clientFd);
+	M1_LOG_WARN("delete socket --\n");
 }
 
 /*********************************************************************
@@ -483,14 +485,14 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 				tick++;
 				if(tick > 300){
 					M1_LOG_ERROR("send timeout!\n");
-					delete_socket_clientfd(fdClient);	
+					//delete_socket_clientfd(fdClient);	
 					break;
 				}
 				/*等待10ms*/
 				usleep(10000);
 			}else{
 				M1_LOG_ERROR("ERROR writing to socket %d, errno:%d:%s\n", fdClient,errno,strerror(errno));
-				delete_socket_clientfd(fdClient);
+				//delete_socket_clientfd(fdClient);
 				break;
 			}
 		}else{

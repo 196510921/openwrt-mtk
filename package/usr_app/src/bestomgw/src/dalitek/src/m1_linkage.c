@@ -77,14 +77,22 @@ static int device_exec(char* data, sqlite3* db)
     /*获取AP信息*/
 	sprintf(sql,"select distinct AP_ID from link_exec_table where LINK_NAME = \"%s\";", data);	
 	M1_LOG_DEBUG("sql:%s\n",sql);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
 	while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 		ap_id = sqlite3_column_text(stmt,0);
 		//sqlite3_reset(stmt_1);
 		sqlite3_finalize(stmt_1);
 		/*获取设备信息*/
 		sprintf(sql_1,"select distinct DEV_ID from link_exec_table where LINK_NAME = \"%s\" and AP_ID = \"%s\";",data, ap_id);	
-		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
 		M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 		while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 			dev_id = sqlite3_column_text(stmt_1,0);
@@ -114,7 +122,11 @@ static int device_exec(char* data, sqlite3* db)
 			sprintf(sql_2,"select TYPE,VALUE,DELAY from link_exec_table where LINK_NAME = \"%s\" and DEV_ID = \"%s\";",data, dev_id);	
 			//sqlite3_reset(stmt_2);
 			sqlite3_finalize(stmt_2);
-			sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+			if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    		    ret = M1_PROTOCOL_FAILED;
+    		    goto Finish; 
+    		}
 			M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 			while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
 				type = sqlite3_column_int(stmt_2,0);
@@ -157,7 +169,11 @@ static int device_exec(char* data, sqlite3* db)
 	    	M1_LOG_DEBUG("sql_3:%s\n", sql_3);
 	    	//sqlite3_reset(stmt_3);
 	    	sqlite3_finalize(stmt_3);
-	    	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+	    	if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK){
+    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    		    ret = M1_PROTOCOL_FAILED;
+    		    goto Finish; 
+    		}
 	    	rc = thread_sqlite3_step(&stmt_3,db);
 	    
 	    	if(rc == SQLITE_ROW){
@@ -166,31 +182,7 @@ static int device_exec(char* data, sqlite3* db)
 	    	
 	    	M1_LOG_DEBUG("string:%s\n",p);
 	    	delay_send(dup_data, delay, clientFd);
-		}
-#if 0	
-	    p = cJSON_PrintUnformatted(pJsonRoot);
-    	if(NULL == p)
-    	{    
-    		M1_LOG_ERROR("p NULL\n");
-        	cJSON_Delete(pJsonRoot);
-        	ret = M1_PROTOCOL_FAILED;
-        	goto Finish;
-    	}
-    	/*get clientfd*/
-    	sprintf(sql_3,"select CLIENT_FD from conn_info where AP_ID = \"%s\";",ap_id);
-    	M1_LOG_DEBUG("sql_3:%s\n", sql_3);
-    	//sqlite3_reset(stmt_3);
-    	sqlite3_finalize(stmt_3);
-    	sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
-    	rc = thread_sqlite3_step(&stmt_3,db);
-    
-    	if(rc == SQLITE_ROW){
-			clientFd = sqlite3_column_int(stmt_3,0);
-		}		
-    	
-    	M1_LOG_DEBUG("string:%s\n",p);
-    	socketSeverSend((uint8*)p, strlen(p), clientFd);
-#endif    	
+		}   	
 	}
 
 	Finish:
@@ -278,19 +270,31 @@ int linkage_msg_handle(payload_t data)
 			sprintf(sql_1,"delete from linkage_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
 			//sqlite3_reset(stmt);
 			sqlite3_finalize(stmt);
-			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+			if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    		    ret = M1_PROTOCOL_FAILED;
+    		    goto Finish; 
+    		}
 			while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 			/*delete link_trigger_table member*/
 			sprintf(sql_1,"delete from link_trigger_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
 			//sqlite3_reset(stmt);
 			sqlite3_finalize(stmt);
-			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+			if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    		    ret = M1_PROTOCOL_FAILED;
+    		    goto Finish; 
+    		}
 			while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 			/*delete link_exec_table member*/
 			sprintf(sql_1,"delete from link_exec_table where LINK_NAME = \"%s\";",linkNameJson->valuestring);
 			//sqlite3_reset(stmt);
 			sqlite3_finalize(stmt);
-			sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+			if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    		    ret = M1_PROTOCOL_FAILED;
+    		    goto Finish; 
+    		}
 			while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 		}
 
@@ -302,7 +306,11 @@ int linkage_msg_handle(payload_t data)
 	    M1_LOG_DEBUG("sql:%s\n",sql);
 	    //sqlite3_reset(stmt);
 	    sqlite3_finalize(stmt);
-	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
 		sqlite3_bind_int(stmt, 1, id);
 		id++;
 		sqlite3_bind_text(stmt, 2,  linkNameJson->valuestring, -1, NULL);
@@ -320,7 +328,11 @@ int linkage_msg_handle(payload_t data)
 	    id_1 = sql_id(db, sql);
 	    sql = "insert into link_trigger_table(ID, LINK_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, THRESHOLD, CONDITION,LOGICAL,STATUS,TIME) values(?,?,?,?,?,?,?,?,?,?,?);";
 	    M1_LOG_DEBUG("sql:%s\n",sql);
-	    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+	    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
 
 	    number1 = cJSON_GetArraySize(triggerJson);
 	    for(i = 0; i < number1; i++){
@@ -362,7 +374,11 @@ int linkage_msg_handle(payload_t data)
 		    M1_LOG_DEBUG("id_1:%05d\n",id_1);
 		    sql = "insert into link_exec_table(ID, LINK_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, TIME) values(?,?,?,?,?,?,?,?,?);";
 		    M1_LOG_DEBUG("sql:%s\n",sql);
-		    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+		    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
+    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    		    ret = M1_PROTOCOL_FAILED;
+    		    goto Finish; 
+    		}
 		    number1 = cJSON_GetArraySize(executeJson);
 		    for(i = 0; i < number1; i++){
 		    	executeArrayJson = cJSON_GetArrayItem(executeJson, i);
@@ -448,7 +464,10 @@ void linkage_task(void)
 				M1_LOG_DEBUG("sql:%s\n", sql);
 				//sqlite3_reset(stmt);
 				sqlite3_finalize(stmt);
-				sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+				if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    			    goto Finish; 
+    			}
 				rc = thread_sqlite3_step(&stmt, db);
 				if(rc == SQLITE_ROW){
 					exec_type = sqlite3_column_text(stmt,0);
@@ -501,7 +520,10 @@ static void linkage_check(sqlite3* db, char* link_name)
 
 	sprintf(sql,"select STATUS, LOGICAL from link_trigger_table where LINK_NAME = \"%s\";",link_name);
 	M1_LOG_DEBUG("sql:%s\n",sql);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        goto Finish; 
+    }
 	while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW){
 		status = sqlite3_column_text(stmt,0);
 		logical = sqlite3_column_text(stmt,1);
@@ -523,12 +545,18 @@ static void linkage_check(sqlite3* db, char* link_name)
 		sprintf(sql,"update linkage_table set STATUS = \"ON\" where LINK_NAME = \"%s\";", link_name);
 		//sqlite3_reset(stmt);
 		sqlite3_finalize(stmt);
-		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    	    goto Finish; 
+    	}
 		rc = thread_sqlite3_step(&stmt, db);
 		
 		sprintf(sql,"select rowid from linkage_table where LINK_NAME = \"%s\";", link_name);
 		sqlite3_finalize(stmt);
-		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    	    goto Finish; 
+    	}
 		rc = thread_sqlite3_step(&stmt, db);
 		if(rc == SQLITE_ROW){
 			rowid = sqlite3_column_int(stmt,0);
@@ -536,7 +564,7 @@ static void linkage_check(sqlite3* db, char* link_name)
 			fifo_write(&link_exec_fifo, rowid);
 		}
 	}
-
+	Finish:
 	sqlite3_finalize(stmt);
 
 }
@@ -569,7 +597,10 @@ int trigger_cb_handle(sqlite3* db)
 			M1_LOG_DEBUG("sql:%s\n",sql);
 
 			sqlite3_finalize(stmt);
-			sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+			if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    		    goto Finish; 
+    		}
 			rc = thread_sqlite3_step(&stmt, db);
 			if(rc == SQLITE_ROW){
 			    value = sqlite3_column_int(stmt,0);
@@ -580,7 +611,10 @@ int trigger_cb_handle(sqlite3* db)
 			 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
 			 	M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 			 	sqlite3_finalize(stmt_1);
-			 	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+			 	if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+    			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    			    goto Finish; 
+    			}
 			 	rc = thread_sqlite3_step(&stmt_1, db);
 				if(rc == SQLITE_ROW){		
 			    	status = sqlite3_column_text(stmt_1,0);
@@ -591,7 +625,10 @@ int trigger_cb_handle(sqlite3* db)
 						M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 						//sqlite3_reset(stmt_1);
 						sqlite3_finalize(stmt_1);
-						sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+						if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+    					    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    					    goto Finish; 
+    					}
 						while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 							threshold = sqlite3_column_int(stmt_1,0);
 					        condition = sqlite3_column_text(stmt_1,1);
@@ -603,7 +640,10 @@ int trigger_cb_handle(sqlite3* db)
 					 		M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 					 		//sqlite3_reset(stmt_2);
 					 		sqlite3_finalize(stmt_2);
-							sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+							if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+    						    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    						    goto Finish; 
+    						}
 							rc = thread_sqlite3_step(&stmt_2, db);
 							M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
 							/*检查是否满足触发条件*/
@@ -707,7 +747,11 @@ int app_req_linkage(payload_t data)
     sql = "select LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, ENABLE from linkage_table;";
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
     	devDataObject = cJSON_CreateObject();
 	    if(NULL == devDataObject)
@@ -732,7 +776,11 @@ int app_req_linkage(payload_t data)
 	    M1_LOG_DEBUG("sql_1:%s\n", sql_1);
     	//sqlite3_reset(stmt_1);
     	sqlite3_finalize(stmt_1);
-    	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    	if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
     	rc = thread_sqlite3_step(&stmt_1, db); 
 		if(rc == SQLITE_ROW){
 			logical = sqlite3_column_text(stmt_1, 0);
@@ -751,7 +799,11 @@ int app_req_linkage(payload_t data)
  	    M1_LOG_DEBUG("sql_1:%s\n", sql_1);
     	//sqlite3_reset(stmt_1);
     	sqlite3_finalize(stmt_1);
-    	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    	if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
     	while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
     		triggerObject = cJSON_CreateObject();
 		    if(NULL == triggerObject)
@@ -768,7 +820,11 @@ int app_req_linkage(payload_t data)
 		   	M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 		   	//sqlite3_reset(stmt_2);
 		   	sqlite3_finalize(stmt_2);
-	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+	    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+	    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    	    ret = M1_PROTOCOL_FAILED;
+	    	    goto Finish; 
+	    	}
 	    	rc = thread_sqlite3_step(&stmt_2, db); 
 			if(rc == SQLITE_ROW){
 			   	ap_id = sqlite3_column_text(stmt_2, 0);
@@ -779,7 +835,11 @@ int app_req_linkage(payload_t data)
 		   	sprintf(sql_2,"select DEV_NAME, PID from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 		   	//sqlite3_reset(stmt_2);
 		   	sqlite3_finalize(stmt_2);
-	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+	    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+	    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    	    ret = M1_PROTOCOL_FAILED;
+	    	    goto Finish; 
+	    	}
 	    	rc = thread_sqlite3_step(&stmt_2, db); 
 			if(rc == SQLITE_ROW){ 
 			   	dev_name = sqlite3_column_text(stmt_2, 0);
@@ -801,7 +861,11 @@ int app_req_linkage(payload_t data)
 	    	M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 	    	//sqlite3_reset(stmt_2);
 	    	sqlite3_finalize(stmt_2);
-	    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+	    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+	    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    	    ret = M1_PROTOCOL_FAILED;
+	    	    goto Finish; 
+	    	}
 		   	while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
 			    paramObject = cJSON_CreateObject();
 			    if(NULL == paramObject)
@@ -838,7 +902,11 @@ int app_req_linkage(payload_t data)
 	 	    M1_LOG_DEBUG("sql_1:%s\n", sql_1);
 	    	//sqlite3_reset(stmt_1);
 	    	sqlite3_finalize(stmt_1);
-	    	sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+	    	if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+	    	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    	    ret = M1_PROTOCOL_FAILED;
+	    	    goto Finish; 
+	    	}
 	    	while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 	    		execObject = cJSON_CreateObject();
 			    if(NULL == execObject)
@@ -855,7 +923,11 @@ int app_req_linkage(payload_t data)
 			   	M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 			   	//sqlite3_reset(stmt_2);
 			   	sqlite3_finalize(stmt_2);
-		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+		    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+	    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    		    ret = M1_PROTOCOL_FAILED;
+	    		    goto Finish; 
+	    		}
 		    	rc = thread_sqlite3_step(&stmt_2, db); 
 				if(rc == SQLITE_ROW){
 					int i;
@@ -900,7 +972,11 @@ int app_req_linkage(payload_t data)
 			   	sprintf(sql_2,"select DEV_NAME, PID from all_dev where DEV_ID = \"%s\" limit 1;",dev_id);		   	
 			   	//sqlite3_reset(stmt_2);
 			   	sqlite3_finalize(stmt_2);
-		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+		    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+	    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    		    ret = M1_PROTOCOL_FAILED;
+	    		    goto Finish; 
+	    		}
 		    	rc = thread_sqlite3_step(&stmt_2,db); 
 				if(rc == SQLITE_ROW){
 				   	dev_name = sqlite3_column_text(stmt_2, 0);
@@ -922,7 +998,11 @@ int app_req_linkage(payload_t data)
 		    	M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 		    	//sqlite3_reset(stmt_2);
 		    	sqlite3_finalize(stmt_2);
-		    	sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+		    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+	    		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    		    ret = M1_PROTOCOL_FAILED;
+	    		    goto Finish; 
+	    		}
 			   	while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
 				    paramObject = cJSON_CreateObject();
 				    if(NULL == paramObject)
@@ -1011,7 +1091,11 @@ int app_linkage_enable(payload_t data)
 	M1_LOG_DEBUG("sql_2:%s\n", sql);
   	//sqlite3_reset(stmt);
   	sqlite3_finalize(stmt);
-  	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+  	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    ret = M1_PROTOCOL_FAILED;
+	    goto Finish; 
+	}
   	while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
 
   	Finish:

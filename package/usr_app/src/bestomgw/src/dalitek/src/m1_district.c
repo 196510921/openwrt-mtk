@@ -71,7 +71,11 @@ int district_create_handle(payload_t data)
     		sprintf(sql_1,"delete from district_table where DIS_NAME = \"%s\";",districtNameJson->valuestring);				
     		//sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
-    		sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
     		while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
     	}
         
@@ -84,7 +88,11 @@ int district_create_handle(payload_t data)
     		M1_LOG_DEBUG("sql:%s\n",sql);
     		//sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
-    		sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+            if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
     		sqlite3_bind_int(stmt, 1, id);
     		id++;
     		sqlite3_bind_text(stmt, 2, districtNameJson->valuestring, -1, NULL);
@@ -180,7 +188,11 @@ int app_req_district(payload_t data)
     /*获取用户账户信息*/
     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     M1_LOG_DEBUG( "%s\n", sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_4, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_4, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt_4, db) == SQLITE_ROW){
         account =  sqlite3_column_text(stmt_4, 0);
     }
@@ -199,7 +211,11 @@ int app_req_district(payload_t data)
    	M1_LOG_DEBUG("sql:%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
     	dist_name = sqlite3_column_text(stmt,0);
 	    devDataObject = cJSON_CreateObject();
@@ -214,7 +230,11 @@ int app_req_district(payload_t data)
         /*添加区域图片*/
         sprintf(sql_3,"select DIS_PIC from district_table where DIS_NAME = \"%s\" order by ID desc limit 1;",dist_name);
         sqlite3_finalize(stmt_3);
-        sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+        if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
 	    rc = thread_sqlite3_step(&stmt_3, db);
         if(rc != SQLITE_ROW){
             continue;   
@@ -235,7 +255,11 @@ int app_req_district(payload_t data)
 	    M1_LOG_DEBUG("sql_1:%s\n", sql_1);
 	    //sqlite3_reset(stmt_1);
         sqlite3_finalize(stmt_1);
-	    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
 	    while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 	    	ap_id = sqlite3_column_text(stmt_1,0);
 	    	M1_LOG_DEBUG("ap_id:%s\n",ap_id);
@@ -253,7 +277,11 @@ int app_req_district(payload_t data)
 		    M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 		    //sqlite3_reset(stmt_2);
             sqlite3_finalize(stmt_2);
-		    sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
 		    rc = thread_sqlite3_step(&stmt_2, db); 
 			M1_LOG_DEBUG("step() return %s\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
 			if(rc == SQLITE_ROW){

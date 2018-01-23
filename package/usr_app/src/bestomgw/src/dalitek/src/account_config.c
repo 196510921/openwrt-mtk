@@ -65,7 +65,11 @@ int app_req_account_info_handle(payload_t data)
     M1_LOG_DEBUG("%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n"); 
+        ret = M1_PROTOCOL_FAILED; 
+        goto Finish; 
+    }
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 	    /*create pdu object*/	    
 	    account = sqlite3_column_text(stmt,0);
@@ -172,7 +176,11 @@ int app_req_account_config_handle(payload_t data)
     M1_LOG_DEBUG("%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n"); 
+        ret = M1_PROTOCOL_FAILED; 
+        goto Finish; 
+    }
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 	    /*create pdu object*/	    
 	    key = sqlite3_column_text(stmt,0);
@@ -198,7 +206,11 @@ int app_req_account_config_handle(payload_t data)
     M1_LOG_DEBUG("%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
         userDataObject = cJSON_CreateObject();
         if(NULL == userDataObject)
@@ -227,7 +239,11 @@ int app_req_account_config_handle(payload_t data)
         M1_LOG_DEBUG("%s\n", sql_1);
         //sqlite3_reset(stmt_1);
         sqlite3_finalize(stmt_1);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
         while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
             /*添加区域信息*/      
             scenario = sqlite3_column_text(stmt_1,0);
@@ -255,7 +271,11 @@ int app_req_account_config_handle(payload_t data)
         M1_LOG_DEBUG("%s\n", sql_1);
         //sqlite3_reset(stmt_1);
         sqlite3_finalize(stmt_1);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
         while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
             /*添加区域信息*/      
             pId = sqlite3_column_int(stmt_1,0);
@@ -373,14 +393,22 @@ int app_account_config_handle(payload_t data)
         M1_LOG_DEBUG("sql:%s\n",sql_1);
         //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql), &stmt, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql), &stmt, NULL) != SQLITE_OK){
+            ret = M1_PROTOCOL_FAILED;
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            goto Finish; 
+        }
         thread_sqlite3_step(&stmt, db);
         
         /*添加账户信息*/
         sql = "insert into account_table(ID, ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH, TIME)values(?,?,?,?,?,?);";
         M1_LOG_DEBUG("sql:%s\n",sql);
         sqlite3_finalize(stmt);
-        sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+            ret = M1_PROTOCOL_FAILED;
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            goto Finish; 
+        }
         //sqlite3_reset(stmt);
         sqlite3_bind_int(stmt, 1, id);
         sqlite3_bind_text(stmt, 2,  accountJson->valuestring, -1, NULL);
@@ -403,7 +431,11 @@ int app_account_config_handle(payload_t data)
         M1_LOG_DEBUG("sql:%s\n",sql_1);
         //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
         thread_sqlite3_step(&stmt, db);
     
         sql = "select ID from district_table order by ID desc limit 1;";
@@ -417,7 +449,11 @@ int app_account_config_handle(payload_t data)
             M1_LOG_DEBUG("sql:%s\n",sql_1);
             //sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
-            sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
             while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
                 ap_id = sqlite3_column_text(stmt, 0);
                 dis_pic = sqlite3_column_text(stmt, 1);
@@ -425,7 +461,11 @@ int app_account_config_handle(payload_t data)
                 M1_LOG_DEBUG("sql:%s,id:%05d,dis:%s,apid:%s,account:%s,time:%s\n",sql,id,districtObject->valuestring,ap_id,accountJson->valuestring,time);
                 //sqlite3_reset(stmt_1);
                 sqlite3_finalize(stmt_1);
-                sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+                if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
+                    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish; 
+                }
     
                 sqlite3_bind_int(stmt_1, 1, id);
                 sqlite3_bind_text(stmt_1, 2,  districtObject->valuestring, -1, NULL);
@@ -447,7 +487,11 @@ int app_account_config_handle(payload_t data)
         sprintf(sql_1,"delete from scenario_table where ACCOUNT = \"%s\";",accountJson->valuestring);
         M1_LOG_DEBUG("sql:%s\n",sql_1);
         sqlite3_finalize(stmt);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }    
         thread_sqlite3_step(&stmt, db);
     
         sql = "select ID from scenario_table order by ID desc limit 1;";
@@ -461,7 +505,11 @@ int app_account_config_handle(payload_t data)
             M1_LOG_DEBUG("sql:%s\n",sql_1);
             //sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
-            sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            } 
             while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
                 district = sqlite3_column_text(stmt, 0);
                 ap_id = sqlite3_column_text(stmt, 1);
@@ -475,7 +523,11 @@ int app_account_config_handle(payload_t data)
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 //sqlite3_reset(stmt_1);
                 sqlite3_finalize(stmt_1);
-                sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+                if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
+                    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish; 
+                }
     
                 sqlite3_bind_int(stmt_1, 1, id);
                 sqlite3_bind_text(stmt_1, 2,  scenObject->valuestring, -1, NULL);
@@ -502,7 +554,11 @@ int app_account_config_handle(payload_t data)
         M1_LOG_DEBUG("sql_1:%s\n",sql_1);
         //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
-        sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
         thread_sqlite3_step(&stmt, db);
     
         sql = "select ID from all_dev order by ID desc limit 1;";
@@ -524,7 +580,11 @@ int app_account_config_handle(payload_t data)
             M1_LOG_DEBUG("sql:%s\n",sql_1);
             //sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
-            sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL);
+            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
             while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
                 dev_name = sqlite3_column_text(stmt, 0);
                 ap_id = sqlite3_column_text(stmt, 1);
@@ -537,7 +597,11 @@ int app_account_config_handle(payload_t data)
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 //sqlite3_reset(stmt_1);
                 sqlite3_finalize(stmt_1);
-                sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+                if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
+                    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish; 
+                }
     
                 sqlite3_bind_int(stmt_1, 1, id);
                 sqlite3_bind_text(stmt_1, 2,  devIdObject->valuestring, -1, NULL);
@@ -640,7 +704,11 @@ int app_req_dis_name(payload_t data)
     char* account = NULL;
     sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     M1_LOG_DEBUG( "%s\n", sql_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
         account =  sqlite3_column_text(stmt_1, 0);
     }
@@ -657,7 +725,11 @@ int app_req_dis_name(payload_t data)
     M1_LOG_DEBUG("sql:%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
         districtObject = cJSON_CreateObject();
         if(NULL == districtObject)
@@ -680,7 +752,11 @@ int app_req_dis_name(payload_t data)
         sprintf(sql_2,"select DIS_PIC from district_table where DIS_NAME = \"%s\" order by ID desc limit 1;", district);
         M1_LOG_DEBUG("sql:%s\n", sql_2);
         sqlite3_finalize(stmt_2);
-        sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
         rc = thread_sqlite3_step(&stmt_2, db);
         if(rc != SQLITE_ROW){
             continue;
@@ -787,7 +863,11 @@ int app_req_dis_scen_name(payload_t data)
     char* account = NULL;
     sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     M1_LOG_DEBUG( "%s\n", sql_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
         account =  sqlite3_column_text(stmt_1, 0);
     }
@@ -830,7 +910,11 @@ int app_req_dis_scen_name(payload_t data)
         M1_LOG_DEBUG( "%s\n", sql);
         //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
-        sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
         while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 
             scenJson = cJSON_CreateObject();
@@ -853,7 +937,11 @@ int app_req_dis_scen_name(payload_t data)
             /*添加场景标识到组中*/
             sprintf(sql_2,"select SCEN_PIC from scenario_table where SCEN_NAME = \"%s\" order by ID desc limit 1;", scenario);
             sqlite3_finalize(stmt_2);
-            sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
             rc = thread_sqlite3_step(&stmt_2, db);
             if(rc != SQLITE_ROW)
                 continue;
@@ -961,7 +1049,11 @@ int app_req_dis_dev(payload_t data)
     /*获取用户账户信息*/
     sprintf(sql_3,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     M1_LOG_DEBUG( "%s\n", sql_3);
-    sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+    if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt_3, db) == SQLITE_ROW){
         account =  sqlite3_column_text(stmt_3, 0);
     }
@@ -1007,7 +1099,11 @@ int app_req_dis_dev(payload_t data)
         M1_LOG_DEBUG( "%s\n", sql);
         //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
-        sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
         while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
             apInfoObject = cJSON_CreateObject();
             if(NULL == apInfoObject)
@@ -1032,7 +1128,11 @@ int app_req_dis_dev(payload_t data)
             M1_LOG_DEBUG( "%s\n", sql_1);
             //sqlite3_reset(stmt_1);
             sqlite3_finalize(stmt_1);
-            sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
             rc = thread_sqlite3_step(&stmt_1, db);
             //if(rc != SQLITE_ERROR){
             if(rc == SQLITE_ROW){
@@ -1057,7 +1157,11 @@ int app_req_dis_dev(payload_t data)
             M1_LOG_DEBUG( "%s\n", sql_2);
             //sqlite3_reset(stmt_2);
             sqlite3_finalize(stmt_2);
-            sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
+                M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
             while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
                 /*添加设备*/
                 devObject = cJSON_CreateObject();
@@ -1134,7 +1238,11 @@ int user_login_handle(payload_t data)
     /*验证用户信息*/
     sql = (char*)malloc(300);
     sprintf(sql,"select KEY from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
 	if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 		key = sqlite3_column_text(stmt, 0);
 	}else{
@@ -1156,14 +1264,22 @@ int user_login_handle(payload_t data)
 	/*删除重复用户信息*/
     sprintf(sql,"delete from account_info where ACCOUNT = \"%s\" and CLIENT_FD = %03d;",accountJson->valuestring, data.clientFd);
     M1_LOG_DEBUG("sql:%s\n",sql);
-	sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
 	if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
 		account = sqlite3_column_text(stmt_1, 0);
 	}
 	/*插入用户信息*/	
 	sql_1 = "insert into account_info(ID,ACCOUNT,CLIENT_FD)values(?,?,?);";
     M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_2, NULL);
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_2, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
 	sqlite3_bind_int(stmt_2, 1, id);
     sqlite3_bind_text(stmt_2, 2,  accountJson->valuestring, -1, NULL);
     sqlite3_bind_int(stmt_2, 3, data.clientFd);
@@ -1233,7 +1349,11 @@ int app_change_user_key(payload_t data)
     /*获取用户登录名称*/
     sprintf(sql1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;", clientFd);
     M1_LOG_DEBUG( "%s\n", sql1);
-    sqlite3_prepare_v2(db, sql1, strlen(sql1), &stmt1, NULL);
+    if(sqlite3_prepare_v2(db, sql1, strlen(sql1), &stmt1, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt1, db) == SQLITE_ERROR){
         M1_LOG_ERROR( "SQLITE_ERROR\n");
         ret = M1_PROTOCOL_FAILED;
@@ -1248,7 +1368,11 @@ int app_change_user_key(payload_t data)
     /*获取账户信息*/
     sprintf(sql,"select KEY, KEY_AUTH from account_table where account = \"%s\" order by ID desc limit 1;", account);
     M1_LOG_DEBUG( "%s\n", sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
         M1_LOG_ERROR( "SQLITE_ERROR\n");
         ret = M1_PROTOCOL_FAILED;
@@ -1287,7 +1411,11 @@ int app_change_user_key(payload_t data)
     }
     sprintf(sql,"update account_table set KEY = \"%s\" where account = \"%s\";",newKeyJson->valuestring, account);
     M1_LOG_DEBUG( "%s\n", sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt2, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt2, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt2, db) == SQLITE_ERROR){
         ret = M1_PROTOCOL_FAILED;
         goto Finish;

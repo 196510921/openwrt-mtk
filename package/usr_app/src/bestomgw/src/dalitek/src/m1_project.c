@@ -59,7 +59,11 @@ int app_get_project_info(payload_t data)
     sql = "select P_NUMBER,P_NAME from project_table order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
     
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;
@@ -128,7 +132,11 @@ int app_confirm_project(payload_t data)
 
     sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\" order by ID desc limit 1;",pNumberJson->valuestring);
     M1_LOG_DEBUG( "%s\n", sql);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     rc = thread_sqlite3_step(&stmt, db);
     if(rc != SQLITE_ROW){
         ret = M1_PROTOCOL_FAILED;
@@ -195,7 +203,11 @@ int app_create_project(payload_t data)
     M1_LOG_DEBUG( "%s\n", sql_1);
     //sqlite3_reset(stmt_1);
     sqlite3_finalize(stmt_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;
@@ -207,7 +219,11 @@ int app_create_project(payload_t data)
     M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     sqlite3_bind_int(stmt, 1, id);
     sqlite3_bind_text(stmt, 2, pNameJson->valuestring, -1, NULL);
     sqlite3_bind_text(stmt, 3, pNumberJson->valuestring, -1, NULL);
@@ -279,7 +295,11 @@ int app_get_project_config(payload_t data)
     M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;
@@ -374,7 +394,11 @@ int app_change_project_config(payload_t data)
 
     db = data.db;
     sql = "select ID, P_KEY from project_table order by ID desc limit 1";
-    sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     //sqlite3_reset(stmt);
     rc = thread_sqlite3_step(&stmt, db);
     if(rc == SQLITE_ROW){
@@ -393,7 +417,11 @@ int app_change_project_config(payload_t data)
     M1_LOG_DEBUG( "%s\n", sql_1);
     //sqlite3_reset(stmt_1);
     sqlite3_finalize(stmt_1);
-    sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;
@@ -405,7 +433,11 @@ int app_change_project_config(payload_t data)
     M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt_2);
     sqlite3_finalize(stmt_2);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_2, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_2, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     sqlite3_bind_int(stmt_2, 1, id);
     sqlite3_bind_text(stmt_2, 2, pNameJson->valuestring, -1, NULL);
     sqlite3_bind_text(stmt_2, 3, pNumberJson->valuestring, -1, NULL);
@@ -476,7 +508,11 @@ int app_change_project_key(payload_t data)
     M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
         M1_LOG_ERROR( "SQLITE_ERROR\n");
     	ret = M1_PROTOCOL_FAILED;
@@ -504,7 +540,11 @@ int app_change_project_key(payload_t data)
     M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
-    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
     if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;
