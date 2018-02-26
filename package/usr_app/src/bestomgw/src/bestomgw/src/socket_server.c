@@ -48,6 +48,7 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <net/if.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <fcntl.h>
@@ -68,7 +69,10 @@
 /*********************************************************************
  * GLOBAL VARIABLES
  */
-
+/*********************************************************************
+ * VARIABLES
+ */
+static char mac_addr[17];
 /*********************************************************************
  * TYPEDEFS
  */
@@ -91,6 +95,7 @@ socketServerCb_t socketServerConnectCb;
 static int createSocketRec(void);
 static void deleteSocketRec(int rmSocketFd);
 static int set_udp_broadcast_add(char* d);
+static void get_mac_address(int sockFd);
 
 /*********************************************************************
  * FUNCTIONS
@@ -223,7 +228,8 @@ int32 socketSeverInit(uint32 port)
 			M1_LOG_ERROR("ERROR opening socket");
 			return -1;
 		}
-
+		/*get mac address*/
+		get_mac_address(lsSocket->socketFd);
 		// Set the socket option SO_REUSEADDR to reduce the chance of a
 		// "Address Already in Use" error on the bind
 		setsockopt(lsSocket->socketFd, SOL_SOCKET, SO_REUSEADDR, &tr, sizeof(int));
@@ -686,5 +692,41 @@ static int set_udp_broadcast_add(char* d)
 	return 0;
 
 }
+
+/*get wifi mac address*/
+static void get_mac_address(int sockFd)
+{
+
+ //  	printf("%x:%x:%x:%x:%x:%x\n",*ptr, *(ptr+1),*(ptr+2),*(ptr+3),*(ptr+4),*(ptr+5));
+	struct ifreq ifr_mac;
+
+	memset(&ifr_mac,0,sizeof(ifr_mac));     
+     strncpy(ifr_mac.ifr_name, "eth0", sizeof(ifr_mac.ifr_name)-1);     
+   
+     if( (ioctl( sockFd, SIOCGIFHWADDR, &ifr_mac)) < 0)  
+     {  
+         printf("mac ioctl error:%s/n",strerror(errno));  
+         exit(0);
+         //return;  
+     }  
+       
+     sprintf(mac_addr,"%02x%02x%02x%02x%02x%02x",  
+             (unsigned char)ifr_mac.ifr_hwaddr.sa_data[0],  
+             (unsigned char)ifr_mac.ifr_hwaddr.sa_data[1],  
+             (unsigned char)ifr_mac.ifr_hwaddr.sa_data[2],  
+             (unsigned char)ifr_mac.ifr_hwaddr.sa_data[3],  
+             (unsigned char)ifr_mac.ifr_hwaddr.sa_data[4],  
+             (unsigned char)ifr_mac.ifr_hwaddr.sa_data[5]);  
+   
+     printf("local mac:%s\n",mac_addr); 
+
+}
+
+char* get_eth0_mac_addr(void)
+{
+	return mac_addr;
+}
+
+
 
 

@@ -169,7 +169,6 @@ static void printf_redirect(void)
      if(fd == -1)
      	M1_LOG_ERROR( " open file failed\n");
      dup2(fd,STDOUT_FILENO); 
-     printf("test file\n");  
 }
 
 static void sql_test(void)

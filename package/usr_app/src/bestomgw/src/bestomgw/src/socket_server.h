@@ -106,6 +106,8 @@ void thread_socketSeverSend(void);
 /*udp广播本地IP*/
 int udp_broadcast_server(void);
 
+/*get eth0 mac address*/
+char* get_eth0_mac_addr(void);
 #ifdef __cplusplus
 }
 #endif

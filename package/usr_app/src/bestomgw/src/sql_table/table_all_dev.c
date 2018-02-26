@@ -9,7 +9,6 @@ const table_methods tb_all_dev_methods = {
 	tb_bind,
 	tb_select
 };
-
 /*insert bind table "all_dev"*/
 int tb_bind(sqlite3_stmt* stmt, void* d)
 {
@@ -124,7 +123,6 @@ int tb_select(sqlite3_stmt* stmt, void* d)
 
 
 }
-
 
 
 

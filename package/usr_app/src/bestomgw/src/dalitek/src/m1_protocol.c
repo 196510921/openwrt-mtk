@@ -2535,6 +2535,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
         }else{
             sqlite3_free(errorMsg);
             M1_LOG_ERROR("ROLLBACK FALIED\n");
+            //exit(0);
         }
     }
 
@@ -2658,7 +2659,9 @@ static int create_sql_table(void)
     }
     sqlite3_free(errmsg);
     /*插入项目信息*/
-    sprintf(sql,"insert into project_table(ID, P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT, TIME)values(1,\"M1\",\"00000001\",\"Dalitek\",\"Dalitek\",\"Dalitek\",\"123456789\",\"ShangHai\",\"Brief\",\"123456\",\"Dalitek\",\"20171031161900\");");
+    char* mac_addr = NULL;
+    mac_addr = get_eth0_mac_addr();
+    sprintf(sql,"insert into project_table(ID, P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT, TIME)values(1,\"M1\",\"%s\",\"Dalitek\",\"Dalitek\",\"Dalitek\",\"123456789\",\"ShangHai\",\"Brief\",\"123456\",\"Dalitek\",\"20171031161900\");",mac_addr);
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
     if(rc != SQLITE_OK){
         M1_LOG_WARN("insert into project_table fail: %s\n",errmsg);
