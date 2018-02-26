@@ -195,7 +195,7 @@ int app_create_project(payload_t data)
     /*获取数据路*/
     db = data.db;
 
-    sql = "select ID from project_table order by ID desc limit 1";
+    sql = "select ID from project_table order by ID desc limit 1;";
     id = sql_id(db, sql);
     M1_LOG_DEBUG( "get id end\n");
     /*获取账户信息*/
@@ -291,7 +291,7 @@ int app_get_project_config(payload_t data)
     /*add pdu type to pdu object*/
     cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
     /*获取项目信息*/
-    sql = "select P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_TEL,P_ADD,P_BRIEF,P_EDITOR,TIME from project_table order by ID desc limit 1";
+    sql = "select P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_TEL,P_ADD,P_BRIEF,P_EDITOR,TIME from project_table order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
@@ -393,7 +393,7 @@ int app_change_project_config(payload_t data)
     M1_LOG_DEBUG("pBrief:%s\n",pEditorJson->valuestring);
 
     db = data.db;
-    sql = "select ID, P_KEY from project_table order by ID desc limit 1";
+    sql = "select ID, P_KEY from project_table order by ID desc limit 1;";
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
         M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
         ret = M1_PROTOCOL_FAILED;

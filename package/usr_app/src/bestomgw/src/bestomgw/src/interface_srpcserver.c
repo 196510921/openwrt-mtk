@@ -1952,7 +1952,7 @@ void client_read(void)
 		i = (i + 1) % STACK_BLOCK_NUM;
 		memset(data, 0, 60*1024);
 		//M1_LOG_DEBUG( "read end:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
-		usleep(10);
+		usleep(1000);
 	}
 }
 

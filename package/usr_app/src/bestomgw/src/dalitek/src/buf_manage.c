@@ -275,6 +275,7 @@ bool Pop(PQueue pQueue, Item *pItem)
 		PNode *pTmp = pQueue->next;
 		*pItem = pTmp->item;
 		pQueue->next = pTmp->next;
+		//free(pTmp->item.data);
 		free(pTmp);
 		return true;
 	}

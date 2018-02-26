@@ -247,7 +247,7 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
     M1_LOG_DEBUG("apId:%s”\n",devIdJson->valuestring);
 
     /*数据库查询ap id*/
-    sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" order by ID desc limit 1",devIdJson->valuestring);
+    sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;",devIdJson->valuestring);
     M1_LOG_DEBUG("sql:%s\n",sql);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
         M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -267,7 +267,7 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
         goto Finish;
     }    
     /*数据库*/
-    sprintf(sql_1,"select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1", ap_id);
+    sprintf(sql_1,"select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1;", ap_id);
     M1_LOG_DEBUG("sql_1:%s\n",sql_1);
     if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
         M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  

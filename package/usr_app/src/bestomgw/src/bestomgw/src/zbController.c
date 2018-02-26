@@ -36,21 +36,27 @@
  *
  */
 #define _GNU_SOURCE  1
+#define MCHECK       0
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <poll.h>
 #include <pthread.h>
-//#include "thpool.h"
-#include <unistd.h>
-
+#include <signal.h>
+#include <unistd.h> 
+#if MCHECK
+	#include <mcheck.h>
+#endif
 #include "m1_common_log.h"
 #include "zbSocCmd.h"
 #include "interface_devicelist.h"
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
 #include "m1_protocol.h"
+
+#include "sql_operate.h"
+#include "sql_table.h"
 
 #define MAX_DB_FILENAMR_LEN 255
 #define DEBUG_LOG_OUTPUT_TO_FD   1
@@ -60,7 +66,7 @@ pthread_mutex_t mutex_lock;
 /*静态局部函数****************************************************************************************/
 static void printf_redirect(void);
 static void socket_poll(void);
-static void debug_switch(void);
+static void sql_test(void);
 
 #include "interface_srpcserver.h"
 #include "socket_server.h"
@@ -71,10 +77,18 @@ int main(int argc, char* argv[])
 	pthread_t t1,t2,t3,t4,t5;
 
 	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
+//	sql_test();
 #if DEBUG_LOG_OUTPUT_TO_FD
 	printf_redirect();
 #endif
-	
+	/*屏蔽信号*/
+	signal(SIGPIPE,SIG_IGN);
+#if MCHECK
+	/*追踪malloc*/
+	setenv("MALLOC_TRACE", "malloc_user.log", 1);
+	mtrace();
+#endif
+
 	SRPC_Init();
 	m1_protocol_init();
 
@@ -83,17 +97,11 @@ int main(int argc, char* argv[])
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
-//#if (!DEBUG_LOG_OUTPUT_TO_FD)
-	pthread_create(&t5,NULL,debug_switch,NULL);
-//#endif
 
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
-//#if (!DEBUG_LOG_OUTPUT_TO_FD)
-	pthread_join(t5, NULL);
-//#endif
 	
 	pthread_mutex_destroy(&mutex_lock);
 	return retval;
@@ -164,39 +172,44 @@ static void printf_redirect(void)
      printf("test file\n");  
 }
 
-extern m1_log_level_t m1LogLevel;
-static void debug_switch()
+static void sql_test(void)
 {
-	char input_info[10]; 
-	//rc = read(debug_fd, input_info, 10);
-	while(gets(input_info) != NULL){
-		printf("User input:%s\n",input_info);
-	
-		if(strcmp(input_info,"D") == 0){
-			m1LogLevel = M1_LOG_LEVEL_DEBUG;
-			M1_LOG_DEBUG( " ---------OUTPUT  SWITCH TO DEBUG MODE-------------\n");
-		}else if(strcmp(input_info,"I") == 0){
-			m1LogLevel = M1_LOG_LEVEL_INFO;
-			M1_LOG_DEBUG( " ---------OUTPUT  SWITCH TO DEBUG MODE-------------\n");
-			M1_LOG_INFO( " ---------OUTPUT  SWITCH TO INFO MODE-------------\n");
-		}else if(strcmp(input_info,"W") == 0){
-			m1LogLevel = M1_LOG_LEVEL_WARN;
-			M1_LOG_DEBUG( " ---------OUTPUT  SWITCH TO DEBUG MODE-------------\n");
-			M1_LOG_INFO( " ---------OUTPUT  SWITCH TO INFO MODE-------------\n");
-			M1_LOG_WARN( " ---------OUTPUT  SWITCH TO WARN MODE-------------\n");
-		}else if(strcmp(input_info,"E") == 0){
-			m1LogLevel = M1_LOG_LEVEL_ERROR;
-			M1_LOG_DEBUG( " ---------OUTPUT  SWITCH TO DEBUG MODE-------------\n");
-			M1_LOG_INFO( " ---------OUTPUT  SWITCH TO INFO MODE-------------\n");
-			M1_LOG_WARN( " ---------OUTPUT  SWITCH TO WARN MODE-------------\n");
-			M1_LOG_ERROR( " ---------OUTPUT  SWITCH TO ERROR MODE-------------\n");
-		}
-		memset(input_info, 0, 10);
-		sleep(2);
-	}
-	
-}
+	M1_LOG_INFO("sql_test begin!\n");
+	extern const sql_methods sql_select;
+	int i;
+	sqlite3_stmt* stmt = NULL;
+	tb_all_dev table_d[50];
+	sql_operate d = {
+		//db,
+		stmt,
+		"select * from all_dev where ID < 40;",
+		TB_ALL_DEV,
+		table_d,
+		0		
+	};
 
+	sql_open();
+	if(sql_select.sql_methods(&d) != 0){
+		while(1){
+			/*仍然是select 一条，业务处理一条，业务处理要封装，按照协议封装
+			例如：
+			 //select from 1,
+			   select from 2,
+			   handle
+			*/
+			M1_LOG_INFO("id:%d,dev_id:%s,dev_name:%s,ap_id:%s,pid:%d,added:%d,net:%d,status:%s,account:%s,time:%s\n",  \ 
+			table_d[i].id, table_d[i].dev_id, table_d[i].dev_name, table_d[i].ap_id, table_d[i].pid, table_d[i].added, table_d[i].net,table_d[i].status, table_d[i].account, table_d[i].time);
+			d.data = &table_d[++d.num];
+			if(sql_select.sql_methods_next(&d) == 0)
+				break;
+		}
+	}
+
+	sql_select.sql_methods_end(&d);
+
+	M1_LOG_INFO("sql_test end!\n");
+	sql_close();
+}
 
 uint8_t tlIndicationCb(epInfo_t *epInfo)
 {

@@ -502,6 +502,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	}
 
 	free(send_buf);
+	free(buf);
 	M1_LOG_DEBUG( "socketSeverSend--\n");
 	return 0;
 }

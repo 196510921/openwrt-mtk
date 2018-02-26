@@ -217,7 +217,8 @@ void delete_account_conn_info(int clientFd);
 
 /*common response*/
 #define TYPE_COMMON_RSP							 0x8004
-
+/*debug*/
+#define TYPE_DEBUG_INFO                          0x5555
 
 
 /*self define*/

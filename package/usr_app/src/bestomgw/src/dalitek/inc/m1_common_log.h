@@ -19,6 +19,8 @@ typedef enum M1_LOG_LEVEL
 
 extern m1_log_level_t m1LogLevel;
 
+void debug_switch(char* input_info);
+
 void m1_common_log_set_level(m1_log_level_t m1LogLevel);
 
 #if DEBUF_FILE_NANE_OUTPUT

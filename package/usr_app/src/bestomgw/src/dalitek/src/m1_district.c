@@ -37,7 +37,7 @@ int district_create_handle(payload_t data)
     /*获取数据路*/
     db = data.db;
 	/*获取table id*/
-	sql = "select ID from district_table order by ID desc limit 1";
+	sql = "select ID from district_table order by ID desc limit 1;";
 	/*linkage_table*/
 	id = sql_id(db, sql);
     if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
@@ -69,7 +69,6 @@ int district_create_handle(payload_t data)
     	M1_LOG_DEBUG("row_number:%d\n",row_number);
     	if(row_number > 0){
     		sprintf(sql_1,"delete from district_table where DIS_NAME = \"%s\";",districtNameJson->valuestring);				
-    		//sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -86,7 +85,6 @@ int district_create_handle(payload_t data)
 
     		sql = "insert into district_table(ID, DIS_NAME, DIS_PIC, AP_ID, ACCOUNT,TIME) values(?,?,?,?,?,?);";
     		M1_LOG_DEBUG("sql:%s\n",sql);
-    		//sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
             if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -209,7 +207,6 @@ int app_req_district(payload_t data)
     int pId;
     sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account);
    	M1_LOG_DEBUG("sql:%s\n", sql);
-    //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
         M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -253,7 +250,6 @@ int app_req_district(payload_t data)
 	    cJSON_AddItemToObject(devDataObject, "apInfo", apInfoArrayObject);
 	    sprintf(sql_1,"select AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"%s\";",dist_name,account);
 	    M1_LOG_DEBUG("sql_1:%s\n", sql_1);
-	    //sqlite3_reset(stmt_1);
         sqlite3_finalize(stmt_1);
         if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -275,7 +271,6 @@ int app_req_district(payload_t data)
 		    /*取出apName*/
 		    sprintf(sql_2,"select DEV_NAME,pId from all_dev where DEV_ID = \"%s\" ;",ap_id);
 		    M1_LOG_DEBUG("sql_2:%s\n", sql_2);
-		    //sqlite3_reset(stmt_2);
             sqlite3_finalize(stmt_2);
             if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  

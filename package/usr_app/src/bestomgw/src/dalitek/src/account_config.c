@@ -63,7 +63,6 @@ int app_req_account_info_handle(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
     M1_LOG_DEBUG("%s\n", sql);
-    //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
         M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n"); 
@@ -174,7 +173,6 @@ int app_req_account_config_handle(payload_t data)
     accountJson = data.pdu;//cJSON_GetObjectItem(data.pdu, "devData");
     sprintf(sql,"select KEY,KEY_AUTH,REMOTE_AUTH from account_table where ACCOUNT = \"%s\";", accountJson->valuestring);
     M1_LOG_DEBUG("%s\n", sql);
-    //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
         M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n"); 
@@ -186,6 +184,11 @@ int app_req_account_config_handle(payload_t data)
 	    key = sqlite3_column_text(stmt,0);
 	    key_auth = sqlite3_column_text(stmt,1);
 	    remote_auth = sqlite3_column_text(stmt,2);
+        if(key == NULL || key_auth == NULL || remote_auth == NULL){
+            M1_LOG_ERROR( "key NULL\n"); 
+            ret = M1_PROTOCOL_FAILED; 
+            goto Finish;       
+        }
 	    M1_LOG_DEBUG("key:%s,key_auth:%s, remote_auth:%s\n",key, key_auth, remote_auth);
 	    cJSON_AddStringToObject(devDataObject, "account", accountJson->valuestring);
         cJSON_AddStringToObject(devDataObject, "key", key);
@@ -204,7 +207,6 @@ int app_req_account_config_handle(payload_t data)
     cJSON_AddItemToObject(devDataObject, "userData", userDataArray);
     sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";", accountJson->valuestring);
     M1_LOG_DEBUG("%s\n", sql);
-    //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
         M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -237,7 +239,6 @@ int app_req_account_config_handle(payload_t data)
         cJSON_AddItemToObject(userDataObject, "scenario", scenArray);
         sprintf(sql_1,"select distinct SCEN_NAME from scenario_table where ACCOUNT = \"%s\" and DISTRICT = \"%s\" ;", accountJson->valuestring,district);
         M1_LOG_DEBUG("%s\n", sql_1);
-        //sqlite3_reset(stmt_1);
         sqlite3_finalize(stmt_1);
         if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -269,7 +270,6 @@ int app_req_account_config_handle(payload_t data)
         cJSON_AddItemToObject(userDataObject, "device", devArray);
         sprintf(sql_1,"select PID, DEV_NAME, DEV_ID from all_dev where ACCOUNT = \"%s\";", accountJson->valuestring);
         M1_LOG_DEBUG("%s\n", sql_1);
-        //sqlite3_reset(stmt_1);
         sqlite3_finalize(stmt_1);
         if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -391,7 +391,6 @@ int app_account_config_handle(payload_t data)
         /*删除重复用户信息*/
         sprintf(sql_1,"delete from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
         M1_LOG_DEBUG("sql:%s\n",sql_1);
-        //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
         if(sqlite3_prepare_v2(db, sql_1, strlen(sql), &stmt, NULL) != SQLITE_OK){
             ret = M1_PROTOCOL_FAILED;
@@ -409,7 +408,6 @@ int app_account_config_handle(payload_t data)
             M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
             goto Finish; 
         }
-        //sqlite3_reset(stmt);
         sqlite3_bind_int(stmt, 1, id);
         sqlite3_bind_text(stmt, 2,  accountJson->valuestring, -1, NULL);
         sqlite3_bind_text(stmt, 3,  keyJson->valuestring, -1, NULL);
@@ -429,7 +427,6 @@ int app_account_config_handle(payload_t data)
         }
         sprintf(sql_1,"delete from district_table where ACCOUNT = \"%s\";",accountJson->valuestring);
         M1_LOG_DEBUG("sql:%s\n",sql_1);
-        //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
         if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -447,7 +444,6 @@ int app_account_config_handle(payload_t data)
             M1_LOG_DEBUG("district:%s\n",districtObject->valuestring);
             sprintf(sql_1,"select AP_ID, DIS_PIC from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"Dalitek\";",districtObject->valuestring);
             M1_LOG_DEBUG("sql:%s\n",sql_1);
-            //sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -459,7 +455,6 @@ int app_account_config_handle(payload_t data)
                 dis_pic = sqlite3_column_text(stmt, 1);
                 sql = "insert into district_table(ID, DIS_NAME, DIS_PIC, AP_ID, ACCOUNT, TIME)values(?,?,?,?,?,?);";
                 M1_LOG_DEBUG("sql:%s,id:%05d,dis:%s,apid:%s,account:%s,time:%s\n",sql,id,districtObject->valuestring,ap_id,accountJson->valuestring,time);
-                //sqlite3_reset(stmt_1);
                 sqlite3_finalize(stmt_1);
                 if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
                     M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -503,7 +498,6 @@ int app_account_config_handle(payload_t data)
             M1_LOG_DEBUG("scenario:%s\n",scenObject->valuestring);
             sprintf(sql_1,"select DISTRICT,AP_ID,DEV_ID,TYPE,VALUE,DELAY,SCEN_PIC from scenario_table where SCEN_NAME = \"%s\" and ACCOUNT = \"Dalitek\";",scenObject->valuestring);
             M1_LOG_DEBUG("sql:%s\n",sql_1);
-            //sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -521,7 +515,6 @@ int app_account_config_handle(payload_t data)
                 /*插入到场景表中*/
                 sql = "insert into scenario_table(ID, SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT, TIME)values(?,?,?,?,?,?,?,?,?,?,?);";
                 M1_LOG_DEBUG("sql:%s\n",sql);
-                //sqlite3_reset(stmt_1);
                 sqlite3_finalize(stmt_1);
                 if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
                     M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -552,7 +545,6 @@ int app_account_config_handle(payload_t data)
         /*添加用户设备信息*/
         sprintf(sql_1,"delete from all_dev where ACCOUNT = \"%s\";",accountJson->valuestring);
         M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-        //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
         if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -578,7 +570,6 @@ int app_account_config_handle(payload_t data)
 
             sprintf(sql_1,"select DEV_NAME,AP_ID,PID,ADDED,NET,STATUS from all_dev where DEV_ID = \"%s\" and ACCOUNT = \"Dalitek\";",devIdObject->valuestring);
             M1_LOG_DEBUG("sql:%s\n",sql_1);
-            //sqlite3_reset(stmt);
             sqlite3_finalize(stmt);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -595,7 +586,6 @@ int app_account_config_handle(payload_t data)
                 /*插入到场景表中*/
                 sql = "insert into all_dev(ID,DEV_ID,DEV_NAME,AP_ID,PID,ADDED,NET,STATUS,ACCOUNT,TIME)values(?,?,?,?,?,?,?,?,?,?);";
                 M1_LOG_DEBUG("sql:%s\n",sql);
-                //sqlite3_reset(stmt_1);
                 sqlite3_finalize(stmt_1);
                 if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
                     M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -723,7 +713,6 @@ int app_req_dis_name(payload_t data)
     /*获取项目信息*/
     sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account);
     M1_LOG_DEBUG("sql:%s\n", sql);
-    //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
         M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -908,7 +897,6 @@ int app_req_dis_scen_name(payload_t data)
         /*获取场景*/
         sprintf(sql,"select distinct SCEN_NAME from scenario_table where DISTRICT = \"%s\" and ACCOUNT = \"%s\";",devDataJson->valuestring, account);
         M1_LOG_DEBUG( "%s\n", sql);
-        //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -1097,7 +1085,6 @@ int app_req_dis_dev(payload_t data)
         /*获取场景*/
         sprintf(sql,"select distinct AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"%s\";",devDataJson->valuestring, account);
         M1_LOG_DEBUG( "%s\n", sql);
-        //sqlite3_reset(stmt);
         sqlite3_finalize(stmt);
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -1126,7 +1113,6 @@ int app_req_dis_dev(payload_t data)
             /*pId,apName,apId*/
             sprintf(sql_1,"select PID, DEV_NAME from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;", apId);
             M1_LOG_DEBUG( "%s\n", sql_1);
-            //sqlite3_reset(stmt_1);
             sqlite3_finalize(stmt_1);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
@@ -1155,7 +1141,6 @@ int app_req_dis_dev(payload_t data)
             cJSON_AddItemToObject(apInfoObject, "dev", devArray);
             sprintf(sql_2,"select PID, DEV_NAME, DEV_ID from all_dev where AP_ID = \"%s\" and ACCOUNT = \"%s\";",apId, account);
             M1_LOG_DEBUG( "%s\n", sql_2);
-            //sqlite3_reset(stmt_2);
             sqlite3_finalize(stmt_2);
             if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
