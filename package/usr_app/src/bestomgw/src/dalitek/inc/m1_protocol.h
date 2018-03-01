@@ -213,7 +213,10 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_ECHO_DEV_INFO                       0x4005
 /*request added device information*/
 #define TYPE_REQ_ADDED_INFO                      0x4006
-
+/*M1上报项目ID到*/
+#define TYPE_M1_REPORT_ID_TO_CLOUD               0x4007
+/*APP请求云端透传*/
+#define TYPE_APP_REQ_CLOUD_TRANSFORM             0x4008
 
 /*common response*/
 #define TYPE_COMMON_RSP							 0x8004

@@ -2,6 +2,8 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 #include <sys/ioctl.h>
 #include <poll.h>
 
@@ -11,29 +13,75 @@
 #include "m1_common_log.h"
 #include "hal_defs.h"
 #include "buf_manage.h"
+#include "m1_cloud.h"
 
+#define LOCAL_IP  1
+
+#ifdef LOCAL_IP
 #define SERVER_IP  "172.16.200.1"
 #define SERV_PORT 6666
+#else
+#define SERVER_IP  "server.natappfree.cc"
+#define SERV_PORT 44809
+#endif
 
+static int conn_flag = TCP_DISCONNECTED;
 static int client_sockfd = 0;
 static char clientTcpRxBuf[1024*60] = {0};
 
 static int socket_client_handle(int clientFd, int revent);
 static void client_rx_cb(int clientFd);
 
+static void set_connect_flag(int d)
+{
+	conn_flag = d;
+}
+
+static int get_connect_flag(void)
+{
+	return conn_flag;
+}
+
+void tcp_client_disconnect_cb(int sockfd)
+{
+	if(sockfd == client_sockfd){
+		set_connect_flag(TCP_DISCONNECTED);
+		delete_account_conn_info(sockfd);
+		client_block_destory(sockfd);
+	}
+}
+
 int tcp_client_connect(void)
 {
 	struct sockaddr_in  servaddr;
+	struct hostent *host;
+	char* server_ip = SERVER_IP;
+	int i;
+
+#ifndef LOCAL_IP
+	host = gethostbyname(server_ip);
+	if(NULL == host){
+		perror("can not get host by hostname");
+		set_connect_flag(TCP_DISCONNECTED);
+		return TCP_CLIENT_FAILED;
+	}
+
+	server_ip = inet_ntoa(*(struct in_addr*)host->h_addr);
+	printf("IP:%s\n", server_ip);	
+#endif
    	client_sockfd = socket(AF_INET,SOCK_STREAM,0);
 	bzero(&servaddr,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(SERV_PORT);
-	inet_pton(AF_INET,SERVER_IP,&servaddr.sin_addr);
+	inet_pton(AF_INET, server_ip, &servaddr.sin_addr);
 	if(connect(client_sockfd,(struct sockaddr*)&servaddr,sizeof(servaddr)) == -1){
 		perror("server connect fialed:\n");
+		set_connect_flag(TCP_DISCONNECTED);
 		return TCP_CLIENT_FAILED;
 	}else{
 	 	printf("server connect ok\n");
+	 	set_connect_flag(TCP_CONNECTED);
+	 	m1_report_id_to_cloud(client_sockfd);
 	}
 
 	return TCP_CLIENT_SUCCESS;
@@ -43,7 +91,13 @@ void socket_client_poll(void)
 {
 	while (1)
 	{
-		
+		if(get_connect_flag() == TCP_DISCONNECTED){
+			printf("reconnect...\n");
+			sleep(5);
+			/*reconnect*/ 
+			if(tcp_client_connect() != TCP_CLIENT_SUCCESS)
+				continue;
+		}
 		M1_LOG_INFO("socket_client_poll\n");
 	
 		int pollFdIdx;
@@ -96,11 +150,8 @@ static int socket_client_handle(int clientFd, int revent)
 		M1_LOG_DEBUG("POLLRDHUP\n");
 		//its a shut down close the socket
 		M1_LOG_INFO("Client fd:%d disconnected\n", clientFd);
-		//remove the record and close the socket
-		delete_account_conn_info(clientFd);
-		client_block_destory(clientFd);
-		/*reconnect*/
-		return tcp_client_connect();
+		tcp_client_disconnect_cb(client_sockfd);
+		return TCP_CLIENT_FAILED;
 	}
 
 	return TCP_CLIENT_SUCCESS;

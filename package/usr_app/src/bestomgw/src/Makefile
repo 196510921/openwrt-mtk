@@ -13,7 +13,7 @@ OBJS = bestomgw/src/utils.o bestomgw/src/sqlite3.o bestomgw/src/zbController.o \
 	bestomgw/src/interface_scenelist.o bestomgw/src/interface_srpcserver.o \
 	bestomgw/src/socket_server.o bestomgw/src/SimpleDB.o bestomgw/src/SimpleDBTxt.o  bestomgw/src/cJSON.o \
 	dalitek/src/m1_protocol.o dalitek/src/m1_linkage.o dalitek/src/m1_scenario.o dalitek/src/m1_district.o \
-	dalitek/src/buf_manage.o  dalitek/src/account_config.o \
+	dalitek/src/buf_manage.o  dalitek/src/account_config.o dalitek/src/m1_cloud.o \
 	dalitek/src/m1_project.o dalitek/src/sql_backup.o dalitek/src/m1_common_log.o dalitek/src/m1_device.o \
 	tcp_client/src/tcp_client.o	
 	#sql_operate/sql_operate.o sql_operate/sql_delete.o sql_operate/sql_insert.o sql_opera:te/sql_select.o \

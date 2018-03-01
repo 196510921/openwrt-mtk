@@ -7,6 +7,11 @@ enum block_status_t{
 	TCP_CLIENT_SUCCESS
 };
 
+enum conn_flag_t{
+	TCP_CONNECTED = 0,
+	TCP_DISCONNECTED
+};
+
 int tcp_client_connect(void);
 void socket_client_poll(void);
 

@@ -1,97 +1,74 @@
 #include "m1_cloud.h"
 #include "m1_protocol.h"
 #include "socket_server.h"
+#include "m1_common_log.h"
 
-void m1_report_id_to_cloud(void)
+void m1_report_id_to_cloud(int clientFd)
 {
 	M1_LOG_INFO("m1_report_id_to_cloud\n");
 
     int sn = 2;
-    int row_n;
-    int clientFd;
-    int rc,ret = M1_PROTOCOL_OK;
-    const char* mac_addr = get_eth0_mac_addr();
-    char* sql = (char*)malloc(300);
-    sqlite3_stmt* stmt = NULL,*stmt_1 = NULL;
-    cJSON* snJson = NULL;
-    cJSON* pduJson = NULL;
+    int ret = M1_PROTOCOL_OK;
+    int pduType = TYPE_M1_REPORT_ID_TO_CLOUD;
+    char* mac_addr = get_eth0_mac_addr();
+    cJSON* pJsonRoot = NULL;
+    cJSON* pduJsonObject = NULL;
     cJSON* devDataJson = NULL;
-    cJSON* dataArrayJson = NULL;
-    cJSON* devIdJson = NULL;
     
-    if(data == NULL){
-        M1_LOG_ERROR("data NULL");
+    /*get sql data json*/
+    pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        M1_LOG_DEBUG("pJsonRoot NULL\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
 
-    /*更改sn*/
-    snJson = cJSON_GetObjectItem(data, "sn");
-    if(snJson == NULL){
-        M1_LOG_ERROR("snJson NULL");
+    cJSON_AddNumberToObject(pJsonRoot, "sn", 1);
+    cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
+    cJSON_AddNumberToObject(pJsonRoot, "netFlag", 2);
+    cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1);
+    /*create pdu object*/
+    pduJsonObject = cJSON_CreateObject();
+    if(NULL == pduJsonObject)
+    {
+        // create object faild, exit
+        cJSON_Delete(pduJsonObject);
         ret = M1_PROTOCOL_FAILED;
-        goto Finish;    
+        goto Finish;
     }
-    cJSON_SetIntValue(snJson, sn);
-    /*获取clientFd*/
-    pduJson = cJSON_GetObjectItem(data, "pdu");
-    devDataJson = cJSON_GetObjectItem(pduJson, "devData");
-    dataArrayJson = cJSON_GetArrayItem(devDataJson, 0);
-    devIdJson = cJSON_GetObjectItem(dataArrayJson, "devId");
-    M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
-    /*get apId*/
-    sprintf(sql,"select AP_ID from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;",devIdJson->valuestring);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+    /*add pdu to root*/
+    cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
+    /*add pdu type to pdu object*/
+    cJSON_AddNumberToObject(pduJsonObject, "pduType", pduType);
+    /*create devData array*/
+    devDataJson = cJSON_CreateObject();
+    if(NULL == devDataJson)
+    {
+        cJSON_Delete(devDataJson);
         ret = M1_PROTOCOL_FAILED;
-        goto Finish; 
+        goto Finish;
     }
-    rc = thread_sqlite3_step(&stmt,db);
-    if(rc == SQLITE_ROW){
-        ap_id = sqlite3_column_text(stmt,0);
-        if(ap_id == NULL){
-            M1_LOG_ERROR( "ap_id NULL\n");  
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
-        M1_LOG_DEBUG("ap_id%s\n",ap_id);
-    }else{
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish; 
-    }
+    /*add devData array to pdu pbject*/
+    cJSON_AddItemToObject(pduJsonObject, "devData", devDataJson);
+    cJSON_AddStringToObject(devDataJson, "proId", mac_addr);
 
-    /*get clientFd*/
-    sprintf(sql,"select CLIENT_FD from conn_info where AP_ID = \"%s\" order by ID desc limit 1;",ap_id);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish; 
-    }
-    rc = thread_sqlite3_step(&stmt_1, db);
-    if(rc == SQLITE_ROW){
-        clientFd = sqlite3_column_int(stmt_1,0);
-
-        char * p = cJSON_PrintUnformatted(data);
+    char * p = cJSON_PrintUnformatted(pJsonRoot);
         
-        if(NULL == p)
-        {    
-            cJSON_Delete(data);
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish;  
-        }
-
-        M1_LOG_DEBUG("string:%s\n",p);
-        /*response to client*/
-        socketSeverSend((uint8*)p, strlen(p), clientFd);
+    if(NULL == p)
+    {    
+        cJSON_Delete(pJsonRoot);
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;  
     }
+
+    M1_LOG_DEBUG("string:%s\n",p);
+    /*response to client*/
+    socketSeverSend((uint8*)p, strlen(p), clientFd);
 
     Finish:
-    free(sql);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
 
     return ret;
-
 }
 
 
