@@ -56,8 +56,9 @@
 #include "m1_protocol.h"
 #include "interface_srpcserver.h"
 #include "socket_server.h"
-#include "sql_operate.h"
-#include "sql_table.h"
+//#include "sql_operate.h"
+//#include "sql_table.h"
+#include "tcp_client.h"
 
 #define MAX_DB_FILENAMR_LEN 255
 #define DEBUG_LOG_OUTPUT_TO_FD   1
@@ -68,10 +69,9 @@ pthread_mutex_t mutex_lock_sock;
 /*静态变量****************************************************************************************/
 
 /*静态局部函数****************************************************************************************/
-static void socket_client_poll(void);
 static void printf_redirect(void);
 static void socket_poll(void);
-static void sql_test(void);
+//static void sql_test(void);
 
 int main(int argc, char* argv[])
 {
@@ -180,6 +180,7 @@ static void printf_redirect(void)
      dup2(fd,STDOUT_FILENO); 
 }
 
+#if 0
 static void sql_test(void)
 {
 	M1_LOG_INFO("sql_test begin!\n");
@@ -218,6 +219,7 @@ static void sql_test(void)
 	M1_LOG_INFO("sql_test end!\n");
 	sql_close();
 }
+#endif
 
 uint8_t tlIndicationCb(epInfo_t *epInfo)
 {

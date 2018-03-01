@@ -7,7 +7,6 @@ enum block_status_t{
 	TCP_CLIENT_SUCCESS
 };
 
-
 int tcp_client_connect(void);
 void socket_client_poll(void);
 

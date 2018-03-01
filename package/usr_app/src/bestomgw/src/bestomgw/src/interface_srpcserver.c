@@ -87,7 +87,6 @@ static uint8_t SRPC_permitJoin(uint8_t *pBuf, uint32_t clientFd);
 static uint8_t SRPC_changeDeviceName(uint8_t *pBuf, uint32_t clientFd);
 static uint8_t SRPC_notSupported(uint8_t *pBuf, uint32_t clientFd);
 
-static int client_write(stack_mem_t* d, char* data, int len);
 
 //RPSC ZLL Interface call back functions
 static void SRPC_CallBack_addGroupRsp(uint16_t groupId, char *nameStr,
@@ -1655,23 +1654,23 @@ void SRPC_ConnectCB(int clientFd)
  *
  * @return  Status
  ***************************************************************************************************/
-static int msg_header_checker(char*str, int len){
-	int i = 0,j = 0, _len = 0;
+// int msg_header_checker(char*str, int len){
+// 	int i = 0,j = 0, _len = 0;
 
-	_len = len;
-	printf("msg_header_checker\n");
-	while(*(str + i) != '{'){ 
-		printf("1. %c, i:%03d\n",*(str + i), i);
-		i++;
-		_len--;
-		if(i >= len)
-			return 0;
-	}
+// 	_len = len;
+// 	printf("msg_header_checker\n");
+// 	while(*(str + i) != '{'){ 
+// 		printf("1. %c, i:%03d\n",*(str + i), i);
+// 		i++;
+// 		_len--;
+// 		if(i >= len)
+// 			return 0;
+// 	}
 
-	printf("\n");
-	printf("mLen:%03d\n", len - _len);
-	return (len - _len);
-}
+// 	printf("\n");
+// 	printf("mLen:%03d\n", len - _len);
+// 	return (len - _len);
+// }
 
 static int json_checker(char* str, int len)
 {
@@ -1693,7 +1692,7 @@ static int json_checker(char* str, int len)
 }
 
 /*接收包header高低字节转换*/
-static int msg_header_check(uint16_t header)
+int msg_header_check(uint16_t header)
 {
 	int ret = 0;
 	uint16_t TransHeader = 0;
@@ -1707,7 +1706,7 @@ static int msg_header_check(uint16_t header)
 	return ret;
 }
 /*接收长度高低字节转换*/
-static uint16_t msg_len_get(uint16_t len)
+uint16_t msg_len_get(uint16_t len)
 {
 	uint16_t TransLen = 0;
 	
@@ -1718,7 +1717,7 @@ static uint16_t msg_len_get(uint16_t len)
 }
 
 #if 1
-	char tcpRxBuf[1024*60] = {0};
+static char tcpRxBuf[1024*60] = {0};
 #endif
 void SRPC_RxCB(int clientFd)
 {
@@ -1791,77 +1790,6 @@ void SRPC_RxCB(int clientFd)
 	len = 0;
 	memset(tcpRxBuf, 0, 1024*60);
 #endif
-	M1_LOG_DEBUG("SRPC_RxCB--\n");
-
-	return;
-}
-
-static char clientTcpRxBuf[1024*60] = {0};
-void client_rx_cb(int clientFd)
-{
-	int byteToRead = 0;
-	int byteRead = 0;
-	int rtn = 0;
-	int JsonComplete = 0;
-	int rc = 0;
-	static int len = 0;
-	static uint16_t exLen = 0;
-
-	client_block_t* client_block = NULL;
-
-	M1_LOG_DEBUG("SRPC_RxCB++[%x]\n", clientFd);
-
-	rtn = ioctl(clientFd, FIONREAD, &byteToRead);
-
-	if (rtn != 0)
-	{
-		M1_LOG_ERROR("SRPC_RxCB: Socket error\n");
-	}
-	M1_LOG_DEBUG("byteToRead:%d\n",byteToRead);
-
-	if(byteToRead > 60*1024){
-		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
-		return;
-	}
-	while(byteToRead > 0)
-	{
-		byteRead = read(clientFd, clientTcpRxBuf + len, 1024);
-		if(byteRead > 0){
-			/*判断是否是头*/
-			if(msg_header_check(*(uint16_t*)(clientTcpRxBuf + len)) == 1){
-				exLen = msg_len_get(*(uint16_t*)(clientTcpRxBuf + len + 2));
-				M1_LOG_DEBUG("exLen:%05d\n",exLen);
-				if(len > 0){
-					goto Finish;
-				}
-			}else{
-				M1_LOG_DEBUG("%x,clientTcpRxBuf:%x,%x.%x.%x,\n",*(uint16_t*)(clientTcpRxBuf + len + 2),clientTcpRxBuf[len],clientTcpRxBuf[len+1],clientTcpRxBuf[len+2],clientTcpRxBuf[len+3]);
-			}
-			len += byteRead;
-			byteToRead -= byteRead;		
-		}					
-	}
-
-	if(len - 4 < exLen){
-		M1_LOG_INFO("waiting msg...\n");
-		return;
-	}
-	
-	exLen = 0;
-	client_block = client_stack_block_req(clientFd);
-	if(NULL == client_block){
-		M1_LOG_ERROR( "client_block null\n");
-		return;
-	}
-	
-	M1_LOG_INFO("rx len:%05d, rx data:%s\n",len, clientTcpRxBuf+4);
-	rc = client_write(&client_block->stack_block, clientTcpRxBuf, len);
-	if(rc != TCP_SERVER_SUCCESS)
-		M1_LOG_ERROR("client_write failed\n");
-	
-	Finish:
-	len = 0;
-	memset(clientTcpRxBuf, 0, 1024*60);
 	M1_LOG_DEBUG("SRPC_RxCB--\n");
 
 	return;
@@ -1952,7 +1880,7 @@ int client_block_destory(int clientFd)
 }
 
 /*client write/read**************************************************************************************/
-static int client_write(stack_mem_t* d, char* data, int len)
+int client_write(stack_mem_t* d, char* data, int len)
 {
 	pthread_mutex_lock(&mutex_lock_sock);
 	int rc = 0;
