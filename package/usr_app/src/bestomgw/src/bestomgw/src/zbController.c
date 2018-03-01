@@ -54,7 +54,8 @@
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
 #include "m1_protocol.h"
-
+#include "interface_srpcserver.h"
+#include "socket_server.h"
 #include "sql_operate.h"
 #include "sql_table.h"
 
@@ -63,13 +64,14 @@
 
 /*全局变量***********************************************************************************************/	
 pthread_mutex_t mutex_lock;
+pthread_mutex_t mutex_lock_sock;
+/*静态变量****************************************************************************************/
+
 /*静态局部函数****************************************************************************************/
+static void socket_client_poll(void);
 static void printf_redirect(void);
 static void socket_poll(void);
 static void sql_test(void);
-
-#include "interface_srpcserver.h"
-#include "socket_server.h"
 
 int main(int argc, char* argv[])
 {
@@ -90,20 +92,26 @@ int main(int argc, char* argv[])
 #endif
 
 	SRPC_Init();
+	tcp_client_connect();
 	m1_protocol_init();
 
 	pthread_mutex_init(&mutex_lock, NULL);
+	pthread_mutex_init(&mutex_lock_sock, NULL);
 	pthread_create(&t1,NULL,socket_poll,NULL);
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
+	pthread_create(&t5,NULL,socket_client_poll,NULL);
+	
 
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
+	pthread_join(t5, NULL);
 	
 	pthread_mutex_destroy(&mutex_lock);
+	pthread_mutex_destroy(&mutex_lock_sock);
 	return retval;
 }
 
@@ -115,18 +123,19 @@ static void socket_poll(void)
 		//poll on client socket fd's and the ZllSoC serial port for any activity
 		if (numClientFds)
 		{
-			M1_LOG_DEBUG("numClientFds:%d\n",numClientFds);
+			M1_LOG_INFO("numClientFds:%d\n",numClientFds);
 		
 			int pollFdIdx;
 			int *client_fds = malloc(numClientFds * sizeof(int));
 			//socket client FD's + zllSoC serial port FD
 			struct pollfd *pollFds = malloc(
-					((numClientFds + 1) * sizeof(struct pollfd)));
+					((numClientFds) * sizeof(struct pollfd)));
 
 			if (client_fds && pollFds)
 			{
 				//Set the socket file descriptors
 				socketSeverGetClientFds(client_fds, numClientFds);
+	
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
 					pollFds[pollFdIdx].fd = client_fds[pollFdIdx];
@@ -135,23 +144,23 @@ static void socket_poll(void)
 					M1_LOG_DEBUG("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
 				}
 
-				M1_LOG_DEBUG("zllMain: waiting for poll()\n");
+				M1_LOG_INFO("zllMain: waiting for poll()\n");
 
 				poll(pollFds, (numClientFds), -1);
-				M1_LOG_DEBUG("poll out\n");
-
+				M1_LOG_INFO("poll out\n");
+				/*server*/
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
 					if ((pollFds[pollFdIdx].revents))
 					{
-						M1_LOG_DEBUG("Message from Socket Sever\n");
+						M1_LOG_DEBUG("Message from Socket Client\n");
 						socketSeverPoll(pollFds[pollFdIdx].fd, pollFds[pollFdIdx].revents);
 					}
 				}
 
 				free(client_fds);
 				free(pollFds);
-				M1_LOG_DEBUG("free client\n");
+				M1_LOG_INFO("free client\n");
 			}
 		}
 	}

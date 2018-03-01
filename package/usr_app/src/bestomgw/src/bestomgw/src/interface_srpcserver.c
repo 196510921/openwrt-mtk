@@ -1796,6 +1796,77 @@ void SRPC_RxCB(int clientFd)
 	return;
 }
 
+static char clientTcpRxBuf[1024*60] = {0};
+void client_rx_cb(int clientFd)
+{
+	int byteToRead = 0;
+	int byteRead = 0;
+	int rtn = 0;
+	int JsonComplete = 0;
+	int rc = 0;
+	static int len = 0;
+	static uint16_t exLen = 0;
+
+	client_block_t* client_block = NULL;
+
+	M1_LOG_DEBUG("SRPC_RxCB++[%x]\n", clientFd);
+
+	rtn = ioctl(clientFd, FIONREAD, &byteToRead);
+
+	if (rtn != 0)
+	{
+		M1_LOG_ERROR("SRPC_RxCB: Socket error\n");
+	}
+	M1_LOG_DEBUG("byteToRead:%d\n",byteToRead);
+
+	if(byteToRead > 60*1024){
+		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
+		return;
+	}
+	while(byteToRead > 0)
+	{
+		byteRead = read(clientFd, clientTcpRxBuf + len, 1024);
+		if(byteRead > 0){
+			/*判断是否是头*/
+			if(msg_header_check(*(uint16_t*)(clientTcpRxBuf + len)) == 1){
+				exLen = msg_len_get(*(uint16_t*)(clientTcpRxBuf + len + 2));
+				M1_LOG_DEBUG("exLen:%05d\n",exLen);
+				if(len > 0){
+					goto Finish;
+				}
+			}else{
+				M1_LOG_DEBUG("%x,clientTcpRxBuf:%x,%x.%x.%x,\n",*(uint16_t*)(clientTcpRxBuf + len + 2),clientTcpRxBuf[len],clientTcpRxBuf[len+1],clientTcpRxBuf[len+2],clientTcpRxBuf[len+3]);
+			}
+			len += byteRead;
+			byteToRead -= byteRead;		
+		}					
+	}
+
+	if(len - 4 < exLen){
+		M1_LOG_INFO("waiting msg...\n");
+		return;
+	}
+	
+	exLen = 0;
+	client_block = client_stack_block_req(clientFd);
+	if(NULL == client_block){
+		M1_LOG_ERROR( "client_block null\n");
+		return;
+	}
+	
+	M1_LOG_INFO("rx len:%05d, rx data:%s\n",len, clientTcpRxBuf+4);
+	rc = client_write(&client_block->stack_block, clientTcpRxBuf, len);
+	if(rc != TCP_SERVER_SUCCESS)
+		M1_LOG_ERROR("client_write failed\n");
+	
+	Finish:
+	len = 0;
+	memset(clientTcpRxBuf, 0, 1024*60);
+	M1_LOG_DEBUG("SRPC_RxCB--\n");
+
+	return;
+}
+
 static void client_read_to_data_handle(char* data, int len, int clientFd)
 {
 	M1_LOG_INFO( "client_read_to_data_handle:  len:%05d, data:%s\n",len, data);
@@ -1811,6 +1882,7 @@ static void client_read_to_data_handle(char* data, int len, int clientFd)
 }
 
 /*clientfd stack block request****************************************************************************************/
+extern pthread_mutex_t mutex_lock_sock;
 static client_block_t client_block[STACK_BLOCK_NUM];
 
 int client_block_init(void)
@@ -1828,6 +1900,7 @@ int client_block_init(void)
 
 client_block_t* client_stack_block_req(int clientFd)
 {
+	pthread_mutex_lock(&mutex_lock_sock);
 	M1_LOG_DEBUG( "block_req\n");
 	int i;
 	int j = -1;
@@ -1837,24 +1910,29 @@ client_block_t* client_stack_block_req(int clientFd)
 			if(0 == client_block[i].clientFd)
 				j = i;
 
-		if(clientFd == client_block[i].clientFd)
+		if(clientFd == client_block[i].clientFd){
+			pthread_mutex_unlock(&mutex_lock_sock);
 			return &client_block[i];
+		}
 	}
 
 	client_block[j].clientFd = clientFd;
 	if(TCP_SERVER_FAILED == stack_block_req(&client_block[j].stack_block)){
 		M1_LOG_ERROR( "block_req failed\n");
+		pthread_mutex_unlock(&mutex_lock_sock);
 		return NULL;
 	}
 
 	// M1_LOG_DEBUG("blockNum:%d,wPtr:%05d,rPtr:%05d,start:%05d,end:%05d\n",client_block[j].stack_block.blockNum,
 	// 	client_block[j].stack_block.wPtr, client_block[j].stack_block.rPtr, client_block[j].stack_block.start,
 	// 	client_block[j].stack_block.end);
+	pthread_mutex_unlock(&mutex_lock_sock);
 	return &client_block[j];
 } 
 
 int client_block_destory(int clientFd)
 {
+	pthread_mutex_lock(&mutex_lock_sock);
 	M1_LOG_DEBUG( "block_destory\n");
 	int i;
 
@@ -1864,17 +1942,19 @@ int client_block_destory(int clientFd)
 			client_block[i].clientFd = 0;
 			if(TCP_SERVER_FAILED == stack_block_destroy(client_block[i].stack_block)){
 				M1_LOG_ERROR("block_destroy failed\n");
+				pthread_mutex_unlock(&mutex_lock_sock);
 				return TCP_SERVER_FAILED;
 			}
 		}
 	}
-
+	pthread_mutex_unlock(&mutex_lock_sock);
 	return TCP_SERVER_SUCCESS;
 }
 
 /*client write/read**************************************************************************************/
 static int client_write(stack_mem_t* d, char* data, int len)
 {
+	pthread_mutex_lock(&mutex_lock_sock);
 	int rc = 0;
 	int header = 0;
 	int distance = 0;
@@ -1883,6 +1963,7 @@ static int client_write(stack_mem_t* d, char* data, int len)
 	//M1_LOG_DEBUG("header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
 	if(NULL == d){
 		M1_LOG_ERROR( "NULL == d\n");
+		pthread_mutex_unlock(&mutex_lock_sock);
 		return TCP_SERVER_FAILED;
 	}
 
@@ -1899,6 +1980,7 @@ static int client_write(stack_mem_t* d, char* data, int len)
 		M1_LOG_ERROR( "client write failed\n");
 	
 	M1_LOG_DEBUG("write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	pthread_mutex_unlock(&mutex_lock_sock);
 	return rc;
 }
 

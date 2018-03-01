@@ -410,6 +410,7 @@ void socketSeverPoll(int clinetFd, int revent)
 	return;
 }
 
+
 /***************************************************************************************************
  * @fn      socketSeverSend
  *
@@ -706,8 +707,8 @@ static void get_mac_address(int sockFd)
      if( (ioctl( sockFd, SIOCGIFHWADDR, &ifr_mac)) < 0)  
      {  
          printf("mac ioctl error:%s/n",strerror(errno));  
-         exit(0);
-         //return;  
+         //exit(0);
+         return;  
      }  
        
      sprintf(mac_addr,"%02x%02x%02x%02x%02x%02x",  

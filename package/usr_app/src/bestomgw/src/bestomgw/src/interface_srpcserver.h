@@ -36,8 +36,8 @@
  *
  */
 
-#ifndef ZCL_INTERFACE_SERVER_H
-#define ZCL_INTERFACE_SERVER_H
+#ifndef _INTERFACE_SRPCSERVER_H
+#define _INTERFACE_SRPCSERVER_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -172,7 +172,7 @@ extern "C" {
 #define BLOCK_LEN_OFFSET     2
 #define MSG_HEADER           0xFEFD
 
-typedef struct _client_block_t{
+typedef struct {
 	int clientFd;
 	stack_mem_t stack_block;
 }client_block_t;
@@ -205,7 +205,7 @@ void SRPC_CallBack_getSatRsp(uint8_t sat, uint16_t srcAddr, uint8_t endpoint, ui
 void SRPC_CallBack_getTempRsp(uint16_t temp, uint16_t srcAddr, uint8_t endpoint, uint32_t clientFd);
 void SRPC_CallBack_getPowerRsp(uint32_t power, uint16_t srcAddr, uint8_t endpoint, uint32_t clientFd);
 
-
+void client_rx_cb(int clientFd);
 /*client block*/
 int client_block_init(void);
 client_block_t* client_stack_block_req(int clientFd);
@@ -217,4 +217,4 @@ void client_write_test(void);
 }
 #endif
 
-#endif //ZCL_INTERFACE_SERVER_H
+#endif //INTERFACE_SRPCSERVER_H
