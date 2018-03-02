@@ -1,7 +1,6 @@
-#!/usr/bin/python
-# -*-coding:UTF-8 -*-
-import os
-cmd = 'cp sql_bkp.db dev_info.db'
-print cmd
-os.system(cmd)
+#!/bin/sh
+
+echo 'cp /mnt/usb1/backup.db /dev_info.db'
+cp /mnt/usb1/backup.db /dev_info.db
+
 

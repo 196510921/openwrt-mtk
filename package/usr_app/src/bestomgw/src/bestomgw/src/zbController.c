@@ -71,7 +71,7 @@ pthread_mutex_t mutex_lock_sock;
 /*静态局部函数****************************************************************************************/
 static void printf_redirect(void);
 static void socket_poll(void);
-//static void sql_test(void);
+static void sql_test(void);
 
 int main(int argc, char* argv[])
 {
@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
 	pthread_t t1,t2,t3,t4,t5;
 
 	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
-//	sql_test();
+	sql_test();
 #if DEBUG_LOG_OUTPUT_TO_FD
 	printf_redirect();
 #endif
@@ -183,6 +183,11 @@ static void printf_redirect(void)
      if(fd == -1)
      	M1_LOG_ERROR( " open file failed\n");
      dup2(fd,STDOUT_FILENO); 
+}
+
+static void sql_test(void)
+{
+	system("./sql_restore.sh");
 }
 
 #if 0

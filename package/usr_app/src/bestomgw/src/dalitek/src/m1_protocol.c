@@ -2530,15 +2530,18 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
     }
 
-    if(rc == SQLITE_BUSY || rc == SQLITE_MISUSE || rc == SQLITE_LOCKED || rc == SQLITE_CORRUPT){
+    if(rc == SQLITE_BUSY || rc == SQLITE_MISUSE || rc == SQLITE_LOCKED){
         if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
             M1_LOG_INFO("ROLLBACK OK\n");
             sqlite3_free(errorMsg);
         }else{
             sqlite3_free(errorMsg);
             M1_LOG_ERROR("ROLLBACK FALIED\n");
-            //exit(0);
         }
+    }else if(rc == SQLITE_CORRUPT){
+        M1_LOG_ERROR("SQLITE FATAL ERROR!\n");
+        system("/sql_restore.sh");
+        exit(0);
     }
 
     return rc;
