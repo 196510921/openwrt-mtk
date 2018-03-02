@@ -2019,6 +2019,7 @@ static void check_offline_dev(sqlite3*db)
     /*当前时间*/
     M1_LOG_DEBUG("curTime:%x,%x,%x,%x\n",curTime[8],curTime[9],curTime[10],curTime[11]);
     u8CurTime = (curTime[8] - preTime[0])*60*10 + (curTime[9] - preTime[1]) * 60  + (curTime[10] - preTime[2]) * 10 + curTime[11] - preTime[3];
+    u8CurTime = abs(u8CurTime);
     M1_LOG_DEBUG("u8CurTime:%d\n",u8CurTime);
     
     if(u8CurTime < 2){
@@ -2058,6 +2059,7 @@ static void check_offline_dev(sqlite3*db)
              M1_LOG_DEBUG("time: %s\n",time);
             /*获取的上一次时间*/
             u8Time = (curTime[8] - time[8]) * 60 * 10 + (curTime[9] - time[9]) * 60 + (curTime[10] - time[10]) * 10 + curTime[11] - time[11];
+            u8Time = abs(u8Time);
             M1_LOG_DEBUG("u8Time:%d\n",u8Time);
             if(u8Time > AP_HEART_BEAT_INTERVAL){
                 sprintf(sql_2,"update param_table set VALUE = 0 where DEV_ID = \"%s\" and TYPE = 16404;", apId);

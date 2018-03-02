@@ -15,22 +15,29 @@ cmd3 = 'rm *.o'
 print cmd3
 os.system(cmd3)
 
-cmd2_1 = '../../sql_operate'
+cmd2_1 = '../../sql_operate/src'
 print cmd2_1
 os.chdir(cmd2_1)
 cmd3_1 = 'rm *.o'
 print cmd3_1
 os.system(cmd3_1)
 
-cmd2_2 = '../sql_table'
+cmd2_2 = '../../sql_table/src'
 print cmd2_2
 os.chdir(cmd2_2)
 cmd3_2 = 'rm *.o'
 print cmd3_2
 os.system(cmd3_2)
 
+cmd2_3 = '../../tcp_client/src'
+print cmd2_3
+os.chdir(cmd2_3)
+cmd3_3 = 'rm *.o'
+print cmd3_3
+os.system(cmd3_3)
 
-cmd4 = '../'
+
+cmd4 = '../../'
 print cmd4
 os.chdir(cmd4)
 
@@ -53,6 +60,10 @@ os.system(cmd5_3)
 cmd5_4 = 'cp -r sql_table/ ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
 print cmd5_4
 os.system(cmd5_4)
+
+cmd5_5 = 'cp -r tcp_client/ ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
+print cmd5_5
+os.system(cmd5_5)
 
 cmd6 = '../../../../../'
 print cmd6

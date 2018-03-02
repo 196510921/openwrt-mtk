@@ -62,7 +62,7 @@
 
 #define MAX_DB_FILENAMR_LEN 255
 #define DEBUG_LOG_OUTPUT_TO_FD   1
-
+#define TCP_CLIENT_ENABLE   0
 /*全局变量***********************************************************************************************/	
 pthread_mutex_t mutex_lock;
 pthread_mutex_t mutex_lock_sock;
@@ -92,7 +92,9 @@ int main(int argc, char* argv[])
 #endif
 
 	SRPC_Init();
+#if TCP_CLIENT_ENABLE
 	tcp_client_connect();
+#endif
 	m1_protocol_init();
 
 	pthread_mutex_init(&mutex_lock, NULL);
@@ -101,14 +103,17 @@ int main(int argc, char* argv[])
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
+#if TCP_CLIENT_ENABLE
 	pthread_create(&t5,NULL,socket_client_poll,NULL);
-	
+#endif
 
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
+#if TCP_CLIENT_ENABLE
 	pthread_join(t5, NULL);
+#endif
 	
 	pthread_mutex_destroy(&mutex_lock);
 	pthread_mutex_destroy(&mutex_lock_sock);

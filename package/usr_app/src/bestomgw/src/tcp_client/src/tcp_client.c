@@ -18,11 +18,11 @@
 #define LOCAL_IP  1
 
 #ifdef LOCAL_IP
-#define SERVER_IP  "172.16.200.1"
-#define SERV_PORT 6666
+	#define SERVER_IP  "172.16.200.1"
+	#define SERV_PORT 6666
 #else
-#define SERVER_IP  "server.natappfree.cc"
-#define SERV_PORT 44809
+	#define SERVER_IP  "server.natappfree.cc"
+	#define SERV_PORT 44809
 #endif
 
 static int conn_flag = TCP_DISCONNECTED;
@@ -93,7 +93,7 @@ void socket_client_poll(void)
 	{
 		if(get_connect_flag() == TCP_DISCONNECTED){
 			printf("reconnect...\n");
-			sleep(5);
+			//sleep(5);
 			/*reconnect*/ 
 			if(tcp_client_connect() != TCP_CLIENT_SUCCESS)
 				continue;

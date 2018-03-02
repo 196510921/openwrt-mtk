@@ -2,7 +2,7 @@
 # nfc daemon Makefile 
 #############################################################
 EXEC = bestomgwd
-CFLAGS += -O2 -Wall -I bestomgw/inc -I dalitek/inc -I sql_operate/inc -I sql_table/inc -I tcp_client/inc
+CFLAGS += -O2 -Wall -Ibestomgw/inc -Idalitek/inc -Isql_operate/inc -Isql_table/inc -Itcp_client/inc
 ##-IthreadPool
 
 
