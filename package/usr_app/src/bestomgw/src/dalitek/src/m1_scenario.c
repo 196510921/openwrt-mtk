@@ -78,7 +78,7 @@ int scenario_exec(char* data, sqlite3* db)
 	
 	M1_LOG_DEBUG("sql:%s\n",sql);
 	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	    ret = M1_PROTOCOL_FAILED;
 	    goto Finish; 
 	}
@@ -87,7 +87,7 @@ int scenario_exec(char* data, sqlite3* db)
 		sqlite3_finalize(stmt_1);
 		sprintf(sql_1,"select distinct DEV_ID from scenario_table where SCEN_NAME = \"%s\" and AP_ID = \"%s\";",data, ap_id);	
 		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -100,7 +100,7 @@ int scenario_exec(char* data, sqlite3* db)
 		 	M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 		 	sqlite3_finalize(stmt_2);
 		 	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 			    ret = M1_PROTOCOL_FAILED;
 			    goto Finish; 
 			}
@@ -140,7 +140,7 @@ int scenario_exec(char* data, sqlite3* db)
 				M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 				sqlite3_finalize(stmt_2);
 				if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-				    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+				    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 				    ret = M1_PROTOCOL_FAILED;
 				    goto Finish; 
 				}
@@ -177,7 +177,7 @@ int scenario_exec(char* data, sqlite3* db)
 		    	M1_LOG_DEBUG("sql_3:%s\n", sql_3);
 		    	sqlite3_finalize(stmt_3);
 		    	if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK){
-				    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+				    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 				    ret = M1_PROTOCOL_FAILED;
 				    goto Finish; 
 				}
@@ -284,7 +284,7 @@ int scenario_create_handle(payload_t data)
 			sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
 			sqlite3_finalize(stmt);
 			if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
-			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 			    ret = M1_PROTOCOL_FAILED;
 			    goto Finish; 
 			}
@@ -324,7 +324,7 @@ int scenario_create_handle(payload_t data)
 		    M1_LOG_DEBUG("sql:%s\n",sql);
 		    sqlite3_finalize(stmt);
 		    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 			    ret = M1_PROTOCOL_FAILED;
 			    goto Finish; 
 			}
@@ -349,7 +349,7 @@ int scenario_create_handle(payload_t data)
 		sprintf(sql_1,"delete from scenario_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
 		sqlite3_finalize(stmt);
 		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
-		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -418,7 +418,7 @@ int scenario_create_handle(payload_t data)
 			    M1_LOG_DEBUG("sql:%s\n",sql);
 			    sqlite3_finalize(stmt);
 			    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-				    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+				    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 				    ret = M1_PROTOCOL_FAILED;
 				    goto Finish; 
 				}
@@ -513,7 +513,7 @@ int scenario_alarm_create_handle(payload_t data)
 			sprintf(sql_1,"delete from scen_alarm_table where SCEN_NAME = \"%s\";",scenNameJson->valuestring);				
 			sqlite3_finalize(stmt);
 			if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt, NULL) != SQLITE_OK){
-			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 			    ret = M1_PROTOCOL_FAILED;
 			    goto Finish; 
 			}
@@ -524,7 +524,7 @@ int scenario_alarm_create_handle(payload_t data)
 	    M1_LOG_DEBUG("sql:%s\n",sql);
 	    sqlite3_finalize(stmt);
 	    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -635,7 +635,7 @@ int app_req_scenario(payload_t data)
     sprintf(sql,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
     M1_LOG_DEBUG( "%s\n", sql);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_3, NULL) != SQLITE_OK){
-	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	    ret = M1_PROTOCOL_FAILED;
 	    goto Finish; 
 	}
@@ -654,7 +654,7 @@ int app_req_scenario(payload_t data)
     sprintf(sql,"select distinct SCEN_NAME from scenario_table where ACCOUNT = \"%s\";",account);
     M1_LOG_DEBUG("sql:%s\n",sql);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	    ret = M1_PROTOCOL_FAILED;
 	    goto Finish; 
 	}
@@ -674,7 +674,7 @@ int app_req_scenario(payload_t data)
 	    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 	    sqlite3_finalize(stmt_1);
 	    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -708,7 +708,7 @@ int app_req_scenario(payload_t data)
 	    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 	    sqlite3_finalize(stmt_1);
 	    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -738,7 +738,7 @@ int app_req_scenario(payload_t data)
 	    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 	    sqlite3_finalize(stmt_1);
 	    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -760,7 +760,7 @@ int app_req_scenario(payload_t data)
 		   	M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 		   	sqlite3_finalize(stmt_2);
 	    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 			    ret = M1_PROTOCOL_FAILED;
 			    goto Finish; 
 			}
@@ -811,7 +811,7 @@ int app_req_scenario(payload_t data)
 		   	M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 		   	sqlite3_finalize(stmt_2);
 	    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 			    ret = M1_PROTOCOL_FAILED;
 			    goto Finish; 
 			}
@@ -838,7 +838,7 @@ int app_req_scenario(payload_t data)
 			sprintf(sql_2,"select TYPE, VALUE from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\" and ACCOUNT = \"%s\";",scen_name, dev_id,account);
 	    	sqlite3_finalize(stmt_2);
 	    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-			    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 			    ret = M1_PROTOCOL_FAILED;
 			    goto Finish; 
 			}
@@ -948,7 +948,7 @@ int app_req_scenario_name(payload_t data)
    	M1_LOG_DEBUG("sql:%s\n", sql);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-	    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	    ret = M1_PROTOCOL_FAILED;
 	    goto Finish; 
 	}
@@ -1009,7 +1009,7 @@ void scenario_alarm_select(void)
 	     }
 
 	    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-		    M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    goto Finish; 
 		}
 	    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){

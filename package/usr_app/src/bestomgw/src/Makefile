@@ -15,8 +15,9 @@ OBJS = bestomgw/src/utils.o bestomgw/src/sqlite3.o bestomgw/src/zbController.o \
 	dalitek/src/m1_protocol.o dalitek/src/m1_linkage.o dalitek/src/m1_scenario.o dalitek/src/m1_district.o \
 	dalitek/src/buf_manage.o  dalitek/src/account_config.o dalitek/src/m1_cloud.o \
 	dalitek/src/m1_project.o dalitek/src/sql_backup.o dalitek/src/m1_common_log.o dalitek/src/m1_device.o \
-	tcp_client/src/tcp_client.o	
-	#sql_operate/sql_operate.o sql_operate/sql_delete.o sql_operate/sql_insert.o sql_opera:te/sql_select.o \
+	tcp_client/src/tcp_client.o \
+	sql_operate/src/sql_operate.o 
+	#sql_operate/sql_delete.o sql_operate/sql_insert.o sql_opera:te/sql_select.o \
 	#sql_operate/sql_modify.o \
 	#sql_table/sql_table.o \
 	#sql_table/table_all_dev.o \

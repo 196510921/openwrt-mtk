@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
 	pthread_t t1,t2,t3,t4,t5;
 
 	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
-	sql_test();
+	//sql_test();
 #if DEBUG_LOG_OUTPUT_TO_FD
 	printf_redirect();
 #endif
@@ -128,7 +128,7 @@ static void socket_poll(void)
 		//poll on client socket fd's and the ZllSoC serial port for any activity
 		if (numClientFds)
 		{
-			M1_LOG_INFO("numClientFds:%d\n",numClientFds);
+			M1_LOG_DEBUG("numClientFds:%d\n",numClientFds);
 		
 			int pollFdIdx;
 			int *client_fds = malloc(numClientFds * sizeof(int));
@@ -165,7 +165,7 @@ static void socket_poll(void)
 
 				free(client_fds);
 				free(pollFds);
-				M1_LOG_INFO("free client\n");
+				M1_LOG_DEBUG("free client\n");
 			}
 		}
 	}
@@ -187,7 +187,7 @@ static void printf_redirect(void)
 
 static void sql_test(void)
 {
-	system("./sql_restore.sh");
+	//system("./sql_restore.sh");
 }
 
 #if 0

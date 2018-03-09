@@ -60,7 +60,7 @@ int app_get_project_info(payload_t data)
     M1_LOG_DEBUG( "%s\n", sql);
     
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -133,7 +133,7 @@ int app_confirm_project(payload_t data)
     sprintf(sql,"select P_KEY from project_table where P_NUMBER = \"%s\" order by ID desc limit 1;",pNumberJson->valuestring);
     M1_LOG_DEBUG( "%s\n", sql);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -204,7 +204,7 @@ int app_create_project(payload_t data)
     //sqlite3_reset(stmt_1);
     sqlite3_finalize(stmt_1);
     if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -220,7 +220,7 @@ int app_create_project(payload_t data)
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -296,7 +296,7 @@ int app_get_project_config(payload_t data)
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -395,7 +395,7 @@ int app_change_project_config(payload_t data)
     db = data.db;
     sql = "select ID, P_KEY from project_table order by ID desc limit 1;";
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -418,7 +418,7 @@ int app_change_project_config(payload_t data)
     //sqlite3_reset(stmt_1);
     sqlite3_finalize(stmt_1);
     if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -434,7 +434,7 @@ int app_change_project_config(payload_t data)
     //sqlite3_reset(stmt_2);
     sqlite3_finalize(stmt_2);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_2, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -509,7 +509,7 @@ int app_change_project_key(payload_t data)
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -541,7 +541,7 @@ int app_change_project_key(payload_t data)
     //sqlite3_reset(stmt);
     sqlite3_finalize(stmt);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2 failed\n");  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
