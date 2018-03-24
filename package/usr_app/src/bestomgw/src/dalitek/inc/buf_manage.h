@@ -38,15 +38,17 @@ typedef struct _fifo_t {
 }fifo_t;
 
 
+#pragma pack(1) 
 typedef struct _stack_mem_t{
 	uint8_t blockNum;
 	uint8_t ringFlag;
-	uint8_t unitCount;
+	uint16_t unitCount;
 	char* start;
 	char* end;
 	char* wPtr;
 	char* rPtr;
 }stack_mem_t;
+#pragma pack() 
 /*静态栈块状态*/
 typedef struct _block_status_t{
 	uint8_t blockNum;
@@ -75,7 +77,7 @@ char* mem_poll_malloc(uint32_t len);
 void stack_block_init(void);
 int stack_block_req(stack_mem_t* d);
 int stack_block_destroy(stack_mem_t d);
-int stack_push(stack_mem_t* d, char* data, int len, int distance);
+int stack_push(stack_mem_t* d, char* data, uint16_t len, uint16_t distance);
 int stack_pop(stack_mem_t* d, char* data, int len);
 /*队列*/
 void Init_PQueue(PQueue pQueue);

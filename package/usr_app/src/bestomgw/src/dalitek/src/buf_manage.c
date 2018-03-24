@@ -88,7 +88,7 @@ int stack_block_destroy(stack_mem_t d)
 	return BUF_MANAGE_SUCCESS;
 }
 
-int stack_push(stack_mem_t* d, char* data, int len, int distance)
+int stack_push(stack_mem_t* d, char* data, uint16_t len, uint16_t distance)
 {
 	int i = 0;
 	int ret = BUF_MANAGE_SUCCESS;
@@ -96,14 +96,14 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 	int exp_count = 0;
 	int remain_count = 0;
 
-	M1_LOG_DEBUG( "push begin: d->unitCount:%d\n", d->unitCount);
+	M1_LOG_INFO( "push begin: d->unitCount:%d\n", d->unitCount);
 	if(NULL == d){
 		M1_LOG_ERROR("NULL == d\n");
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
 	}
 	if(d->unitCount == STACK_UNIT_CAPACITY){
-		M1_LOG_ERROR("d->unitCount == STACK_UNIT_CAPACITY\n");
+		M1_LOG_WARN("d->unitCount == STACK_UNIT_CAPACITY\n");
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
 	}
@@ -153,7 +153,7 @@ int stack_push(stack_mem_t* d, char* data, int len, int distance)
 	}
 
 	Finish:
-	M1_LOG_DEBUG( "push end: d->unitCount:%d\n", d->unitCount);
+	M1_LOG_INFO( "push end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 
@@ -162,9 +162,9 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	int i = 0;
 	int j = 0;
 	int ret = BUF_MANAGE_SUCCESS;
-	int count;
+	int count = 0;
 
-	// M1_LOG_DEBUG( "pop begin: d->unitCount:%d\n", d->unitCount);
+	//M1_LOG_INFO( "pop begin: d->unitCount:%d\n", d->unitCount);
 	if( NULL == d){
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;
@@ -175,27 +175,30 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	}
 
 	count = (len / STACK_UNIT);
-
+	printf("count:%d\n",count);
 	for(i = 0; i < count; i++)
 	{
+		printf("POP :d->unitCount:%d\n",d->unitCount);
 		if(d->unitCount == 0){
 			ret = BUF_MANAGE_FAILED;
 			goto Finish;
 		}
-		if(d->rPtr == d->end)
+		/*ring buf 读指针返回头部*/
+		if(d->rPtr >= d->end)
 			d->rPtr = d->start;
 		memcpy(&data[i * STACK_UNIT], d->rPtr, STACK_UNIT);
 		d->rPtr += STACK_UNIT;
+		//d->rPtr += 256;
 		d->unitCount--;
 	}
 
 	count = len % STACK_UNIT;
-	
+	printf("count:%d\n",count);
 	for(j = 0; j < count; j++)
 	{
-		if(d->rPtr == d->end)
+		if(d->rPtr >= d->end)
 			d->rPtr = d->start;
-		data[i * STACK_UNIT + j] = d->rPtr[j];
+		data[(i * STACK_UNIT) + j] = d->rPtr[j];
 	}
 	if(count > 0){
 		d->unitCount--;	
@@ -205,7 +208,9 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	Finish:
 	if(ret != BUF_MANAGE_SUCCESS)
 		d->unitCount = d->unitCount + i + j;
-	// M1_LOG_DEBUG( "pop end: d->unitCount:%d\n", d->unitCount);
+	else
+		printf("d->rPtr:%05d\n",d->rPtr);
+	//M1_LOG_INFO( "pop end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 

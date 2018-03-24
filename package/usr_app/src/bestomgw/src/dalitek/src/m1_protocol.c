@@ -2392,7 +2392,6 @@ void setLocalTime(char* time)
 
 void delay_send(cJSON* d, int delay, int clientFd)
 {
-    printf("delay_send\n");
     Item item;
 
     item.data = d;
@@ -2413,7 +2412,8 @@ void delay_send_task(void)
                 //p = cJSON_PrintUnformatted(item.data);
                 //M1_LOG_DEBUG("delay_send_task data:%s, addr:%x\n",p, item.data);
                 p = item.data;
-                M1_LOG_DEBUG("delay_send_task data:%s\n",p);
+                //M1_LOG_INFO("delay_send_task data:%s\n",p);
+                M1_LOG_WARN("delay_send_task data:%s\n",p);
                 socketSeverSend((uint8*)p, strlen(p), item.clientFd);
                 //cJSON_Delete(item.data);
             }

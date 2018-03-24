@@ -180,8 +180,9 @@ static int device_exec(char* data, sqlite3* db)
 	    	
 	    	M1_LOG_DEBUG("string:%s\n",p);
 	    	//delay_send(dup_data, delay, clientFd);
-	    	delay_send(p, delay, clientFd);
+	    	//delay_send(p, delay, clientFd);
 		}   	
+		delay_send(p, delay, clientFd);
 	}
 
 	Finish:
