@@ -119,7 +119,7 @@ int stack_push(stack_mem_t* d, char* data, uint16_t len, uint16_t distance)
 
 	remain_count = STACK_UNIT_CAPACITY - d->unitCount;
 	if(exp_count > remain_count){
-		M1_LOG_ERROR("exp_count > remain_count\n");
+		M1_LOG_WARN("exp_count > remain_count\n");
 		ret = BUF_MANAGE_FAILED;
 		goto Finish;		
 	}
