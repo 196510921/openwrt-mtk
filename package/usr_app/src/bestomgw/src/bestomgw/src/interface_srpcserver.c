@@ -1811,6 +1811,9 @@ static void client_read_to_data_handle(char* data, int len, int clientFd)
 extern pthread_mutex_t mutex_lock_sock;
 static client_block_t client_block[STACK_BLOCK_NUM];
 
+static int client_block_get_fd(int i);
+static void client_block_set_fd(int clientFd, int i);
+
 int client_block_init(void)
 {
 	M1_LOG_DEBUG( "client_block_init\n");
@@ -1826,18 +1829,18 @@ int client_block_init(void)
 
 client_block_t* client_stack_block_req(int clientFd)
 {
-	pthread_mutex_lock(&mutex_lock_sock);
+	//pthread_mutex_lock(&mutex_lock_sock);
 	M1_LOG_DEBUG( "block_req\n");
 	int i;
 	int j = -1;
-
+#if 0
 	for(i = 0; i <  STACK_BLOCK_NUM; i++){
 		if(-1 == j)
 			if(0 == client_block[i].clientFd)
 				j = i;
 
 		if(clientFd == client_block[i].clientFd){
-			pthread_mutex_unlock(&mutex_lock_sock);
+			//pthread_mutex_unlock(&mutex_lock_sock);
 			return &client_block[i];
 		}
 	}
@@ -1845,16 +1848,35 @@ client_block_t* client_stack_block_req(int clientFd)
 	client_block[j].clientFd = clientFd;
 	if(TCP_SERVER_FAILED == stack_block_req(&client_block[j].stack_block)){
 		M1_LOG_ERROR( "block_req failed\n");
-		pthread_mutex_unlock(&mutex_lock_sock);
+		//pthread_mutex_unlock(&mutex_lock_sock);
 		return NULL;
 	}
 
-	pthread_mutex_unlock(&mutex_lock_sock);
+	//pthread_mutex_unlock(&mutex_lock_sock);
+	return &client_block[j];
+#endif
+	for(i = 0; i <  STACK_BLOCK_NUM; i++){
+		if(-1 == j)
+			if(0 == client_block_get_fd(i))
+				j = i;
+
+		if(clientFd == client_block_get_fd(i)){
+			return &client_block[i];
+		}
+	}
+
+	client_block_set_fd(clientFd, j);
+	if(TCP_SERVER_FAILED == stack_block_req(&client_block[j].stack_block)){
+		M1_LOG_ERROR( "block_req failed\n");
+		return NULL;
+	}
+
 	return &client_block[j];
 } 
 
 int client_block_destory(int clientFd)
 {
+	#if 0
 	pthread_mutex_lock(&mutex_lock_sock);
 	M1_LOG_DEBUG( "block_destory\n");
 	int i;
@@ -1872,11 +1894,43 @@ int client_block_destory(int clientFd)
 	}
 	pthread_mutex_unlock(&mutex_lock_sock);
 	return TCP_SERVER_SUCCESS;
+	#endif
+	M1_LOG_DEBUG( "block_destory\n");
+	int i;
+
+	for(i = 0; i <  STACK_BLOCK_NUM; i++){
+
+		if(clientFd == client_block_get_fd(i)){
+			client_block_set_fd(0, i);
+			if(TCP_SERVER_FAILED == stack_block_destroy(client_block[i].stack_block)){
+				M1_LOG_ERROR("block_destroy failed\n");
+				return TCP_SERVER_FAILED;
+			}
+		}
+	}
+	return TCP_SERVER_SUCCESS;
+}
+
+static int client_block_get_fd(int i)
+{
+	int clientFd = 0;
+	pthread_mutex_lock(&mutex_lock_sock);
+	clientFd =  client_block[i].clientFd;
+	pthread_mutex_unlock(&mutex_lock_sock);
+	return clientFd;
+}
+
+static void client_block_set_fd(int clientFd, int i)
+{
+	pthread_mutex_lock(&mutex_lock_sock);
+	client_block[i].clientFd = clientFd;
+	pthread_mutex_unlock(&mutex_lock_sock);
 }
 
 /*client write/read**************************************************************************************/
 int client_write(stack_mem_t* d, char* data, int len)
 {
+	//pthread_mutex_lock(&mutex_lock_sock);
 	M1_LOG_DEBUG("write begin: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	//M1_LOG_DEBUG("header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
 	if(NULL == d){
@@ -1896,13 +1950,12 @@ int client_write(stack_mem_t* d, char* data, int len)
 	}
 
 	M1_LOG_INFO("len:%05d, distance:%05d\n",len, distance);
-	pthread_mutex_lock(&mutex_lock_sock);
 	rc = stack_push(d, data, len ,distance);
-	pthread_mutex_unlock(&mutex_lock_sock);
 	if(rc != TCP_SERVER_SUCCESS)
 		M1_LOG_WARN( "client write failed\n");
 	
 	M1_LOG_INFO("write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	//pthread_mutex_unlock(&mutex_lock_sock);
 	return rc;
 }
 
@@ -1920,17 +1973,18 @@ void client_read(void)
 
 	while(1){
 		//M1_LOG_DEBUG("-------------------------%d read----------------------------\n",i);
-		d = &client_block[i].stack_block;
-		//M1_LOG_DEBUG( "read begin:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
-		if(client_block[i].clientFd == 0){
+		// if(client_block[i].clientFd == 0){
+		// 	goto Finish;
+		// }
+		if(client_block_get_fd(i) == 0){
 			goto Finish;
 		}
-
+		d = &client_block[i].stack_block;
+		//M1_LOG_DEBUG( "read begin:d->rPtr:%05d, d->wPtr:%05d\n",d->rPtr, d->wPtr);
+		//pthread_mutex_lock(&mutex_lock_sock);
 		do{
 			headerP = d->rPtr;
-			pthread_mutex_lock(&mutex_lock_sock);
 			rc = stack_pop(d, data, STACK_UNIT);
-			pthread_mutex_unlock(&mutex_lock_sock);
 			if(rc != TCP_SERVER_SUCCESS){
 				goto Finish;
 			}
@@ -1938,10 +1992,11 @@ void client_read(void)
 			header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
 		}while(header != MSG_HEADER);
 
+
 		len = *(uint16_t*)&data[2];
 		len = (uint16_t)(((len << 8) & 0xff00) | ((len >> 8) & 0xff)) & 0xffff;
 		#if M1_DBG
-		M1_LOG_INFO( "clientFd: %d read,data[2]:%x,data[3]:%x,len:%05d,data:%s\n", client_block[i].clientFd, data[2], data[3],len,&data[4]);
+		M1_LOG_INFO( "clientFd: %d read,data[2]:%x,data[3]:%x,len:%05d,data:%s\n", client_block_get_fd(i), data[2], data[3],len,&data[4]);
 		#endif		
 		if((len+4) <= STACK_UNIT){
 			client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
@@ -1952,9 +2007,8 @@ void client_read(void)
 		if(rc != TCP_SERVER_SUCCESS){
 			goto Finish;
 		}
-
 		client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
-
+		//pthread_mutex_unlock(&mutex_lock_sock);
 		Finish:
 		if(rc != TCP_SERVER_SUCCESS){
 			d->rPtr = headerP;

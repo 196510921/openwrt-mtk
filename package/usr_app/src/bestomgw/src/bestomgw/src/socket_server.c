@@ -350,7 +350,7 @@ uint32 socketSeverGetNumClients(void)
 /*清除与clientFd相关的信息*/
 static void delete_socket_clientfd(int clientFd)
 {
-	delete_account_conn_info(clientFd);
+	//delete_account_conn_info(clientFd);
 	client_block_destory(clientFd);
 	M1_LOG_WARN("delete socket ++\n");
 	deleteSocketRec(clientFd);
