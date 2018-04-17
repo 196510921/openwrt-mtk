@@ -14,5 +14,6 @@ enum conn_flag_t{
 
 int tcp_client_connect(void);
 void socket_client_poll(void);
+int get_local_clientFd(void);
 
 #endif //_TCP_CLIENT_H_

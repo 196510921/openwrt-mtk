@@ -18,8 +18,8 @@
 #define LOCAL_IP  1
 
 #ifdef LOCAL_IP
-	#define SERVER_IP  "172.16.200.1"
-	#define SERV_PORT 6666
+	#define SERVER_IP  "101.132.91.12"
+	#define SERV_PORT 14010
 #else
 	#define SERVER_IP  "server.natappfree.cc"
 	#define SERV_PORT 44809
@@ -40,6 +40,11 @@ static void set_connect_flag(int d)
 static int get_connect_flag(void)
 {
 	return conn_flag;
+}
+
+int get_local_clientFd(void)
+{
+	return client_sockfd;
 }
 
 void tcp_client_disconnect_cb(int sockfd)

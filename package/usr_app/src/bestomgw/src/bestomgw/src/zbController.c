@@ -62,7 +62,7 @@
 
 #define MAX_DB_FILENAMR_LEN 255
 #define DEBUG_LOG_OUTPUT_TO_FD   1
-#define TCP_CLIENT_ENABLE   0
+#define TCP_CLIENT_ENABLE   1
 /*全局变量***********************************************************************************************/	
 pthread_mutex_t mutex_lock;
 pthread_mutex_t mutex_lock_sock;

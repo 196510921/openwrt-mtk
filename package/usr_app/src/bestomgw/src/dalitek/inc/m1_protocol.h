@@ -217,6 +217,8 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_M1_REPORT_ID_TO_CLOUD               0x4007
 /*APP请求云端透传*/
 #define TYPE_APP_REQ_CLOUD_TRANSFORM             0x4008
+/*M1心跳到云端*/
+#define TYPE_M1_HEARTBEAT_TO_CLOUD               0x4009
 
 /*common response*/
 #define TYPE_COMMON_RSP							 0x8004

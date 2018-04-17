@@ -2409,21 +2409,21 @@ void delay_send_task(void)
         if(!IsEmpty(&head)){
             if(head.next->item.prio <= 0){
                 Pop(&head, &item);
-                //p = cJSON_PrintUnformatted(item.data);
-                //M1_LOG_DEBUG("delay_send_task data:%s, addr:%x\n",p, item.data);
                 p = item.data;
                 //M1_LOG_INFO("delay_send_task data:%s\n",p);
                 M1_LOG_WARN("delay_send_task data:%s\n",p);
                 socketSeverSend((uint8*)p, strlen(p), item.clientFd);
-                //cJSON_Delete(item.data);
             }
         }
         usleep(100000);
         count++;
-        if(count >= 10){
-            count = 0;
+        if(!(count % 10)){
+           // count = 0;
             Queue_delay_decrease(&head);
         }
+        /*M1心跳到云端*/
+        if(!(count % 300))
+            m1_heartbeat_to_cloud();
 
     }
 }
