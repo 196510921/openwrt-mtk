@@ -62,7 +62,7 @@
 
 #define MAX_DB_FILENAMR_LEN 255
 #define DEBUG_LOG_OUTPUT_TO_FD   1
-#define TCP_CLIENT_ENABLE   1
+#define TCP_CLIENT_ENABLE   0
 /*全局变量***********************************************************************************************/	
 pthread_mutex_t mutex_lock;
 pthread_mutex_t mutex_lock_sock;
@@ -189,47 +189,6 @@ static void sql_test(void)
 {
 	//system("./sql_restore.sh");
 }
-
-#if 0
-static void sql_test(void)
-{
-	M1_LOG_INFO("sql_test begin!\n");
-	extern const sql_methods sql_select;
-	int i;
-	sqlite3_stmt* stmt = NULL;
-	tb_all_dev table_d[50];
-	sql_operate d = {
-		//db,
-		stmt,
-		"select * from all_dev where ID < 40;",
-		TB_ALL_DEV,
-		table_d,
-		0		
-	};
-
-	sql_open();
-	if(sql_select.sql_methods(&d) != 0){
-		while(1){
-			/*仍然是select 一条，业务处理一条，业务处理要封装，按照协议封装
-			例如：
-			 //select from 1,
-			   select from 2,
-			   handle
-			*/
-			M1_LOG_INFO("id:%d,dev_id:%s,dev_name:%s,ap_id:%s,pid:%d,added:%d,net:%d,status:%s,account:%s,time:%s\n",  \ 
-			table_d[i].id, table_d[i].dev_id, table_d[i].dev_name, table_d[i].ap_id, table_d[i].pid, table_d[i].added, table_d[i].net,table_d[i].status, table_d[i].account, table_d[i].time);
-			d.data = &table_d[++d.num];
-			if(sql_select.sql_methods_next(&d) == 0)
-				break;
-		}
-	}
-
-	sql_select.sql_methods_end(&d);
-
-	M1_LOG_INFO("sql_test end!\n");
-	sql_close();
-}
-#endif
 
 uint8_t tlIndicationCb(epInfo_t *epInfo)
 {

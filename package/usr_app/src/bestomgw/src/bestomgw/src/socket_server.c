@@ -87,7 +87,7 @@ socketRecord_t *socketRecordHead = NULL;
 
 socketServerCb_t socketServerRxCb;
 socketServerCb_t socketServerConnectCb;
-
+extern fifo_t client_delete_fifo;
 /*********************************************************************
  * LOCAL FUNCTION PROTOTYPES
  */
@@ -350,7 +350,10 @@ uint32 socketSeverGetNumClients(void)
 /*清除与clientFd相关的信息*/
 static void delete_socket_clientfd(int clientFd)
 {
+	/*删除数据库记录*/
 	//delete_account_conn_info(clientFd);
+	fifo_write(&client_delete_fifo, clientFd);
+	/*删除分配资源*/
 	client_block_destory(clientFd);
 	M1_LOG_WARN("delete socket ++\n");
 	deleteSocketRec(clientFd);

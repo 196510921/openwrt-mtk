@@ -1027,7 +1027,7 @@ void scenario_alarm_select(void)
 	    sqlite3_finalize(stmt);
  		sql_close(); 
 
-	     sleep(60);
+	    sleep(60);
  	}
 }
 

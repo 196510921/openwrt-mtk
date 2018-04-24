@@ -40,6 +40,7 @@ static int create_sql_table(void);
 static int app_change_device_name(payload_t data);
 static uint8_t hex_to_uint8(int h);
 static void check_offline_dev(sqlite3*db);
+static void delete_client_db(void);
 /*variable******************************************************************************************************/
 extern pthread_mutex_t mutex_lock;
 sqlite3* db = NULL;
@@ -48,11 +49,13 @@ fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
 fifo_t msg_rd_fifo;
 fifo_t msg_wt_fifo;
+fifo_t client_delete_fifo;
 fifo_t tx_fifo;
 /*优先级队列*/
 PNode head;
 static uint32_t dev_data_buf[256];
 static uint32_t link_exec_buf[256];
+static uint32_t client_delete_buf[10];
 
 void m1_protocol_init(void)
 {
@@ -61,6 +64,9 @@ void m1_protocol_init(void)
     fifo_init(&dev_data_fifo, dev_data_buf, 256);
     /*linkage execution fifo*/
     fifo_init(&link_exec_fifo, link_exec_buf, 256);
+    /*delete cleint*/
+    /*linkage execution fifo*/
+    fifo_init(&client_delete_fifo, client_delete_buf, 10);
 
     Init_PQueue(&head);
     /*初始化接收buf*/
@@ -187,6 +193,8 @@ void data_handle(m1_package_t* package)
         common_rsp(rspData);
     }
     check_offline_dev(db);
+
+    delete_client_db();
 
     sql_close();
 
@@ -2229,13 +2237,13 @@ void delete_account_conn_info(int clientFd)
 {
     int rc;
 
-    rc = sql_open();   
-    if( rc != SQLITE_OK){  
-        M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
-        return;
-    }else{  
-        M1_LOG_DEBUG( "Opened database successfully\n");  
-    }
+    // rc = sql_open();   
+    // if( rc != SQLITE_OK){  
+    //     M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
+    //     return;
+    // }else{  
+    //     M1_LOG_DEBUG( "Opened database successfully\n");  
+    // }
 
     char* sql = (char*)malloc(300);
     //sqlite3* db = NULL;
@@ -2264,8 +2272,17 @@ void delete_account_conn_info(int clientFd)
     if(stmt)
         sqlite3_finalize(stmt);
 
-    sql_close();
+    // sql_close();
 
+}
+
+static void delete_client_db(void)
+{
+    int clientFd = 0;
+    while(fifo_read(&client_delete_fifo, &clientFd))
+    {
+        delete_account_conn_info(clientFd);
+    }
 }
 
 /*app修改设备名称*/
@@ -2421,10 +2438,11 @@ void delay_send_task(void)
            // count = 0;
             Queue_delay_decrease(&head);
         }
+#if TCP_CLIENT_ENABLE
         /*M1心跳到云端*/
         if(!(count % 300))
             m1_heartbeat_to_cloud();
-
+#endif
     }
 }
 
@@ -2489,7 +2507,7 @@ int sql_open(void)
     int rc;
 
     pthread_mutex_lock(&mutex_lock);
-    M1_LOG_INFO( "pthread_mutex_lock\n");
+    M1_LOG_DEBUG( "pthread_mutex_lock\n");
 
     rc = sqlite3_open(db_path, &db);
     if( rc != SQLITE_OK){  
@@ -2510,7 +2528,7 @@ int sql_close(void)
     rc = sqlite3_close(db);
 
     pthread_mutex_unlock(&mutex_lock);
-    M1_LOG_INFO( "pthread_mutex_unlock\n");
+    M1_LOG_DEBUG( "pthread_mutex_unlock\n");
 
     return rc;
 }
