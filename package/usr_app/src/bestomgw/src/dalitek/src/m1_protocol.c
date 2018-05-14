@@ -44,7 +44,8 @@ static void delete_client_db(void);
 /*variable******************************************************************************************************/
 extern pthread_mutex_t mutex_lock;
 sqlite3* db = NULL;
-char* db_path = "dev_info.db";
+const char* db_path = "/bin/dev_info.db";
+const char* sql_back_path = "/bin/sql_restore.sh";
 fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
 fifo_t msg_rd_fifo;
@@ -2541,7 +2542,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 
     rc = sqlite3_step(*stmt);   
     M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-    if((rc != SQLITE_ROW) && (rc!= SQLITE_DONE)){
+    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE)){
         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
     }
 
@@ -2555,7 +2556,7 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
         }
     }else if(rc == SQLITE_CORRUPT){
         M1_LOG_ERROR("SQLITE FATAL ERROR!\n");
-        system("/sql_restore.sh");
+        system(sql_back_path);
         exit(0);
     }
 
@@ -2569,7 +2570,7 @@ static int create_sql_table(void)
     char* errmsg = NULL;
 
     sqlite3* db = 0;
-    rc = sqlite3_open_v2("dev_info.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+    rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
     if( rc ){  
         M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
         goto Finish;

@@ -15,6 +15,7 @@
 #define SQL_CLEAR_TIME     (30 * 60)
 #define SQL_CLEAR_INTERVAL (1*60)
 
+extern const char* db_path;
 /*数据库冗余删除*/
 static int sql_history_data_del(char* time, char* tableName)
 {
@@ -26,7 +27,7 @@ static int sql_history_data_del(char* time, char* tableName)
 
     fprintf(stdout, "sql_history_data_del\n");
 
-    rc = sqlite3_open("dev_info.db", &db);
+    rc = sqlite3_open(db_path, &db);
     if( rc != SQLITE_OK){  
         M1_LOG_ERROR("Can't open database\n");  
         goto Finish;

@@ -446,7 +446,7 @@ void linkage_task(void)
     //while(1){
     rc1 = fifo_read(&link_exec_fifo, &rowid);
     if(rc1 > 0){
-		//rc = sqlite3_open("dev_info.db", &db);  
+		//rc = sqlite3_open(db_path, &db);  
 		rc = sql_open();
 		if(rc){  
 		    M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
