@@ -59,7 +59,7 @@ typedef void (*socketServerCb_t)(int clientFd);
 //#define SOCKET_SERVER_PORT 1234
 #define MAX_CLIENTS 50
 
-#define POLLRDHUP 1
+//#define POLLRDHUP 1
 
 /*
  * serverSocketInit - initialises the server.
@@ -101,6 +101,13 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient);
  */
 void socketSeverClose(void);
 
+void thread_socketSeverSend(void);
+
+/*udp广播本地IP*/
+int udp_broadcast_server(void);
+
+/*get eth0 mac address*/
+char* get_eth0_mac_addr(void);
 #ifdef __cplusplus
 }
 #endif

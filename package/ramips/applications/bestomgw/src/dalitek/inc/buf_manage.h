@@ -8,12 +8,52 @@
 #include <stdbool.h>
 #include "cJSON.h" 
 
+/*宏定义*******************************************************************************************************/
+#define FIXED_BUF_LEN  (5000 * 1024)  // 5M
+#define STACK_BLOCK_LEN  (100 * 1024)              //单个数据块100k
+#define STACK_BLOCK_NUM 50
+#define STACK_UNIT     256
+#define STACK_UNIT_CAPACITY    (STACK_BLOCK_LEN / STACK_UNIT)
+
+enum block_status{
+	IDLE = 0,
+	BUSY
+};
+
+enum ring_status{
+	RING_IDLE = 0,
+	RING_BUSY
+};
+
+enum buf_manage_status{
+	BUF_MANAGE_FAILED = 0,
+	BUF_MANAGE_SUCCESS
+};
+
 typedef struct _fifo_t {
     uint32_t* buffer;
     uint32_t len;
     uint32_t wptr;
     uint32_t rptr;
 }fifo_t;
+
+
+#pragma pack(1) 
+typedef struct _stack_mem_t{
+	uint8_t blockNum;
+	uint8_t ringFlag;
+	uint16_t unitCount;
+	char* start;
+	char* end;
+	char* wPtr;
+	char* rPtr;
+}stack_mem_t;
+#pragma pack() 
+/*静态栈块状态*/
+typedef struct _block_status_t{
+	uint8_t blockNum;
+	uint8_t status;
+}block_status_t;
 
 /*优先级队列*/
 typedef struct _Item
@@ -32,8 +72,14 @@ void fifo_init(fifo_t* fifo, uint32_t* buffer, uint32_t len);
 void fifo_write(fifo_t* fifo, uint32_t d);
 uint32_t fifo_read(fifo_t* fifo, uint32_t* d);
 
-uint32_t mem_poll_malloc(uint32_t len);
-
+char* mem_poll_malloc(uint32_t len);
+/*stack动态分配*/
+void stack_block_init(void);
+int stack_block_req(stack_mem_t* d);
+int stack_block_destroy(stack_mem_t d);
+int stack_push(stack_mem_t* d, char* data, uint16_t len, uint16_t distance);
+int stack_pop(stack_mem_t* d, char* data, int len);
+/*队列*/
 void Init_PQueue(PQueue pQueue);
 void Push(PQueue pQueue, Item item);
 bool Pop(PQueue pQueue, Item *pItem);

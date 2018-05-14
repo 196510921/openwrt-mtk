@@ -24,6 +24,8 @@ typedef struct _socket_package{
 /*pdu*/
 typedef struct _payload{
   	int clientFd;
+  	int sn;
+  	sqlite3* db;
   	cJSON* pdu;
 }payload_t;
 /*common response data*/
@@ -55,26 +57,30 @@ typedef struct _scen_alarm_t{
  int minutes;
 }scen_alarm_t;
 
-//void data_handle(m1_package_t* package);
-void data_handle(void);
+
+void data_handle(m1_package_t* package);
+void sql_rd_handle(void);
+void sql_wt_handle(void);
 /*联动相关API*/
 void trigger_cb(void* udp, int type, char const* db_name, char const* table_name, sqlite3_int64 rowid);
 void data_update_cb(int id);
-int trigger_cb_handle(void);
-int linkage_task(void);
+//int trigger_cb_handle(void);
+int trigger_cb_handle(sqlite3* db);
+void linkage_task(void);
 int linkage_msg_handle(payload_t data);
-int app_req_linkage(int clientFd, int sn);
+int app_req_linkage(payload_t data);
 int app_linkage_enable(payload_t data);
 /*场景相关API*/
 int scenario_exec(char* data, sqlite3* db);
 int scenario_create_handle(payload_t data);
 int scenario_alarm_create_handle(payload_t data);
-int app_req_scenario(int clientFd, int sn);
-int app_req_scenario_name(int clientFd, int sn);
+int app_req_scenario(payload_t data);
+int app_req_scenario_name(payload_t data);
 void scenario_alarm_select(void);
+int app_exec_scenario(payload_t data);
 /*区域相关API*/
 int district_create_handle(payload_t data);
-int app_req_district(int clientFd, int sn);
+int app_req_district(payload_t data);
 /*通用API*/
 void m1_protocol_init(void);
 void getNowTime(char* _time);
@@ -87,6 +93,8 @@ void setLocalTime(char* time);
 void delay_send_task(void);
 void delay_send(cJSON* d, int delay, int clientFd);
 /*数据库*/
+int sql_open(void);
+int sql_close(void);
 int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
 /*用户信息*/
 char* get_account_info(user_account_t data);
@@ -130,6 +138,36 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_LINK_ENABLE_SET            		 0x0017
 /*APP 验证登录信息*/
 #define TYPE_APP_LOGIN                           0x0018
+/*APP 获取项目编码*/
+#define TYPE_GET_PORJECT_NUMBER                  0x0019
+/*APP 验证项目信息*/
+#define TYPE_APP_CONFIRM_PROJECT                 0x001A
+/*APP 新建项目信息*/
+#define TYPE_APP_CREATE_PROJECT                  0x001B
+/*APP 项目密码修改*/
+#define TYPE_PROJECT_KEY_CHANGE                  0x001C
+/*APP 获取项目设置信息*/
+#define TYPE_GET_PROJECT_INFO                    0x001D
+/*APP 修改项目信息*/
+#define TYPE_PROJECT_INFO_CHANGE                 0x001E
+/*APP 请求区域下场景名称*/
+#define TYPE_REQ_DIS_SCEN_NAME                   0x001F
+/*APP 请求区域名称*/
+#define TYPE_REQ_DIS_NAME                   	 0x0020
+/*APP 请求区域下设备*/
+#define TYPE_REQ_DIS_DEV                         0x0021
+/*APP下发网络管理信息*/
+#define TYPE_APP_NET_CONFIG                      0x0022
+/*APP修改子设备名称*/
+#define TYPE_APP_CHANGE_DEV_NAME                 0x0023
+/*APP执行场景*/
+#define TYPE_APP_EXEC_SCEN                		 0x0024
+/*APP用户更改登录信息*/
+#define TYPE_APP_USER_KEY_CHANGE               	 0x0025
+/*APP下发设备测试信息*/
+#define TYPE_APP_DOWNLOAD_TESTING_INFO           0x0026
+/*网络参数设置*/
+#define TYPE_NET_PARAM_CONFIG                    0x0027
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
@@ -156,18 +194,36 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_AP_HEARTBEAT_INFO            		 0x100C
 /*M1 上报用户账户信息*/
 #define TYPE_M1_REPORT_ACCOUNT_INFO              0x100D
-/*M1 上报永辉配置信息*/
+/*M1 上报用户配置信息*/
 #define TYPE_M1_REPORT_ACCOUNT_CONFIG_INFO       0x100E
+/*M1 上报项目编码到APP*/
+#define TYPE_M1_REPORT_PROJECT_NUMBER       	 0x100F
+/*M1 上报项目信息到APP*/
+#define TYPE_M1_REPORT_PROJECT_CONFIG_INFO		 0x1010
+/*M1 上报区域下场景名称到APP*/
+#define TYPE_M1_REPORT_DIS_SCEN_NAME	       	 0x1011
+/*M1 上报区域名称到APP*/
+#define TYPE_M1_REPORT_DIS_NAME	       	 		 0x1012
+/*M1 上报区域下设备到APP*/
+#define TYPE_M1_REPORT_DIS_DEV	       	 		 0x1013
+/*AP上传设备测试信息*/
+#define TYPE_AP_UPLOAD_TESTING_INFO	       	     0x1014
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005
 /*request added device information*/
 #define TYPE_REQ_ADDED_INFO                      0x4006
-
+/*M1上报项目ID到*/
+#define TYPE_M1_REPORT_ID_TO_CLOUD               0x4007
+/*APP请求云端透传*/
+#define TYPE_APP_REQ_CLOUD_TRANSFORM             0x4008
+/*M1心跳到云端*/
+#define TYPE_M1_HEARTBEAT_TO_CLOUD               0x4009
 
 /*common response*/
 #define TYPE_COMMON_RSP							 0x8004
-
+/*debug*/
+#define TYPE_DEBUG_INFO                          0x5555
 
 
 /*self define*/

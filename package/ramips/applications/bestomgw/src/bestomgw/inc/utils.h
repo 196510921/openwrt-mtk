@@ -11,16 +11,14 @@
 #include     <errno.h>  
 
 #include <time.h>
-//#include <stdbool.h>
 
-#include "utils.h"
 
 #include     <limits.h>  //PATH_MAX
 //sqlite3
 #include "sqlite3.h"
 
 
-
+#define GW_DEBUG 1
 
 #define TRUE 1
 #define FALSE 0
@@ -64,25 +62,9 @@ typedef unsigned short     uint16;
  char sinipath[PATH_MAX]; //db 文件路径 
  
 
-
 extern sqlite3 *gdb;
 
 int fdserwrite, fdread; //串口 写,读
-
- typedef struct
-{
-  unsigned short profile_id; //属性ID
-  unsigned short device_id;  //设备ID
-  unsigned short subtype_id; //安防设备子类型ID
-}device_id_t;
- 
-typedef int Status;
-typedef int ElemType;
-
-
-
-
-
 
 
 

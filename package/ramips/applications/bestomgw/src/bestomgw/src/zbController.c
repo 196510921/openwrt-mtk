@@ -36,51 +36,87 @@
  *
  */
 #define _GNU_SOURCE  1
+#define MCHECK       0
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <poll.h>
 #include <pthread.h>
-//#include "thpool.h"
-#include <unistd.h>
-
+#include <signal.h>
+#include <unistd.h> 
+#if MCHECK
+	#include <mcheck.h>
+#endif
+#include "m1_common_log.h"
 #include "zbSocCmd.h"
 #include "interface_devicelist.h"
 #include "interface_grouplist.h"
 #include "interface_scenelist.h"
 #include "m1_protocol.h"
-
-#define MAX_DB_FILENAMR_LEN 255
-
-//全局变量	
-//threadpool thpool;//线程池
-//threadpool tx_thpool;//线程池
-
-static void printf_redirect(void);
-static void socket_poll(void);
-
 #include "interface_srpcserver.h"
 #include "socket_server.h"
+//#include "sql_operate.h"
+//#include "sql_table.h"
+#include "tcp_client.h"
+
+#define MAX_DB_FILENAMR_LEN 255
+#define DEBUG_LOG_OUTPUT_TO_FD   1
+#define TCP_CLIENT_ENABLE   0
+/*全局变量***********************************************************************************************/	
+pthread_mutex_t mutex_lock;
+pthread_mutex_t mutex_lock_sock;
+/*静态变量****************************************************************************************/
+
+/*静态局部函数****************************************************************************************/
+static void printf_redirect(void);
+static void socket_poll(void);
+static void sql_test(void);
 
 int main(int argc, char* argv[])
 {
 	int retval = 0;
-	pthread_t t1,t2,t3,t4;
+	pthread_t t1,t2,t3,t4,t5;
 
-	fprintf(stdout,"%s -- %s %s\n", argv[0], __DATE__, __TIME__);
+	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
+	//sql_test();
+#if DEBUG_LOG_OUTPUT_TO_FD
+	printf_redirect();
+#endif
+	/*屏蔽信号*/
+	signal(SIGPIPE,SIG_IGN);
+#if MCHECK
+	/*追踪malloc*/
+	setenv("MALLOC_TRACE", "malloc_user.log", 1);
+	mtrace();
+#endif
+
 	SRPC_Init();
+#if TCP_CLIENT_ENABLE
+	tcp_client_connect();
+#endif
 	m1_protocol_init();
 
+	pthread_mutex_init(&mutex_lock, NULL);
+	pthread_mutex_init(&mutex_lock_sock, NULL);
 	pthread_create(&t1,NULL,socket_poll,NULL);
-	pthread_create(&t2,NULL,thread_socketSeverSend,NULL);
+	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
+#if TCP_CLIENT_ENABLE
+	pthread_create(&t5,NULL,socket_client_poll,NULL);
+#endif
+
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
+#if TCP_CLIENT_ENABLE
+	pthread_join(t5, NULL);
+#endif
 	
+	pthread_mutex_destroy(&mutex_lock);
+	pthread_mutex_destroy(&mutex_lock_sock);
 	return retval;
 }
 
@@ -89,46 +125,47 @@ static void socket_poll(void)
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
-		//fprintf(stdout,"numClientFds:%d\n",numClientFds);
 		//poll on client socket fd's and the ZllSoC serial port for any activity
 		if (numClientFds)
 		{
-			fprintf(stdout,"numClientFds:%d\n",numClientFds);
+			M1_LOG_DEBUG("numClientFds:%d\n",numClientFds);
+		
 			int pollFdIdx;
 			int *client_fds = malloc(numClientFds * sizeof(int));
 			//socket client FD's + zllSoC serial port FD
 			struct pollfd *pollFds = malloc(
-					((numClientFds + 1) * sizeof(struct pollfd)));
+					((numClientFds) * sizeof(struct pollfd)));
 
 			if (client_fds && pollFds)
 			{
 				//Set the socket file descriptors
 				socketSeverGetClientFds(client_fds, numClientFds);
+	
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
 					pollFds[pollFdIdx].fd = client_fds[pollFdIdx];
 					pollFds[pollFdIdx].events = POLLIN | POLLRDHUP;
-					fprintf(stdout,"zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
+					//M1_LOG_DEBUG("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
+					M1_LOG_DEBUG("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
 				}
 
-				fprintf(stdout,"zllMain: waiting for poll()\n");
+				M1_LOG_INFO("zllMain: waiting for poll()\n");
 
 				poll(pollFds, (numClientFds), -1);
-				fprintf(stdout,"poll out\n");
-
+				M1_LOG_INFO("poll out\n");
+				/*server*/
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
 					if ((pollFds[pollFdIdx].revents))
 					{
-						fprintf(stdout,"Message from Socket Sever\n");
+						M1_LOG_DEBUG("Message from Socket Client\n");
 						socketSeverPoll(pollFds[pollFdIdx].fd, pollFds[pollFdIdx].revents);
 					}
 				}
 
 				free(client_fds);
 				free(pollFds);
-				fprintf(stdout,"free client\n");
-
+				M1_LOG_DEBUG("free client\n");
 			}
 		}
 	}
@@ -139,11 +176,18 @@ static void printf_redirect(void)
 {
 	 fflush(stdout);  
      setvbuf(stdout,NULL,_IONBF,0);  
-     printf("test stdout\n");  
+     printf("log to: /mnt/m1_debug_log.txt\n");  
      int save_fd = dup(STDOUT_FILENO); 
-     int fd = open("test1.txt",(O_RDWR | O_CREAT), 0644);  
+     //int fd = open("/home/ubuntu/share/test1.txt",(O_RDWR | O_CREAT), 0644);  
+     int fd = open("/mnt/m1_debug_log.txt",(O_RDWR | O_CREAT), 0644);  
+     if(fd == -1)
+     	M1_LOG_ERROR( " open file failed\n");
      dup2(fd,STDOUT_FILENO); 
-     printf("test file\n");  
+}
+
+static void sql_test(void)
+{
+	//system("./sql_restore.sh");
 }
 
 uint8_t tlIndicationCb(epInfo_t *epInfo)
@@ -173,7 +217,7 @@ uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo)
 	epInfo_t* oldRec;
 	epInfoExtended_t epInfoEx;
 
-	fprintf(stdout,"zdoSimpleDescRspCb: NwkAddr:0x%04x\n End:0x%02x ", epInfo->nwkAddr,
+	M1_LOG_DEBUG("zdoSimpleDescRspCb: NwkAddr:0x%04x\n End:0x%02x ", epInfo->nwkAddr,
 			epInfo->endpoint);
 
 	//find the IEEE address. Any ep (0xFF), if the is the first simpleDesc for this nwkAddr
@@ -208,7 +252,7 @@ uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo)
 		epInfoEx.type = EP_INFO_TYPE_NEW;
 	}
 
-	fprintf(stdout,"zdoSimpleDescRspCb: NwkAddr:0x%04x Ep:0x%02x Type:0x%02x ", epInfo->nwkAddr,
+	M1_LOG_DEBUG("zdoSimpleDescRspCb: NwkAddr:0x%04x Ep:0x%02x Type:0x%02x ", epInfo->nwkAddr,
 			epInfo->endpoint, epInfoEx.type);
 
 	if (epInfoEx.type != EP_INFO_TYPE_EXISTING)
@@ -261,3 +305,46 @@ uint8_t zclGetSatCb(uint8_t sat, uint16_t nwkAddr, uint8_t endpoint)
 	return 0;
 }
 
+
+#if 0
+static void test(void)
+{
+	stack_mem_t d[20];
+	char buf[1024];
+	int rc = 0;
+
+	stack_block_init();
+	int i;
+	for(i = 0; i < 21; i++){
+		rc = stack_block_req(&d[i]);
+		if(rc == 0){
+			M1_LOG_DEBUG("req failed\n");
+			break;
+		}
+		M1_LOG_DEBUG("d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
+		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
+	}
+	for(i = 0; i < 20; i++){
+		M1_LOG_DEBUG("msg:%s\n",d[i].rPtr);
+	}
+	for(i = 0; i < 20; i+=2){
+		rc = stack_block_destroy(d[i]);
+		if(rc == 0){
+			M1_LOG_DEBUG("destroy failed\n");
+			break;
+		}
+	}
+	for(i = 0; i < 21; i++){
+		rc = stack_block_req(&d[i]);
+		if(rc == 0){
+			M1_LOG_DEBUG("req failed\n");
+			continue;
+		}
+		M1_LOG_DEBUG("d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
+		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
+	}
+	for(i = 0; i < 20; i++){
+		M1_LOG_DEBUG("msg:%s\n",d[i].rPtr);
+	}
+}
+#endif
