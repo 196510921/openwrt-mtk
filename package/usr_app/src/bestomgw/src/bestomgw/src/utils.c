@@ -32,21 +32,11 @@ static uint32 hex2int(uint8 *data, uint32 dlen)
 	return value;
 }
 
-
-
-
-
-
-
-
-
 static void send_data_to_client(unsigned char *data, int dlen)
 {
 	int i;
 
 }
-
-
 
 #if 1
 void prt_debug(char *declare, unsigned char *data, unsigned int dlen)
@@ -359,16 +349,6 @@ unsigned int GetTimeStampByStr( const char* pDate )
    return mktime(&tmObj); 
  
 } 
-
-
-
-
-
-
-
-
-
-
 
 //十六进制字符串转换为字节流  
 void HexStrToByte(const char* source, unsigned char* dest, int sourceLen)

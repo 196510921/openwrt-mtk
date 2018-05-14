@@ -6,7 +6,7 @@ CFLAGS += -O2 -Wall -Ibestomgw/inc -Idalitek/inc -Itcp_client/inc
 ##-IthreadPool
 
 
-OBJS    =   bestomgw/src/utils.o bestomgw/src/sqlite3.o bestomgw/src/zbController.o \
+OBJS    =   bestomgw/src/utils.o bestomgw/src/sqlite3.o bestomgw/src/main.o \
             bestomgw/src/interface_srpcserver.o                                     \
 		    bestomgw/src/socket_server.o bestomgw/src/cJSON.o                       \
 		    dalitek/src/m1_protocol.o dalitek/src/m1_linkage.o                      \
