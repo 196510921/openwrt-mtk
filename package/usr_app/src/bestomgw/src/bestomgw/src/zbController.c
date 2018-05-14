@@ -45,23 +45,13 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h> 
-#if MCHECK
-	#include <mcheck.h>
-#endif
-#include "m1_common_log.h"
-#include "zbSocCmd.h"
-#include "interface_devicelist.h"
-#include "interface_grouplist.h"
-#include "interface_scenelist.h"
-#include "m1_protocol.h"
-#include "interface_srpcserver.h"
-#include "socket_server.h"
-//#include "sql_operate.h"
-//#include "sql_table.h"
 #include "tcp_client.h"
+#include "m1_protocol.h"
+#include "socket_server.h"
+#include "m1_common_log.h"
+#include "interface_srpcserver.h"
 
 #define MAX_DB_FILENAMR_LEN 255
-#define DEBUG_LOG_OUTPUT_TO_FD   1
 #define TCP_CLIENT_ENABLE   0
 /*全局变量***********************************************************************************************/	
 pthread_mutex_t mutex_lock;
@@ -69,27 +59,13 @@ pthread_mutex_t mutex_lock_sock;
 /*静态变量****************************************************************************************/
 
 /*静态局部函数****************************************************************************************/
-static void printf_redirect(void);
 static void socket_poll(void);
-static void sql_test(void);
 
 int main(int argc, char* argv[])
 {
+	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 	int retval = 0;
 	pthread_t t1,t2,t3,t4,t5;
-
-	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
-	//sql_test();
-#if DEBUG_LOG_OUTPUT_TO_FD
-	printf_redirect();
-#endif
-	/*屏蔽信号*/
-	signal(SIGPIPE,SIG_IGN);
-#if MCHECK
-	/*追踪malloc*/
-	setenv("MALLOC_TRACE", "malloc_user.log", 1);
-	mtrace();
-#endif
 
 	SRPC_Init();
 #if TCP_CLIENT_ENABLE
@@ -125,7 +101,7 @@ static void socket_poll(void)
 	while (1)
 	{
 		int numClientFds = socketSeverGetNumClients();
-		//poll on client socket fd's and the ZllSoC serial port for any activity
+
 		if (numClientFds)
 		{
 			M1_LOG_DEBUG("numClientFds:%d\n",numClientFds);
@@ -172,179 +148,4 @@ static void socket_poll(void)
 
 }
 
-static void printf_redirect(void)
-{
-	 fflush(stdout);  
-     setvbuf(stdout,NULL,_IONBF,0);  
-     printf("log to: /mnt/m1_debug_log.txt\n");  
-     int save_fd = dup(STDOUT_FILENO); 
-     //int fd = open("/home/ubuntu/share/test1.txt",(O_RDWR | O_CREAT), 0644);  
-     int fd = open("/mnt/m1_debug_log.txt",(O_RDWR | O_CREAT), 0644);  
-     if(fd == -1)
-     	M1_LOG_ERROR( " open file failed\n");
-     dup2(fd,STDOUT_FILENO); 
-}
 
-static void sql_test(void)
-{
-	//system("./sql_restore.sh");
-}
-
-uint8_t tlIndicationCb(epInfo_t *epInfo)
-{
-	epInfoExtended_t epInfoEx;
-
-	epInfoEx.epInfo = epInfo;
-	epInfoEx.type = EP_INFO_TYPE_NEW;
-
-	devListAddDevice(epInfo);
-	SRPC_SendEpInfo(&epInfoEx);
-
-	return 0;
-}
-
-uint8_t newDevIndicationCb(epInfo_t *epInfo)
-{
-	//Just add to device list to store
-	devListAddDevice(epInfo);
-
-	return 0;
-}
-
-uint8_t zdoSimpleDescRspCb(epInfo_t *epInfo)
-{
-	epInfo_t *ieeeEpInfo;
-	epInfo_t* oldRec;
-	epInfoExtended_t epInfoEx;
-
-	M1_LOG_DEBUG("zdoSimpleDescRspCb: NwkAddr:0x%04x\n End:0x%02x ", epInfo->nwkAddr,
-			epInfo->endpoint);
-
-	//find the IEEE address. Any ep (0xFF), if the is the first simpleDesc for this nwkAddr
-	//then devAnnce will enter a dummy entry with ep=0, other wise get IEEE from a previous EP
-	ieeeEpInfo = devListGetDeviceByNaEp(epInfo->nwkAddr, 0xFF);
-	memcpy(epInfo->IEEEAddr, ieeeEpInfo->IEEEAddr, Z_EXTADDR_LEN);
-
-	//remove dummy ep, the devAnnce will enter a dummy entry with ep=0,
-	//this is only used for storing the IEEE address until the  first real EP
-	//is enter.
-	devListRemoveDeviceByNaEp(epInfo->nwkAddr, 0x00);
-
-	//is this a new device or an update
-	oldRec = devListGetDeviceByIeeeEp(epInfo->IEEEAddr, epInfo->endpoint);
-
-	if (oldRec != NULL)
-	{
-		if (epInfo->nwkAddr != oldRec->nwkAddr)
-		{
-			epInfoEx.type = EP_INFO_TYPE_UPDATED;
-			epInfoEx.prevNwkAddr = oldRec->nwkAddr;
-			devListRemoveDeviceByNaEp(oldRec->nwkAddr, oldRec->endpoint); //theoretically, update the database record in place is possible, but this other approach is selected to provide change logging. Records that are marked as deleted soes not have to be phisically deleted (e.g. by avoiding consilidation) and thus the database can be used as connection log
-		}
-		else
-		{
-			//not checking if any of the records has changed. assuming that for a given device (ieee_addr+endpoint_number) nothing will change except the network address.
-			epInfoEx.type = EP_INFO_TYPE_EXISTING;
-		}
-	}
-	else
-	{
-		epInfoEx.type = EP_INFO_TYPE_NEW;
-	}
-
-	M1_LOG_DEBUG("zdoSimpleDescRspCb: NwkAddr:0x%04x Ep:0x%02x Type:0x%02x ", epInfo->nwkAddr,
-			epInfo->endpoint, epInfoEx.type);
-
-	if (epInfoEx.type != EP_INFO_TYPE_EXISTING)
-	{
-		devListAddDevice(epInfo);
-		epInfoEx.epInfo = epInfo;
-		SRPC_SendEpInfo(&epInfoEx);
-	}
-
-	return 0;
-}
-
-uint8_t zdoLeaveIndCb(uint16_t nwkAddr)
-{
-	epInfoExtended_t removeEpInfoEx;
-
-	removeEpInfoEx.epInfo = devListRemoveDeviceByNaEp(nwkAddr, 0xFF);
-
-	while(removeEpInfoEx.epInfo)
-	{
-		removeEpInfoEx.type = EP_INFO_TYPE_REMOVED;
-		SRPC_SendEpInfo(&removeEpInfoEx);
-		removeEpInfoEx.epInfo = devListRemoveDeviceByNaEp(nwkAddr, 0xFF);
-	}
-
-	return 0;
-}
-
-uint8_t zclGetStateCb(uint8_t state, uint16_t nwkAddr, uint8_t endpoint)
-{
-	SRPC_CallBack_getStateRsp(state, nwkAddr, endpoint, 0);
-	return 0;
-}
-
-uint8_t zclGetLevelCb(uint8_t level, uint16_t nwkAddr, uint8_t endpoint)
-{
-	SRPC_CallBack_getLevelRsp(level, nwkAddr, endpoint, 0);
-	return 0;
-}
-
-uint8_t zclGetHueCb(uint8_t hue, uint16_t nwkAddr, uint8_t endpoint)
-{
-	SRPC_CallBack_getHueRsp(hue, nwkAddr, endpoint, 0);
-	return 0;
-}
-
-uint8_t zclGetSatCb(uint8_t sat, uint16_t nwkAddr, uint8_t endpoint)
-{
-	SRPC_CallBack_getSatRsp(sat, nwkAddr, endpoint, 0);
-	return 0;
-}
-
-
-#if 0
-static void test(void)
-{
-	stack_mem_t d[20];
-	char buf[1024];
-	int rc = 0;
-
-	stack_block_init();
-	int i;
-	for(i = 0; i < 21; i++){
-		rc = stack_block_req(&d[i]);
-		if(rc == 0){
-			M1_LOG_DEBUG("req failed\n");
-			break;
-		}
-		M1_LOG_DEBUG("d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
-		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
-	}
-	for(i = 0; i < 20; i++){
-		M1_LOG_DEBUG("msg:%s\n",d[i].rPtr);
-	}
-	for(i = 0; i < 20; i+=2){
-		rc = stack_block_destroy(d[i]);
-		if(rc == 0){
-			M1_LOG_DEBUG("destroy failed\n");
-			break;
-		}
-	}
-	for(i = 0; i < 21; i++){
-		rc = stack_block_req(&d[i]);
-		if(rc == 0){
-			M1_LOG_DEBUG("req failed\n");
-			continue;
-		}
-		M1_LOG_DEBUG("d.blockNum:%03d,d.start:%x,d.end:%x,d.wPtr:%x,d.rPtr:%x\n",d[i].blockNum,d[i].start,d[i].end,d[i].wPtr,d[i].rPtr);
-		sprintf(d[i].wPtr,"--------------------------test:%d\n------------------------",i);
-	}
-	for(i = 0; i < 20; i++){
-		M1_LOG_DEBUG("msg:%s\n",d[i].rPtr);
-	}
-}
-#endif
