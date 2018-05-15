@@ -250,12 +250,12 @@ static int AP_report_data_handle(payload_t data)
         goto Finish;   
     }
     /*关闭写同步*/
-    if(sqlite3_exec(db,"PRAGMA synchronous = OFF; ",0,0,0) != SQLITE_OK)
-    {
-        M1_LOG_ERROR("PRAGMA synchronous = OFF falied\n");
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }
+    // if(sqlite3_exec(db,"PRAGMA synchronous = OFF; ",0,0,0) != SQLITE_OK)
+    // {
+    //     M1_LOG_ERROR("PRAGMA synchronous = OFF falied\n");
+    //     ret = M1_PROTOCOL_FAILED;
+    //     goto Finish;
+    // }
 
     /*添加update/insert/delete监察*/
     rc = sqlite3_update_hook(db, trigger_cb, "AP_report_data_handle");
@@ -346,7 +346,9 @@ static int AP_report_data_handle(payload_t data)
                 sqlite3_bind_int(stmt, 3,typeJson->valueint);
                 sqlite3_bind_int(stmt, 4, valueJson->valueint);
                 rc = sqlite3_step(stmt);   
-                M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                M1_LOG_DEBUG("step() return %s, number:%03d\n", \
+                    rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK)){
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 }
@@ -356,7 +358,8 @@ static int AP_report_data_handle(payload_t data)
             }
         }
 
-        if(rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        if(rc == SQLITE_OK){
             M1_LOG_DEBUG("END\n");
             sqlite3_free(errorMsg);
         }
@@ -382,40 +385,37 @@ static int AP_report_data_handle(payload_t data)
 /*AP report device information to M1*/
 static int AP_report_dev_handle(payload_t data)
 {
-    int i;
-    int id;
-    int number;
-    int rc, ret = M1_PROTOCOL_OK;
-    char* time = (char*)malloc(30);
-    char* errorMsg = NULL;
-    char* sql = NULL;
-    char* sql_1 = (char*)malloc(300);
-    sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL;
-    sqlite3_stmt* stmt_1 = NULL;
-    cJSON* apIdJson = NULL;
-    cJSON* apNameJson = NULL;
-    cJSON* pIdJson = NULL;
-    cJSON* devJson = NULL;
+    int i                = 0;
+    int number           = 0;
+    int rc               = 0;
+    int ret              = M1_PROTOCOL_OK;
+    /*sql*/
+    char* errorMsg       = NULL;
+    char* sql            = NULL;
+    sqlite3* db          = NULL;
+    sqlite3_stmt* stmt   = NULL;
+    /*Json*/
+    cJSON* apIdJson      = NULL;
+    cJSON* apNameJson    = NULL;
+    cJSON* pIdJson       = NULL;
+    cJSON* devJson       = NULL;
     cJSON* paramDataJson = NULL;    
-    cJSON* idJson = NULL;    
-    cJSON* nameJson = NULL;   
+    cJSON* idJson        = NULL;    
+    cJSON* nameJson      = NULL;   
 
     M1_LOG_DEBUG("AP_report_dev_handle\n");
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     } 
-
-    getNowTime(time);
     /*获取数据库*/
     db = data.db;
     /*关闭写同步*/
-    if(sqlite3_exec(db,"PRAGMA synchronous = OFF; ",0,0,0) != SQLITE_OK){
-        M1_LOG_ERROR("PRAGMA synchronous = OFF falied\n");
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }
+    // if(sqlite3_exec(db,"PRAGMA synchronous = OFF; ",0,0,0) != SQLITE_OK){
+    //     M1_LOG_ERROR("PRAGMA synchronous = OFF falied\n");
+    //     ret = M1_PROTOCOL_FAILED;
+    //     goto Finish;
+    // }
 
     apIdJson = cJSON_GetObjectItem(data.pdu,"apId");
     M1_LOG_DEBUG("APId:%s\n",apIdJson->valuestring);
@@ -425,9 +425,11 @@ static int AP_report_dev_handle(payload_t data)
     number = cJSON_GetArraySize(devJson); 
 
     /*事物开始*/
-    if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
+    if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK)
+    {
         M1_LOG_DEBUG("BEGIN\n");
-        sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
+        sql =   "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)\
+                values(?,?,?,?,?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;
@@ -458,59 +460,47 @@ static int AP_report_dev_handle(payload_t data)
                 goto Finish;
             }
             M1_LOG_DEBUG("pId:%05d\n", pIdJson->valueint);
-            /*判断该设备是否存在*/
-            sprintf(sql_1,"select ID from all_dev where DEV_ID = \"%s\" and AP_ID = \"%s\";",idJson->valuestring, apIdJson->valuestring);
-            /*get id*/
-            sqlite3_finalize(stmt_1); 
-            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }    
+           
+            sqlite3_bind_text(stmt, 1,  nameJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 2, idJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 3,apIdJson->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt, 4, pIdJson->valueint);
+            sqlite3_bind_int(stmt, 5, 0);
+            sqlite3_bind_int(stmt, 6, 1);
+            sqlite3_bind_text(stmt, 7,"ON", -1, NULL);
+            sqlite3_bind_text(stmt, 8,  "Dalitek", -1, NULL);
 
-            rc = thread_sqlite3_step(&stmt_1, db);
-            if(rc == SQLITE_ROW){
-                id = (sqlite3_column_int(stmt_1, 0));
-            }else{
-                sprintf(sql_1,"select ID from all_dev order by ID desc limit 1");
-                id = sql_id(db, sql_1);
-                sqlite3_reset(stmt);
-                sqlite3_clear_bindings(stmt); 
-                sqlite3_bind_int(stmt, 1, id);
-                sqlite3_bind_text(stmt, 2,  nameJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt, 3, idJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
-                sqlite3_bind_int(stmt, 5, pIdJson->valueint);
-                sqlite3_bind_int(stmt, 6, 0);
-                sqlite3_bind_int(stmt, 7, 1);
-                sqlite3_bind_text(stmt, 8,"ON", -1, NULL);
-                sqlite3_bind_text(stmt, 9,  "Dalitek", -1, NULL);
-                sqlite3_bind_text(stmt, 10,  time, -1, NULL);
-                rc = thread_sqlite3_step(&stmt,db);
+            rc = sqlite3_step(stmt);   
+            M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK)){
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             }
+
+            sqlite3_reset(stmt); 
+            sqlite3_clear_bindings(stmt);
         }
 
-        if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
+        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        if(rc == SQLITE_OK){
             M1_LOG_DEBUG("END\n");
-        }else{
-            M1_LOG_DEBUG("ROLLBACK\n");
-            if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
-                M1_LOG_DEBUG("ROLLBACK OK\n");
-                sqlite3_free(errorMsg);
-            }else{
-                M1_LOG_ERROR("ROLLBACK FALIED\n");
-            }
+            sqlite3_free(errorMsg);
         }
-    }else{
-        M1_LOG_ERROR("errorMsg:");
-    }   
+        else if(rc == SQLITE_BUSY)
+        {
+            M1_LOG_DEBUG("等待再次提交\n");
+        }
+        else
+        {
+            M1_LOG_DEBUG("commit failed\n");   
+        }
+
+    }  
 
     Finish:
-    free(time);
-    free(sql_1);
-    sqlite3_free(errorMsg);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1); 
+    if(stmt != NULL)
+        sqlite3_finalize(stmt);
 
     return ret;  
 }
@@ -518,20 +508,17 @@ static int AP_report_dev_handle(payload_t data)
 /*AP report information to M1*/
 static int AP_report_ap_handle(payload_t data)
 {
-    int id;
-    int rc,ret = M1_PROTOCOL_OK;
-    char* sql = NULL; 
-    char* sql_1 = (char*)malloc(300);
-    char* sql_2 = (char*)malloc(300);
-    char* time = (char*)malloc(30);
-    char* errorMsg = NULL;
-    cJSON* pIdJson = NULL;
-    cJSON* apIdJson = NULL;
-    cJSON* apNameJson = NULL;
-    sqlite3* db = NULL;
+    int rc             = 0;
+    int ret            = M1_PROTOCOL_OK;
+    char* sql          = NULL; 
+    /*sql*/
+    char* errorMsg     = NULL;
+    sqlite3* db        = NULL;
     sqlite3_stmt* stmt = NULL;
-    sqlite3_stmt* stmt_1 = NULL;
-    sqlite3_stmt* stmt_2 = NULL;
+    /*Json*/
+    cJSON* pIdJson     = NULL;
+    cJSON* apIdJson    = NULL;
+    cJSON* apNameJson  = NULL;
 
     M1_LOG_DEBUG("AP_report_ap_handle\n");
     if(data.pdu == NULL){
@@ -539,7 +526,6 @@ static int AP_report_ap_handle(payload_t data)
         goto Finish;
     }
 
-    getNowTime(time);
     /*获取数据库*/
     db = data.db;
 
@@ -561,143 +547,187 @@ static int AP_report_ap_handle(payload_t data)
         goto Finish;
     }
     M1_LOG_DEBUG("APName:%s\n",apNameJson->valuestring);
-    if(sqlite3_exec(db, "BEGIN", NULL, NULL, &errorMsg)==SQLITE_OK){
-        M1_LOG_DEBUG("BEGIN\n");
-        /*update clientFd*/
-        sprintf(sql_1, "select ID from conn_info where AP_ID  = \"%s\"", apIdJson->valuestring);
-        rc = sql_row_number(db, sql_1);
-        M1_LOG_DEBUG("rc:%d\n",rc);
-        if(rc > 0){
-            sprintf(sql_1, "update conn_info set CLIENT_FD = %d where AP_ID  = \"%s\"", data.clientFd, apIdJson->valuestring);
-            M1_LOG_DEBUG("%s\n",sql_1);
-        }else{
-            sql = "select ID from conn_info order by ID desc limit 1";
-            id = sql_id(db, sql);
-            sprintf(sql_1, " insert into conn_info(ID, AP_ID, CLIENT_FD) values(%d,\"%s\",%d);", id, apIdJson->valuestring, data.clientFd);
-            M1_LOG_DEBUG("%s\n",sql_1);
-        }
-        rc = sql_exec(db, sql_1);
-        M1_LOG_DEBUG("exec:%s\n",rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
-        if(rc == SQLITE_ERROR){
-            ret = M1_PROTOCOL_FAILED;  
-            if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
-                M1_LOG_DEBUG("END\n");
-            }else{
-                M1_LOG_DEBUG("ROLLBACK\n");
-                if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
-                    M1_LOG_DEBUG("ROLLBACK OK\n");
-                    sqlite3_free(errorMsg);
-                }else{
-                    M1_LOG_ERROR("ROLLBACK FALIED\n");
-                }
-            }
-            goto Finish;       
-        };
-
-        sprintf(sql_1,"select ID from all_dev where DEV_ID = \"%s\";",apIdJson->valuestring);
-        sqlite3_finalize(stmt_1);
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+    /*更新conn_info表信息*/
+    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    {
+        sql = "insert or replace into conn_info(AP_ID, CLIENT_FD) values(?,?)";
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
-        rc =  thread_sqlite3_step(&stmt_1, db);
-        if(rc != SQLITE_ROW){
-            /*insert sql*/
-            sql = "insert into all_dev(ID, DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT,TIME) values(?,?,?,?,?,?,?,?,?,?);";
-            M1_LOG_DEBUG("string:%s\n",sql);
-            if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }
-            /*判断该设备是否存在*/   
-            sprintf(sql_1,"select ID from all_dev order by ID desc limit 1");
-            id = sql_id(db, sql_1);
+        
+        sqlite3_bind_text(stmt, 1, apIdJson->valuestring, -1, NULL);
+        sqlite3_bind_int(stmt, 2, data.clientFd);
 
-            sqlite3_bind_int(stmt, 1, id);
-            sqlite3_bind_text(stmt, 2,  apNameJson->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 4,apIdJson->valuestring, -1, NULL);
-            sqlite3_bind_int(stmt, 5, pIdJson->valueint);
-            sqlite3_bind_int(stmt, 6, 0);
-            sqlite3_bind_int(stmt, 7, 1);
-            sqlite3_bind_text(stmt, 8,  "ON", -1, NULL);
-            sqlite3_bind_text(stmt, 9,  "Dalitek", -1, NULL);
-            sqlite3_bind_text(stmt, 10,  time, -1, NULL);
-            rc = thread_sqlite3_step(&stmt,db);
-            /*插入AP在线状态*/
-            sprintf(sql_1,"select ID from param_table order by ID desc limit 1");
-            M1_LOG_DEBUG("string:%s\n",sql_1);
-            id = sql_id(db, sql_1);
-            /*插入AP在线信息*/
-            sprintf(sql_2,"insert into param_table(ID, DEV_ID, DEV_NAME, TYPE, VALUE, TIME) values(?,?,?,?,?,?);");
-            M1_LOG_DEBUG("string:%s\n",sql_2);
-            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }
-            sqlite3_bind_int(stmt_2, 1, id);
-            sqlite3_bind_text(stmt_2, 2,  apIdJson->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt_2, 3,  apNameJson->valuestring, -1, NULL);
-            sqlite3_bind_int(stmt_2, 4, 16404);
-            sqlite3_bind_int(stmt_2, 5, 1);
-            sqlite3_bind_text(stmt_2, 6, time, -1, NULL);
-            thread_sqlite3_step(&stmt_2, db);
+        rc = sqlite3_step(stmt);   
+        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         }
-        if(sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg) == SQLITE_OK){
-           M1_LOG_DEBUG("END\n");
-        }else{
-            M1_LOG_DEBUG("ROLLBACK\n");
-            if(sqlite3_exec(db, "ROLLBACK", NULL, NULL, &errorMsg) == SQLITE_OK){
-                M1_LOG_DEBUG("ROLLBACK OK\n");
-                sqlite3_free(errorMsg);
-            }else{
-                M1_LOG_ERROR("ROLLBACK FALIED\n");
-            }
+
+        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        if(rc == SQLITE_OK){
+            M1_LOG_DEBUG("END\n");
+            sqlite3_free(errorMsg);
         }
-    }else{
-        M1_LOG_ERROR("errorMsg:");
-    }    
+        else if(rc == SQLITE_BUSY)
+        {
+            M1_LOG_DEBUG("等待再次提交\n");
+        }
+        else
+        {
+            M1_LOG_DEBUG("commit failed\n");   
+        }
+
+        if(stmt != NULL)
+        {
+            sqlite3_finalize(stmt);    
+            stmt = NULL;
+        }
+    }
+
+    /*更新all_dev表信息*/
+    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    {
+        sql = "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)\
+              values(?,?,?,?,?,?,?,?);";
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+        
+        sqlite3_bind_text(stmt, 1,  apNameJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt, 2, apIdJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
+        sqlite3_bind_int(stmt, 4, pIdJson->valueint);
+        sqlite3_bind_int(stmt, 5, 0);
+        sqlite3_bind_int(stmt, 6, 1);
+        sqlite3_bind_text(stmt, 7,  "ON", -1, NULL);
+        sqlite3_bind_text(stmt, 8,  "Dalitek", -1, NULL);
     
+        rc = sqlite3_step(stmt);   
+        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        }
+
+        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        if(rc == SQLITE_OK){
+            M1_LOG_DEBUG("END\n");
+            sqlite3_free(errorMsg);
+        }
+        else if(rc == SQLITE_BUSY)
+        {
+            M1_LOG_DEBUG("等待再次提交\n");
+        }
+        else
+        {
+            M1_LOG_DEBUG("commit failed\n");   
+        }
+
+        if(stmt != NULL)
+        {
+            sqlite3_finalize(stmt);    
+            stmt = NULL;
+        }
+    }
+
+    /*更新param_table表信息*/
+    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    {
+        sql = "insert or replace into param_table(DEV_ID, DEV_NAME, TYPE, VALUE)values(?,?,?,?);";
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+        
+        sqlite3_bind_text(stmt, 1,  apIdJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt, 2,  apNameJson->valuestring, -1, NULL);
+        sqlite3_bind_int(stmt, 3, 16404);
+        sqlite3_bind_int(stmt, 4, 1);
+    
+        rc = sqlite3_step(stmt);   
+        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        }
+
+        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        if(rc == SQLITE_OK){
+            M1_LOG_DEBUG("END\n");
+            sqlite3_free(errorMsg);
+        }
+        else if(rc == SQLITE_BUSY)
+        {
+            M1_LOG_DEBUG("等待再次提交\n");
+        }
+        else
+        {
+            M1_LOG_DEBUG("commit failed\n");   
+        }
+
+        if(stmt != NULL)
+        {
+            sqlite3_finalize(stmt);    
+            stmt = NULL;
+        }
+    }
+
     Finish:
-    free(time);
-    free(sql_1);
-    free(sql_2);
-    sqlite3_free(errorMsg);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
-    sqlite3_finalize(stmt_2);
+    
+    if(stmt != NULL)
+        sqlite3_finalize(stmt);
 
     return ret;  
 }
 
 static int APP_read_handle(payload_t data)
 {   
-    /*read json*/
-    int i,j;
-    int number1,number2,row_n;
-    int pduType = TYPE_REPORT_DATA;
-    int rc, ret = M1_PROTOCOL_OK;
-    char * devName = NULL;
-    char* pId = NULL;
-    int value = 0;
-    int clientFd = 0;
-    char* dev_id = NULL;
-    char* sql = (char*)malloc(500);
-    cJSON* devDataJson = NULL;
-    cJSON* devIdJson = NULL;
-    cJSON* paramTypeJson = NULL;
-    cJSON* paramJson = NULL;
-    cJSON * pJsonRoot = NULL; 
-    cJSON * pduJsonObject = NULL;
-    cJSON * devDataJsonArray = NULL;
-    cJSON * devDataObject= NULL;
-    cJSON * devArray = NULL;
-    cJSON*  devObject = NULL;
-    sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL, *stmt_1 = NULL;
+    int i                    = 0;
+    int j                    = 0;
+    int number1              = 0;
+    int number2              = 0;
+    int row_n                = 0;
+    int pduType              = TYPE_REPORT_DATA;
+    int rc                   = 0;
+    int ret                  = M1_PROTOCOL_OK;
+    char *devName            = NULL;
+    char *pId                = NULL;
+    int value                = 0;
+    int clientFd             = 0;
+    char *dev_id             = NULL;
+    /*Json*/
+    cJSON *devDataJson       = NULL;
+    cJSON *devIdJson         = NULL;
+    cJSON *paramTypeJson     = NULL;
+    cJSON *paramJson         = NULL;
+    cJSON *pJsonRoot         = NULL; 
+    cJSON *pduJsonObject     = NULL;
+    cJSON *devDataJsonArray  = NULL;
+    cJSON *devDataObject     = NULL;
+    cJSON *devArray          = NULL;
+    cJSON *devObject         = NULL;
+    /*sql*/
+    char* sql                = NULL;
+    char* sql_1              = NULL;
+    sqlite3* db              = NULL;
+    sqlite3_stmt* stmt       = NULL;
+    sqlite3_stmt* stmt_1     = NULL;
 
     M1_LOG_DEBUG("APP_read_handle\n");
     if(data.pdu == NULL){
@@ -743,73 +773,86 @@ static int APP_read_handle(payload_t data)
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-
     number1 = cJSON_GetArraySize(data.pdu);
     M1_LOG_DEBUG("number1:%d\n",number1);
 
-    for(i = 0; i < number1; i++){
-        /*read json*/
-        devDataJson = cJSON_GetArrayItem(data.pdu, i);
-        devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
-        M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
-        dev_id = devIdJson->valuestring;
-        paramTypeJson = cJSON_GetObjectItem(devDataJson, "paramType");
-        number2 = cJSON_GetArraySize(paramTypeJson);
-        /*get sql data json*/
-        sprintf(sql, "select DEV_NAME from all_dev where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
+    {
+        sql = "select DEV_NAME,PID from all_dev where DEV_ID  = ? order by ID desc limit 1;";
         M1_LOG_DEBUG("%s\n", sql);
 
-        devDataObject = cJSON_CreateObject();
-        if(NULL == devDataObject)
-        {
-            // create object faild, exit
-            M1_LOG_ERROR("devDataObject NULL\n");
-            cJSON_Delete(devDataObject);
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
-        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-        cJSON_AddStringToObject(devDataObject, "devId", dev_id);
-        /*取出devName*/
-        sqlite3_finalize(stmt);
+        /*取出devName,pid*/
         if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
-        rc = thread_sqlite3_step(&stmt, db);
-        if(rc == SQLITE_ROW){
+    }
+
+    {
+        sql_1 = "select VALUE from param_table where DEV_ID = ? and TYPE = ? order by ID desc limit 1;";
+        M1_LOG_DEBUG("%s\n", sql_1);
+    
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+    }
+
+    for(i = 0; i < number1; i++)
+    {
+        /*read json*/
+        devDataJson = cJSON_GetArrayItem(data.pdu, i);
+        devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
+        dev_id = devIdJson->valuestring;
+        paramTypeJson = cJSON_GetObjectItem(devDataJson, "paramType");
+        number2 = cJSON_GetArraySize(paramTypeJson);
+        M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
+
+        {
+            devDataObject = cJSON_CreateObject();
+            if(NULL == devDataObject)
+            {
+                // create object faild, exit
+                M1_LOG_ERROR("devDataObject NULL\n");
+                cJSON_Delete(devDataObject);
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish;
+            }
+            cJSON_AddItemToArray(devDataJsonArray, devDataObject);
+            cJSON_AddStringToObject(devDataObject, "devId", dev_id);
+        }
+
+        sqlite3_bind_text(stmt, 1, dev_id, -1, NULL);
+
+        rc = sqlite3_step(stmt);
+        if(rc == SQLITE_ROW)
+        {
+            /*devName*/
             devName = sqlite3_column_text(stmt,0);
             if(devName == NULL){
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;       
             }
             cJSON_AddStringToObject(devDataObject, "devName", devName);
-        }else{
-            M1_LOG_WARN("devName not exit");
-            continue;
-        }
-        /*添加PID*/
-        sprintf(sql, "select PID from all_dev where DEV_ID  = \"%s\" order by ID desc limit 1;", dev_id);
-        M1_LOG_DEBUG("%s\n", sql);
-        sqlite3_finalize(stmt);
-        if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish; 
-        }
-        rc = thread_sqlite3_step(&stmt, db);
-        if(rc == SQLITE_ROW){
-            pId = sqlite3_column_text(stmt,0);
+            /*pid*/
+            pId = sqlite3_column_text(stmt,1);
             if(pId == NULL){
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;   
             }
             cJSON_AddStringToObject(devDataObject, "pId", pId);
-        }else{
-            M1_LOG_WARN("pId not exit");
-            continue;   
         }
+        else
+        {
+            M1_LOG_WARN("devName,pid not exit");
+            sqlite3_reset(stmt);   
+            sqlite3_clear_bindings(stmt);
+            continue;
+        }
+
+        sqlite3_reset(stmt);   
+        sqlite3_clear_bindings(stmt);
 
         devArray = cJSON_CreateArray();
         if(NULL == devArray)
@@ -822,13 +865,10 @@ static int APP_read_handle(payload_t data)
         /*add devData array to pdu pbject*/
         cJSON_AddItemToObject(devDataObject, "param", devArray);
     
-        for(j = 0; j < number2; j++){
+        for(j = 0; j < number2; j++)
+        {
             /*read json*/
             paramJson = cJSON_GetArrayItem(paramTypeJson, j);
-            /*get sql data json*/
-            sprintf(sql, "select VALUE from param_table where DEV_ID  = \"%s\" and TYPE = %05d order by ID desc limit 1;", dev_id, paramJson->valueint);
-            M1_LOG_DEBUG("%s\n", sql);
-     
             devObject = cJSON_CreateObject();
             if(NULL == devObject)
             {
@@ -839,12 +879,6 @@ static int APP_read_handle(payload_t data)
             }
             cJSON_AddItemToArray(devArray, devObject); 
 
-            sqlite3_finalize(stmt_1);
-            if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt_1, NULL) != SQLITE_OK){
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }
             rc = thread_sqlite3_step(&stmt_1,db);
             if(rc == SQLITE_ROW){
                 value = sqlite3_column_int(stmt_1,0);
@@ -854,7 +888,27 @@ static int APP_read_handle(payload_t data)
                 M1_LOG_DEBUG("value not exit");
                 continue;
             }
-       
+
+            sqlite3_bind_text(stmt_1, 1, dev_id, -1, NULL);
+            sqlite3_bind_int(stmt_1, 2, paramJson->valueint);
+            
+            rc = sqlite3_step(stmt_1);
+            if(rc == SQLITE_ROW)
+            {
+                /*date value*/
+                value = sqlite3_column_int(stmt_1,0);
+                cJSON_AddNumberToObject(devObject, "type", paramJson->valueint);
+                cJSON_AddNumberToObject(devObject, "value", value);
+            }
+            else
+            {
+                M1_LOG_WARN("date value not exit");
+                sqlite3_reset(stmt_1);   
+                sqlite3_clear_bindings(stmt_1);
+                continue;
+            }
+            sqlite3_reset(stmt_1);   
+            sqlite3_clear_bindings(stmt_1);
         }
     }
 
@@ -868,12 +922,14 @@ static int APP_read_handle(payload_t data)
 
     M1_LOG_DEBUG("string:%s\n",p);
     socketSeverSend((uint8*)p, strlen(p), clientFd);
-    Finish:
-    free(sql);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
-    cJSON_Delete(pJsonRoot);
 
+    Finish:
+    if(stmt != NULL)
+        sqlite3_finalize(stmt);
+    if(stmt_1 != NULL)
+        sqlite3_finalize(stmt_1);
+
+    cJSON_Delete(pJsonRoot);
     return ret;
 }
 
