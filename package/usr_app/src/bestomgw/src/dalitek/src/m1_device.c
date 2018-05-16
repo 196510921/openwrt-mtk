@@ -427,6 +427,8 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
 void clear_ap_related_linkage(char* ap_id, sqlite3* db)
 {
     M1_LOG_DEBUG("clear_ap_related_linkage\n");
+    int  rc              = 0;
+    char *errorMsg       = NULL;
     char *dev_id         = NULL;
     char *sql            = NULL;
     char *sql_1          = NULL;
@@ -451,23 +453,56 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
         goto Finish; 
     }
 
-    sqlite3_bind_text(stmt, 1, ap_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, "Dalitek", -1, NULL);
-    while(sqlite3_step(stmt) == SQLITE_ROW)
-    {
-        dev_id = sqlite3_column_text(stmt, 0);
-        if(dev_id == NULL)
-        {
-            M1_LOG_ERROR("dev_id NULL\n");
-            continue;
-        }
-        M1_LOG_DEBUG("dev_id:%s\n",dev_id);
-        
-        sqlite3_bind_text(stmt_1, 1, dev_id, -1, NULL);
-        sqlite3_step(stmt_1);
 
-        sqlite3_reset(stmt_1);
-        sqlite3_clear_bindings(stmt_1);
+    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    {
+        sqlite3_bind_text(stmt, 1, ap_id, -1, NULL);
+        sqlite3_bind_text(stmt, 2, "Dalitek", -1, NULL);
+        while(sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            dev_id = sqlite3_column_text(stmt, 0);
+            if(dev_id == NULL)
+            {
+                M1_LOG_ERROR("dev_id NULL\n");
+                continue;
+            }
+            M1_LOG_DEBUG("dev_id:%s\n",dev_id);
+            
+            sqlite3_bind_text(stmt_1, 1, dev_id, -1, NULL);
+            
+            rc = sqlite3_step(stmt_1);   
+            M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            }
+
+            sqlite3_reset(stmt_1);
+            sqlite3_clear_bindings(stmt_1);
+        }
+
+        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
+        else if(rc == SQLITE_BUSY)
+        {
+            M1_LOG_WARN("等待再次提交\n");
+        }
+        else
+        {
+            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
+            sqlite3_free(errorMsg);
+        }
+
+    }
+    else
+    {
+        M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+        sqlite3_free(errorMsg);
     }
 
     Finish:
