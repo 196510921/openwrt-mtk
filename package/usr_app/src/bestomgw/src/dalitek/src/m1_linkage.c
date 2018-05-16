@@ -485,7 +485,8 @@ void linkage_task(void)
 	char *exec_type = NULL,*exec_id = NULL, *link_name =  NULL;
     //while(1){
     rc1 = fifo_read(&link_exec_fifo, &rowid);
-    if(rc1 > 0){
+    if(rc1 > 0)
+    {
 		//rc = sqlite3_open(db_path, &db);  
 		rc = sql_open();
 		if(rc){  
@@ -495,35 +496,39 @@ void linkage_task(void)
 		    M1_LOG_DEBUG( "Opened database successfully\n");  
 		}
 
-		sql = (char*)malloc(300);
+		sql = "select EXEC_TYPE, EXEC_ID, LINK_NAME from linkage_table where rowid = ? and ENABLE = ?;";
+		M1_LOG_DEBUG("sql:%s\n", sql);
+		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+		{
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    goto Finish; 
+    	}
+
 	   	do{
-	   		if(rc1 > 0){
-	   			M1_LOG_DEBUG("linkage_task\n");
-		    	sprintf(sql,"select EXEC_TYPE, EXEC_ID, LINK_NAME from linkage_table where rowid = %05d and ENABLE = \"on\";",rowid);
-				M1_LOG_DEBUG("sql:%s\n", sql);
-				sqlite3_finalize(stmt);
-				if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-    			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-    			    goto Finish; 
-    			}
-				rc = thread_sqlite3_step(&stmt, db);
-				if(rc == SQLITE_ROW){
-					exec_type = sqlite3_column_text(stmt,0);
-					exec_id = sqlite3_column_text(stmt,1);
-					link_name = sqlite3_column_text(stmt,2);
-					if(strcmp(exec_type, "scenario") == 0){
-						scenario_exec(exec_id, db);
-					}else{
-						device_exec(link_name, db);			
-					}
+	   		M1_LOG_DEBUG("linkage_task\n");
+			sqlite3_bind_int(stmt, 1, rowid);
+			sqlite3_bind_text(stmt, 2, "on", -1, NULL);
+			rc = sqlite3_step(stmt);
+			if(rc == SQLITE_ROW)
+			{
+				exec_type = sqlite3_column_text(stmt,0);
+				exec_id = sqlite3_column_text(stmt,1);
+				link_name = sqlite3_column_text(stmt,2);
+				if(strcmp(exec_type, "scenario") == 0){
+					scenario_exec(exec_id, db);
+				}else{
+					device_exec(link_name, db);			
 				}
-	   			rc1 = fifo_read(&link_exec_fifo, &rowid);
-	   		}
+			}
+			sqlite3_reset(stmt);
+			sqlite3_clear_bindings(stmt);
+
+	   		rc1 = fifo_read(&link_exec_fifo, &rowid);
 	   	}while(rc1 > 0);
 
 		Finish:
-		free(sql);
-		sqlite3_finalize(stmt);
+		if(stmt)
+			sqlite3_finalize(stmt);
 		sql_close();
 	}
 
