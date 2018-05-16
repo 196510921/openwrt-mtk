@@ -865,16 +865,6 @@ static int APP_read_handle(payload_t data)
             }
             cJSON_AddItemToArray(devArray, devObject); 
 
-            rc = thread_sqlite3_step(&stmt_1,db);
-            if(rc == SQLITE_ROW){
-                value = sqlite3_column_int(stmt_1,0);
-                cJSON_AddNumberToObject(devObject, "type", paramJson->valueint);
-                cJSON_AddNumberToObject(devObject, "value", value);
-            }else{
-                M1_LOG_DEBUG("value not exit");
-                continue;
-            }
-
             sqlite3_bind_text(stmt_1, 1, dev_id, -1, NULL);
             sqlite3_bind_int(stmt_1, 2, paramJson->valueint);
             
@@ -1417,9 +1407,9 @@ static int APP_req_added_dev_info_handle(payload_t data)
         sqlite3_bind_text(stmt_2, 2, account, -1 , NULL);
         while(sqlite3_step(stmt_2) == SQLITE_ROW)
         {
-            devId   = sqlite3_column_text(stmt_1, 0);
-            devName = sqlite3_column_text(stmt_1, 1);
-            pId    = sqlite3_column_int(stmt_1, 2);
+            devId   = sqlite3_column_text(stmt_2, 0);
+            devName = sqlite3_column_text(stmt_2, 1);
+            pId    = sqlite3_column_int(stmt_2, 2);
              /*add ap infomation: port,ap_id,ap_name,time */
             devObject = cJSON_CreateObject();
             if(NULL == devObject)

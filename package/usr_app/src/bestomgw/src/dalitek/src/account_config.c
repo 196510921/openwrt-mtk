@@ -329,19 +329,19 @@ int app_req_account_config_handle(payload_t data)
         while(sqlite3_step(stmt_2) == SQLITE_ROW)
         {
             /*添加区域信息*/      
-            pId = sqlite3_column_int(stmt_1,0);
+            pId = sqlite3_column_int(stmt_2,0);
             if(pId == NULL){
                 cJSON_Delete(devObject);
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;;
             }
-            dev_name = sqlite3_column_text(stmt_1,1);
+            dev_name = sqlite3_column_text(stmt_2,1);
             if(pId == NULL){
                 cJSON_Delete(devObject);
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
-            dev_id = sqlite3_column_text(stmt_1,2);
+            dev_id = sqlite3_column_text(stmt_2,2);
             M1_LOG_DEBUG("pid:%05d,dev_name:%s, dev_id:%s\n", pId, dev_name,dev_id);
             devObject = cJSON_CreateObject();
             if(NULL == devObject)
@@ -525,7 +525,7 @@ int app_account_config_handle(payload_t data)
                 M1_LOG_DEBUG("district:%s\n",districtObject->valuestring);
                 
                 sqlite3_bind_text(stmt_1, 1, districtObject->valuestring, -1, NULL);
-                while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW)
+                while(sqlite3_step(stmt_1) == SQLITE_ROW)
                 {
                     ap_id = sqlite3_column_text(stmt_1, 0);
                     dis_pic = sqlite3_column_text(stmt_1, 1);
@@ -536,7 +536,7 @@ int app_account_config_handle(payload_t data)
                     sqlite3_bind_text(stmt_2, 3, ap_id, -1, NULL);
                     sqlite3_bind_text(stmt_2, 4, accountJson->valuestring, -1, NULL);
                     
-                    rc = sqlite3_step(stmt);   
+                    rc = sqlite3_step(stmt_2);   
                     M1_LOG_DEBUG("step() return %s, number:%03d\n", \
                         rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
                     
@@ -822,7 +822,7 @@ int app_req_dis_name(payload_t data)
     sqlite3_bind_int(stmt, 1, data.clientFd);
     if(sqlite3_step(stmt) == SQLITE_ROW)
     {
-        account = sqlite3_column_text(stmt_1, 0);
+        account = sqlite3_column_text(stmt, 0);
     }
     if(account == NULL)
     {
@@ -873,7 +873,7 @@ int app_req_dis_name(payload_t data)
         }
 
         /*获取区域名称*/
-        district = sqlite3_column_text(stmt, 0);
+        district = sqlite3_column_text(stmt_1, 0);
         if(district == NULL){
             M1_LOG_ERROR( "%s\n", district);
             ret = M1_PROTOCOL_FAILED;
@@ -1015,7 +1015,7 @@ int app_req_dis_scen_name(payload_t data)
 
         if(sqlite3_step(stmt) == SQLITE_ROW)
         {
-            account =  sqlite3_column_text(stmt_1, 0);
+            account =  sqlite3_column_text(stmt, 0);
         }
         if(account == NULL)
         {
@@ -1095,7 +1095,7 @@ int app_req_dis_scen_name(payload_t data)
                     goto Finish;
                 }
                 /*添加场景名称到组中*/
-                scenario = sqlite3_column_text(stmt, 0);
+                scenario = sqlite3_column_text(stmt_1, 0);
                 if(scenario == NULL){
                     ret = M1_PROTOCOL_FAILED;
                     goto Finish;
@@ -1153,26 +1153,36 @@ int app_req_dis_dev(payload_t data)
 {
     M1_LOG_DEBUG("app_req_dis_dev\n");
 
-    int pduType = TYPE_M1_REPORT_DIS_DEV; 
-    int number, i;
-    int rc,ret = M1_PROTOCOL_OK;
-    char* account = NULL;
-    char* sql = (char*)malloc(300);
-    char* sql_1 = (char*)malloc(300);
-    char* sql_2 = (char*)malloc(300);
-    char* sql_3 = (char*)malloc(300);
-    char* apId = NULL, *pId = NULL, *devName = NULL, *devId = NULL;
-    cJSON* devDataJson = NULL;
-    cJSON* pJsonRoot = NULL;
-    cJSON* pduJsonObject = NULL;
-    cJSON* devDataJsonArray = NULL;
-    cJSON* devDataObject = NULL;
-    cJSON* apInfoArray = NULL;
-    cJSON* apInfoObject = NULL;
-    cJSON* devArray = NULL;
-    cJSON* devObject = NULL;
-    sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL,*stmt_3 = NULL;
+    int pduType             = TYPE_M1_REPORT_DIS_DEV; 
+    int number              = 0;
+    int i                   = 0;
+    int rc                  = 0;
+    int ret                 = M1_PROTOCOL_OK;
+    char *account           = NULL;
+    char *apId              = NULL;
+    char *pId               = NULL;
+    char *devName           = NULL;
+    char *devId             = NULL;
+    /*Json*/
+    cJSON *devDataJson      = NULL;
+    cJSON *pJsonRoot        = NULL;
+    cJSON *pduJsonObject    = NULL;
+    cJSON *devDataJsonArray = NULL;
+    cJSON *devDataObject    = NULL;
+    cJSON *apInfoArray      = NULL;
+    cJSON *apInfoObject     = NULL;
+    cJSON *devArray         = NULL;
+    cJSON *devObject        = NULL;
+    /*sql*/
+    char *sql               = NULL;
+    char *sql_1             = NULL;
+    char *sql_2             = NULL;
+    char *sql_3             = NULL;
+    sqlite3 *db             = NULL;
+    sqlite3_stmt *stmt      = NULL;
+    sqlite3_stmt *stmt_1    = NULL;
+    sqlite3_stmt *stmt_2    = NULL;
+    sqlite3_stmt *stmt_3    = NULL;
 
     db = data.db;
     if(data.pdu == NULL){
@@ -1219,142 +1229,178 @@ int app_req_dis_dev(payload_t data)
     M1_LOG_DEBUG("number:%d\n",number);
 
     /*获取用户账户信息*/
-    sprintf(sql_3,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
-    M1_LOG_DEBUG( "%s\n", sql_3);
-    if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish; 
-    }
-    if(thread_sqlite3_step(&stmt_3, db) == SQLITE_ROW){
-        account =  sqlite3_column_text(stmt_3, 0);
-    }
-    if(account == NULL){
-        M1_LOG_ERROR( "user account do not exist\n");    
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{
-        M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
-    }
+    {
+        sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
+        M1_LOG_DEBUG("sql:%s\n", sql);
 
-    for(i = 0; i < number; i++){
-        devDataJson = cJSON_GetArrayItem(data.pdu, i);
-        if(devDataJson->valuestring == NULL){
-            continue;
-        }
-        M1_LOG_DEBUG("district:%s\n",devDataJson->valuestring);
-        /*添加区域*/
-        devDataObject = cJSON_CreateObject();
-        if(NULL == devDataObject)
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
         {
-            // create object faild, exit
-            M1_LOG_ERROR("devDataObject NULL\n");
-            cJSON_Delete(devDataObject);
-            ret =  M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
-        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-        cJSON_AddStringToObject(devDataObject, "district", devDataJson->valuestring);
-        /*添加场景*/
-        apInfoArray = cJSON_CreateArray();
-        if(NULL == apInfoArray)
-        {
-            // create object faild, exit
-            M1_LOG_ERROR("apInfoArray NULL\n");
-            cJSON_Delete(apInfoArray);
-            ret =  M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
-        cJSON_AddItemToObject(devDataObject, "apInfo", apInfoArray);
-        /*获取场景*/
-        sprintf(sql,"select distinct AP_ID from district_table where DIS_NAME = \"%s\" and ACCOUNT = \"%s\";",devDataJson->valuestring, account);
-        M1_LOG_DEBUG( "%s\n", sql);
-        sqlite3_finalize(stmt);
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
-        while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
-            apInfoObject = cJSON_CreateObject();
-            if(NULL == apInfoObject)
+    
+        sqlite3_bind_int(stmt, 1, data.clientFd);
+        if(sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            account = sqlite3_column_text(stmt, 0);
+        }
+        if(account == NULL)
+        {
+            M1_LOG_ERROR( "user account do not exist\n");    
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+        else
+        {
+            M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
+        }
+    }
+    /*获取区域信息*/
+    {
+        sql_1 = "select distinct AP_ID from district_table where DIS_NAME = ? and ACCOUNT = ?;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_1);
+
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        sql_2 = "select PID, DEV_NAME from all_dev where DEV_ID = ? order by ID desc limit 1;";
+        M1_LOG_DEBUG("sql_2:%s\n", sql_2);
+
+        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        sql_3 = "select PID, DEV_NAME, DEV_ID from all_dev where AP_ID = ? and ACCOUNT = ?;";
+        M1_LOG_DEBUG("sql_3:%s\n", sql_3);
+
+        if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        for(i = 0; i < number; i++)
+        {
+            devDataJson = cJSON_GetArrayItem(data.pdu, i);
+            if(devDataJson->valuestring == NULL)
+            {
+                continue;
+            }
+            M1_LOG_DEBUG("district:%s\n",devDataJson->valuestring);
+            /*添加区域*/
+            devDataObject = cJSON_CreateObject();
+            if(NULL == devDataObject)
             {
                 // create object faild, exit
-                M1_LOG_ERROR("apInfoObject NULL\n");
-                cJSON_Delete(apInfoObject);
+                M1_LOG_ERROR("devDataObject NULL\n");
+                cJSON_Delete(devDataObject);
                 ret =  M1_PROTOCOL_FAILED;
                 goto Finish;
             }
-            cJSON_AddItemToArray(apInfoArray, apInfoObject);
-            /*apId*/
-            apId = sqlite3_column_text(stmt, 0);
-            if(apId == NULL){
-                ret =  M1_PROTOCOL_FAILED;
-                goto Finish;
-            }
-            M1_LOG_DEBUG( "ap_id:%s\n", apId);
-            cJSON_AddStringToObject(apInfoObject, "apId", apId);
-            /*pId,apName,apId*/
-            sprintf(sql_1,"select PID, DEV_NAME from all_dev where DEV_ID = \"%s\" order by ID desc limit 1;", apId);
-            M1_LOG_DEBUG( "%s\n", sql_1);
-            sqlite3_finalize(stmt_1);
-            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }
-            rc = thread_sqlite3_step(&stmt_1, db);
-            //if(rc != SQLITE_ERROR){
-            if(rc == SQLITE_ROW){
-                pId = sqlite3_column_text(stmt_1, 0);
-                if(pId != NULL)
-                    cJSON_AddStringToObject(apInfoObject, "pId", pId);
-                devName = sqlite3_column_text(stmt_1, 1);
-                if(devName != NULL)
-                    cJSON_AddStringToObject(apInfoObject, "apName", devName);
-            }
-            devArray = cJSON_CreateArray();
-            if(NULL == devArray)
+            cJSON_AddItemToArray(devDataJsonArray, devDataObject);
+            cJSON_AddStringToObject(devDataObject, "district", devDataJson->valuestring);
+            /*添加场景*/
+            apInfoArray = cJSON_CreateArray();
+            if(NULL == apInfoArray)
             {
                 // create object faild, exit
-                M1_LOG_ERROR("devArray NULL\n");
-                cJSON_Delete(devArray);
+                M1_LOG_ERROR("apInfoArray NULL\n");
+                cJSON_Delete(apInfoArray);
                 ret =  M1_PROTOCOL_FAILED;
                 goto Finish;
             }
-            cJSON_AddItemToObject(apInfoObject, "dev", devArray);
-            sprintf(sql_2,"select PID, DEV_NAME, DEV_ID from all_dev where AP_ID = \"%s\" and ACCOUNT = \"%s\";",apId, account);
-            M1_LOG_DEBUG( "%s\n", sql_2);
-            sqlite3_finalize(stmt_2);
-            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }
-            while(thread_sqlite3_step(&stmt_2, db) == SQLITE_ROW){
-                /*添加设备*/
-                devObject = cJSON_CreateObject();
-                if(NULL == devObject)
+            cJSON_AddItemToObject(devDataObject, "apInfo", apInfoArray);
+
+            sqlite3_bind_text(stmt_1, 1, devDataJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt_1, 2, account, -1, NULL);
+            while(sqlite3_step(stmt_1) == SQLITE_ROW)
+            {
+                apInfoObject = cJSON_CreateObject();
+                if(NULL == apInfoObject)
                 {
                     // create object faild, exit
-                    M1_LOG_ERROR("devObject NULL\n");
-                    cJSON_Delete(devObject);
+                    M1_LOG_ERROR("apInfoObject NULL\n");
+                    cJSON_Delete(apInfoObject);
                     ret =  M1_PROTOCOL_FAILED;
                     goto Finish;
                 }
-                cJSON_AddItemToArray(devArray, devObject);
-                pId = sqlite3_column_text(stmt_2, 0);
-                if(pId != NULL)
-                    cJSON_AddStringToObject(devObject, "pId", pId);
-                devName = sqlite3_column_text(stmt_2, 1);
-                if(devName != NULL)
-                    cJSON_AddStringToObject(devObject, "devName", devName);
-                devId = sqlite3_column_text(stmt_2, 2);
-                if(devId != NULL)
-                    cJSON_AddStringToObject(devObject, "devId", devId);
-            }
-        }
+                cJSON_AddItemToArray(apInfoArray, apInfoObject);
+                /*apId*/
+                apId = sqlite3_column_text(stmt_1, 0);
+                if(apId == NULL){
+                    ret =  M1_PROTOCOL_FAILED;
+                    goto Finish;
+                }
+                M1_LOG_DEBUG( "ap_id:%s\n", apId);
+                cJSON_AddStringToObject(apInfoObject, "apId", apId);
+                
+                /*pId,apName,apId*/
+                sqlite3_bind_text(stmt_2, 1, apId, -1, NULL);
+                rc = sqlite3_step(stmt_2);
+                if(rc == SQLITE_ROW)
+                {
+                    pId = sqlite3_column_text(stmt_2, 0);
+                    if(pId != NULL)
+                        cJSON_AddStringToObject(apInfoObject, "pId", pId);
+                    devName = sqlite3_column_text(stmt_2, 1);
+                    if(devName != NULL)
+                        cJSON_AddStringToObject(apInfoObject, "apName", devName);
+                }
 
+                devArray = cJSON_CreateArray();
+                if(NULL == devArray)
+                {
+                    // create object faild, exit
+                    M1_LOG_ERROR("devArray NULL\n");
+                    cJSON_Delete(devArray);
+                    ret =  M1_PROTOCOL_FAILED;
+                    goto Finish;
+                }
+                cJSON_AddItemToObject(apInfoObject, "dev", devArray);
+                
+                sqlite3_bind_text(stmt_3, 1, apId, -1, NULL);
+                sqlite3_bind_text(stmt_3, 2, account, -1, NULL);
+                while(sqlite3_step(stmt_3) == SQLITE_ROW)
+                {
+                    /*添加设备*/
+                    devObject = cJSON_CreateObject();
+                    if(NULL == devObject)
+                    {
+                        // create object faild, exit
+                        M1_LOG_ERROR("devObject NULL\n");
+                        cJSON_Delete(devObject);
+                        ret =  M1_PROTOCOL_FAILED;
+                        goto Finish;
+                    }
+                    cJSON_AddItemToArray(devArray, devObject);
+                    pId = sqlite3_column_text(stmt_3, 0);
+                    if(pId != NULL)
+                        cJSON_AddStringToObject(devObject, "pId", pId);
+                    devName = sqlite3_column_text(stmt_3, 1);
+                    if(devName != NULL)
+                        cJSON_AddStringToObject(devObject, "devName", devName);
+                    devId = sqlite3_column_text(stmt_3, 2);
+                    if(devId != NULL)
+                        cJSON_AddStringToObject(devObject, "devId", devId);
+                }
+
+                sqlite3_reset(stmt_2);
+                sqlite3_clear_bindings(stmt_2);
+                sqlite3_reset(stmt_3);
+                sqlite3_clear_bindings(stmt_3);
+            }
+            sqlite3_reset(stmt_1);
+            sqlite3_clear_bindings(stmt_1);
+        }
     }
 
     char* p = cJSON_PrintUnformatted(pJsonRoot);
@@ -1369,14 +1415,15 @@ int app_req_dis_dev(payload_t data)
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
-    free(sql);
-    free(sql_1);
-    free(sql_2);
-    free(sql_3);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
-    sqlite3_finalize(stmt_2);
-    sqlite3_finalize(stmt_3);
+    if(stmt)
+        sqlite3_finalize(stmt);
+    if(stmt_1)
+        sqlite3_finalize(stmt_1);
+    if(stmt_2)
+        sqlite3_finalize(stmt_2);
+    if(stmt_3)
+        sqlite3_finalize(stmt_3);
+    
     cJSON_Delete(pJsonRoot);
 
     return  ret;
@@ -1386,17 +1433,19 @@ int user_login_handle(payload_t data)
 {
 	M1_LOG_DEBUG("user_login_handle\n");
 
-    int rc,ret = M1_PROTOCOL_OK;
-    int id;
-    char* sql = NULL;
-    char* sql_1 = NULL;
-    char* account = NULL,*key = NULL;
-	cJSON* accountJson = NULL;
-	cJSON* keyJson = NULL;
-	sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL;
-    sqlite3_stmt* stmt_1 = NULL;
-    sqlite3_stmt* stmt_2 = NULL;
+    int rc               = 0;
+    int ret              = M1_PROTOCOL_OK;
+    char *account        = NULL;
+    char *key            = NULL;
+	/*Json*/
+    cJSON *accountJson   = NULL;
+	cJSON *keyJson       = NULL;
+    /*sql*/
+    char *sql            = NULL;
+    char *sql_1          = NULL;
+	sqlite3 *db          = NULL;
+    sqlite3_stmt *stmt   = NULL;
+    sqlite3_stmt *stmt_1 = NULL;
 
     accountJson = cJSON_GetObjectItem(data.pdu, "account");
     M1_LOG_DEBUG("account:%s\n",accountJson->valuestring);
@@ -1405,64 +1454,64 @@ int user_login_handle(payload_t data)
     /*获取数据库*/
     db = data.db;
     /*验证用户信息*/
-    sql = (char*)malloc(300);
-    sprintf(sql,"select KEY from account_table where ACCOUNT = \"%s\";",accountJson->valuestring);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    sql = "select KEY from account_table where ACCOUNT = ?;";
+    sqlite3_bind_text(stmt, 1, accountJson->valuestring, -1, NULL);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-	if(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+	if(sqlite3_step(stmt) == SQLITE_ROW)
+    {
 		key = sqlite3_column_text(stmt, 0);
-	}else{
+	}
+    else
+    {
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
 	}
 
-    if(key == NULL){
+    if(key == NULL)
+    {
             ret = M1_PROTOCOL_FAILED;
             goto Finish;
     }
-	if(strcmp(key,keyJson->valuestring) != 0){
+	if(strcmp(key,keyJson->valuestring) != 0)
+    {
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
 
-	sql_1 = "select ID from account_info order by ID desc limit 1;";
-	id = sql_id(db, sql_1);
-	/*删除重复用户信息*/
-    sprintf(sql,"delete from account_info where ACCOUNT = \"%s\" and CLIENT_FD = %03d;",accountJson->valuestring, data.clientFd);
-    M1_LOG_DEBUG("sql:%s\n",sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt_1, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish; 
+    if(stmt)
+    {
+        sqlite3_finalize(stmt);
+        stmt = NULL;
     }
-	if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
-		account = sqlite3_column_text(stmt_1, 0);
-	}
+
 	/*插入用户信息*/	
-	sql_1 = "insert into account_info(ID,ACCOUNT,CLIENT_FD)values(?,?,?);";
+	sql_1 = "insert or replace into account_info(ACCOUNT,CLIENT_FD)values(?,?);";
     M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_2, NULL) != SQLITE_OK){
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-	sqlite3_bind_int(stmt_2, 1, id);
-    sqlite3_bind_text(stmt_2, 2,  accountJson->valuestring, -1, NULL);
-    sqlite3_bind_int(stmt_2, 3, data.clientFd);
-    rc = thread_sqlite3_step(&stmt_2,db);
-    if(rc == SQLITE_ERROR){
+    sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
+    sqlite3_bind_int(stmt_1, 2, data.clientFd);
+    rc = sqlite3_step(stmt_1);
+    if(rc == SQLITE_ERROR)
+    {
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
 
     Finish:
-    free(sql);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
-    sqlite3_finalize(stmt_2);
+    if(stmt)
+        sqlite3_finalize(stmt);
+    if(stmt_1)
+        sqlite3_finalize(stmt_1);
     
 	return 	ret;
 }
@@ -1472,131 +1521,150 @@ int app_change_user_key(payload_t data)
 {
     M1_LOG_DEBUG("app_change_user_key\n");
     /*sqlite3*/
-    int id;
-    int ret = M1_PROTOCOL_OK;
-    int clientFd;
-    char* key = NULL;
-    char* keyAuth = NULL;
-    char* account = NULL;
-    char* time = (char*)malloc(30);
-    char* sql= (char*)malloc(300);
-    char* sql1 = (char*)malloc(300);
-    sqlite3* db = NULL;
-    sqlite3_stmt* stmt = NULL;
-    sqlite3_stmt* stmt1 = NULL;
-    sqlite3_stmt* stmt2 = NULL;
-    cJSON* KeyJson = NULL;
-    cJSON* newKeyJson = NULL;
+    int ret               = M1_PROTOCOL_OK;
+    int clientFd          = 0;
+    char* key             = NULL;
+    char* keyAuth         = NULL;
+    char* account         = NULL;
+    /*sql*/
+    char* sql             = NULL;
+    char* sql_1           = NULL;
+    char* sql_2           = NULL;
+    sqlite3* db           = NULL;
+    sqlite3_stmt* stmt    = NULL;
+    sqlite3_stmt* stmt_1  = NULL;
+    sqlite3_stmt* stmt_2  = NULL;
+    /*Json*/
+    cJSON* KeyJson        = NULL;
+    cJSON* newKeyJson     = NULL;
     cJSON* confirmKeyJson = NULL;
     
     clientFd = data.clientFd;
-    getNowTime(time);
     KeyJson = cJSON_GetObjectItem(data.pdu, "Key");
-    if(KeyJson == NULL){
+    if(KeyJson == NULL)
+    {
         ret = M1_PROTOCOL_FAILED;
         goto Finish;   
     }
     M1_LOG_DEBUG("Key:%s\n",KeyJson->valuestring);
     newKeyJson = cJSON_GetObjectItem(data.pdu, "newKey");   
-    if(newKeyJson == NULL){
+    if(newKeyJson == NULL)
+    {
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     M1_LOG_DEBUG("newKey:%s\n",newKeyJson->valuestring);
     confirmKeyJson = cJSON_GetObjectItem(data.pdu, "confirmKey");   
-    if(confirmKeyJson == NULL){
+    if(confirmKeyJson == NULL)
+    {
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     M1_LOG_DEBUG("confirmKey:%s\n",confirmKeyJson->valuestring);
-    if(strcmp(confirmKeyJson->valuestring, newKeyJson->valuestring) != 0){
+    if(strcmp(confirmKeyJson->valuestring, newKeyJson->valuestring) != 0)
+    {
         ret = M1_PROTOCOL_FAILED;
         goto Finish;    
     }
     /*获取数据库*/
     db = data.db;
     /*获取用户登录名称*/
-    sprintf(sql1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;", clientFd);
-    M1_LOG_DEBUG( "%s\n", sql1);
-    if(sqlite3_prepare_v2(db, sql1, strlen(sql1), &stmt1, NULL) != SQLITE_OK){
+    sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1";
+    M1_LOG_DEBUG("sql:%s\n", sql);
+
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-    if(thread_sqlite3_step(&stmt1, db) == SQLITE_ERROR){
+    
+    sqlite3_bind_int(stmt, 1, clientFd);
+    if(sqlite3_step(stmt) == SQLITE_ERROR)
+    {
         M1_LOG_ERROR( "SQLITE_ERROR\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    account = sqlite3_column_text(stmt1, 0);
+    account = sqlite3_column_text(stmt, 0);
     if(account == NULL){
         M1_LOG_ERROR( "get account error\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     /*获取账户信息*/
-    sprintf(sql,"select KEY, KEY_AUTH from account_table where account = \"%s\" order by ID desc limit 1;", account);
-    M1_LOG_DEBUG( "%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    sql_1 = "select KEY, KEY_AUTH from account_table where account = ? order by ID desc limit 1;";
+    M1_LOG_DEBUG( "sql_1:%s\n", sql_1);
+    
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-    if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR){
+
+    sqlite3_bind_text(stmt_1, 1, account, -1, NULL);
+    if(sqlite3_step(stmt_1) == SQLITE_ERROR)
+    {
         M1_LOG_ERROR( "SQLITE_ERROR\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    key = sqlite3_column_text(stmt, 0);
+
+    key = sqlite3_column_text(stmt_1, 0);
     if(key == NULL){
         M1_LOG_ERROR( "get key error\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     M1_LOG_DEBUG( "key:%s\n", key);
-    // id = sqlite3_column_int(stmt, 1);
-    // if(id == NULL){
-    //     M1_LOG_ERROR( "get id error\n");
-    //     ret = M1_PROTOCOL_FAILED;
-    //     goto Finish;
-    // }
-    keyAuth = sqlite3_column_text(stmt, 1);
-    if(keyAuth == NULL){
+    
+    keyAuth = sqlite3_column_text(stmt_1, 1);
+    if(keyAuth == NULL)
+    {
         M1_LOG_ERROR( "get keyAuth error\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     /*验证用户修改权限*/
-    if(strcmp(keyAuth, "on") != 0){
+    if(strcmp(keyAuth, "on") != 0)
+    {
         M1_LOG_ERROR( "keyAuth not permitied\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     /*验证密码是否匹配*/
-    if(strcmp(key, KeyJson->valuestring) != 0){
+    if(strcmp(key, KeyJson->valuestring) != 0)
+    {
         M1_LOG_ERROR( "key not match\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    sprintf(sql,"update account_table set KEY = \"%s\" where account = \"%s\";",newKeyJson->valuestring, account);
-    M1_LOG_DEBUG( "%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt2, NULL) != SQLITE_OK){
+    
+    sql_2 = "update account_table set KEY = ? where account = ?;";
+    M1_LOG_DEBUG("sql_2:%s\n", sql_2);
+    if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-    if(thread_sqlite3_step(&stmt2, db) == SQLITE_ERROR){
+
+    sqlite3_bind_text(stmt_2, 1, newKeyJson->valuestring, -1, NULL);
+    sqlite3_bind_text(stmt_2, 2, account, -1, NULL);
+    if(sqlite3_step(stmt_2) == SQLITE_ERROR)
+    {
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
 
     Finish:
-    free(time);
-    free(sql);
-    free(sql1);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt1);
-    sqlite3_finalize(stmt2);
+    if(stmt)
+        sqlite3_finalize(stmt);
+    if(stmt_1)
+    sqlite3_finalize(stmt_1);
+    if(stmt_2)
+        sqlite3_finalize(stmt_2);
 
     return ret; 
 }
