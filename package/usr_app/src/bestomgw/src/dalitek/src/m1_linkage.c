@@ -478,16 +478,18 @@ int linkage_msg_handle(payload_t data)
 
 void linkage_task(void)
 {
-	int rc, rc1;
-	uint32_t rowid;
-	char* sql = NULL;
-    sqlite3_stmt* stmt = NULL;
-	char *exec_type = NULL,*exec_id = NULL, *link_name =  NULL;
-    //while(1){
+	int rc             = 0;
+	int rc1            = 0;
+	uint32_t rowid     = 0;
+	char *exec_type    = NULL;
+	char *exec_id      = NULL;
+	char *link_name    = NULL;
+	char *sql          = NULL;
+    sqlite3_stmt *stmt = NULL;
+
     rc1 = fifo_read(&link_exec_fifo, &rowid);
     if(rc1 > 0)
-    {
-		//rc = sqlite3_open(db_path, &db);  
+    { 
 		rc = sql_open();
 		if(rc){  
 		    M1_LOG_ERROR( "Can't open database: %s\n", sqlite3_errmsg(db));  
@@ -538,13 +540,18 @@ static char* linkage_status(char* condition, int threshold, int value)
 {	
 	char* status = "OFF";
 
-	if (0 == strcmp(condition, "<=")){ 
+	if (0 == strcmp(condition, "<="))
+	{ 
 		if(value <= threshold)
 			status = "ON";
-	}else if(strcmp(condition, "=") == 0){
+	}
+	else if(strcmp(condition, "=") == 0)
+	{
 		if(value == threshold)
 			status = "ON";
-	}else{
+	}
+	else
+	{
 		if(value >= threshold)
 			status = "ON";
 	}
@@ -556,152 +563,309 @@ static char* linkage_status(char* condition, int threshold, int value)
 static void linkage_check(sqlite3* db, char* link_name)
 {
 	M1_LOG_DEBUG("linkage_check\n");
-	sqlite3_stmt* stmt = NULL;
-	int link_flag = 1, rc, rowid;
-	char *status, *logical;
-	char sql[200];
+	int link_flag        = 1;
+	int rc               = 0;
+	int rowid            = 0;
+	char *status         = NULL;
+	char *logical        = NULL;
+	char* errorMsg       = NULL;
+	char* sql            = NULL;
+	char* sql_1          = NULL;
+	char* sql_2          = NULL;
+	sqlite3_stmt* stmt   = NULL;
+	sqlite3_stmt* stmt_1 = NULL;
+	sqlite3_stmt* stmt_2 = NULL;
 
-	sprintf(sql,"select STATUS, LOGICAL from link_trigger_table where LINK_NAME = \"%s\";",link_name);
+	sql = "select STATUS, LOGICAL from link_trigger_table where LINK_NAME = ?;";
 	M1_LOG_DEBUG("sql:%s\n",sql);
-	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+
+	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+	{
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         goto Finish; 
     }
-	while(thread_sqlite3_step(&stmt,db) == SQLITE_ROW){
+
+    sqlite3_bind_text(stmt, 1, link_name, -1, NULL);
+	while(sqlite3_step(stmt) == SQLITE_ROW)
+	{
 		status = sqlite3_column_text(stmt,0);
 		logical = sqlite3_column_text(stmt,1);
-		if((strcmp(logical, "&") == 0)){
-			if((strcmp(status, "OFF") == 0)){
+		if((strcmp(logical, "&") == 0))
+		{
+			if((strcmp(status, "OFF") == 0))
+			{
 				link_flag = 0;
 				break;
 			}
-		}else{
-			if((strcmp(status, "ON") == 0)){
+		}
+		else
+		{
+			if((strcmp(status, "ON") == 0))
+			{
 				link_flag = 1;
 				break;
 			}
 		}
+		sqlite3_reset(stmt);
+		sqlite3_clear_bindings(stmt);
 	}
+
+	if(stmt)
+	{
+		sqlite3_finalize(stmt);
+		stmt = NULL;
+	}
+
 	M1_LOG_DEBUG("link_flag:%d\n",link_flag);
-	if(link_flag){
-		/*执行设备*/
-		sprintf(sql,"update linkage_table set STATUS = \"ON\" where LINK_NAME = \"%s\";", link_name);
-		sqlite3_finalize(stmt);
-		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+
+	if(link_flag)
+	{
+		//if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+		//{
+			/*执行设备*/
+			sql_1 = "update linkage_table set STATUS = ? where LINK_NAME = ?;";
+		    M1_LOG_DEBUG("sql_1:%s\n",sql_1);	
+		    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+		    {
+	            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	            goto Finish; 
+	        }
+
+	    	sqlite3_bind_text(stmt_1, 1, "ON", -1, NULL);
+	    	sqlite3_bind_text(stmt_1, 2, link_name, -1, NULL);
+			rc = sqlite3_step(stmt_1);
+			M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+	                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+	                
+	        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+	        {
+	            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+	        }
+			
+			if(stmt_1)
+			{
+				sqlite3_finalize(stmt_1);
+				stmt_1 = NULL;
+			}
+			
+			// rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+   //      	if(rc == SQLITE_OK)
+   //      	{
+   //      	    M1_LOG_DEBUG("COMMIT OK\n");
+   //      	}
+   //      	else if(rc == SQLITE_BUSY)
+   //      	{
+   //      	    M1_LOG_WARN("等待再次提交\n");
+   //      	}
+   //      	else
+   //      	{
+   //      	    M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
+   //      	    sqlite3_free(errorMsg);
+   //      	}
+
+   //  	}
+   //  	else
+   //  	{
+   //  	    M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+   //  	    sqlite3_free(errorMsg);
+    	// }
+
+		sql_2 = "select rowid from linkage_table where LINK_NAME = ?";
+		M1_LOG_DEBUG("sql_2:%s\n",sql_2);
+		if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+		{
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
     	    goto Finish; 
     	}
-		rc = thread_sqlite3_step(&stmt, db);
-		
-		sprintf(sql,"select rowid from linkage_table where LINK_NAME = \"%s\";", link_name);
-		sqlite3_finalize(stmt);
-		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-    	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-    	    goto Finish; 
-    	}
-		rc = thread_sqlite3_step(&stmt, db);
-		if(rc == SQLITE_ROW){
-			rowid = sqlite3_column_int(stmt,0);
+    	sqlite3_bind_text(stmt_2, 1, rowid, -1, NULL);
+		rc = sqlite3_step(stmt_2);
+		if(rc == SQLITE_ROW)
+		{
+			rowid = sqlite3_column_int(stmt_2,0);
 			M1_LOG_DEBUG("rowid:%d\n",rowid);
 			fifo_write(&link_exec_fifo, rowid);
 		}
+
+		if(stmt_2)
+		{
+			sqlite3_finalize(stmt_2);
+			stmt_2 = NULL;
+		}
 	}
+
 	Finish:
-	sqlite3_finalize(stmt);
+	if(stmt)
+		sqlite3_finalize(stmt);
+	if(stmt_1)
+		sqlite3_finalize(stmt_1);
+	if(stmt_2)
+		sqlite3_finalize(stmt_2);
 
 }
 
 int trigger_cb_handle(sqlite3* db)
 {
-	int rc,rc1;
-	int value, param_type, threshold;
-	uint32_t rowid;
-	char* devId = NULL, *condition = NULL, *status = NULL, *link_name = NULL;
-	char* sql = NULL, *sql_1 = NULL, *sql_2 = NULL;
-	sqlite3_stmt* stmt = NULL,*stmt_1 = NULL, *stmt_2 = NULL;
+	int rc               = 0;
+	int rc1              = 0;
+	int value            = 0;
+	int param_type       = 0;
+	int threshold        = 0;
+	uint32_t rowid       = 0;
+	char *devId          = NULL;
+	char *condition      = NULL;
+	char *status         = NULL;
+	char *link_name      = NULL;
+	char *errorMsg       = NULL;
+	char *sql            = NULL;
+	char *sql_1          = NULL;
+	char *sql_2          = NULL;
+	char *sql_3          = NULL;
+	sqlite3_stmt *stmt   = NULL;
+	sqlite3_stmt *stmt_1 = NULL;
+	sqlite3_stmt *stmt_2 = NULL;
+	sqlite3_stmt *stmt_3 = NULL;
 
    	rc1 = fifo_read(&dev_data_fifo, &rowid);
-   	if(rc1 > 0){
+   	if(rc1 > 0)
+   	{
 	   	M1_LOG_DEBUG("trigger_cb_handle\n");
-	   	sql = (char*)malloc(300);
-	   	sql_1 = (char*)malloc(300);
-	   	sql_2 = (char*)malloc(300);
 
 	   	/*失使能表更新回调*/
 	   	rc = sqlite3_update_hook(db, NULL, NULL);
 	    if(rc){
 	        M1_LOG_DEBUG( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
 	    }
-
-	    do{
-	    	/*check linkage table*/
-			sprintf(sql,"select VALUE, DEV_ID, TYPE from param_table where rowid = %05d;",rowid);
-			M1_LOG_DEBUG("sql:%s\n",sql);
-
-			sqlite3_finalize(stmt);
-			if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+	    /*check linkage table*/
+	    {
+	    	sql = "select VALUE, DEV_ID, TYPE from param_table where rowid = ?;";
+	    	M1_LOG_DEBUG("sql:%s\n",sql);
+	    	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+	    	{
     		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
     		    goto Finish; 
     		}
-			rc = thread_sqlite3_step(&stmt, db);
-			if(rc == SQLITE_ROW){
+	    }
+	    /*检查设备启/停状态*/
+	    {
+	    	sql_1 = "select STATUS from all_dev where DEV_ID = ?;";
+	    	M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+	    	if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+	    	{
+    		    M1_LOG_ERROR("sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    		    goto Finish; 
+    		}
+	    }
+	    /*get linkage table*/
+	    {
+	    	sql_2 = "select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = ? and TYPE = ?";
+	    	M1_LOG_DEBUG("sql_2:%s\n",sql_2);
+	    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+	    	{
+    		    M1_LOG_ERROR("sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    		    goto Finish; 
+    		}
+	    }
+	    /*set linkage table*/
+	    {
+	    	sql_3 = "update link_trigger_table set STATUS = ? where DEV_ID = ? and TYPE = ? and LINK_NAME = ? ;";
+	    	M1_LOG_DEBUG("sql_3:%s\n",sql_3);
+	    	if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+	    	{
+    		    M1_LOG_ERROR("sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    		    goto Finish; 
+    		}	
+	    }
+
+	    do{
+	    	/*check linkage table*/
+			sqlite3_bind_int(stmt, 1, rowid);
+			rc = sqlite3_step(stmt);
+			if(rc == SQLITE_ROW)
+			{
 			    value = sqlite3_column_int(stmt,0);
 			    devId = sqlite3_column_text(stmt,1);
 			    param_type = sqlite3_column_int(stmt,2);
 			    M1_LOG_DEBUG("value:%05d, devId:%s, param_type%05d:\n",value, devId, param_type);
+			 	
 			 	/*检查设备启/停状态*/
-			 	sprintf(sql_1,"select STATUS from all_dev where DEV_ID = \"%s\";",devId);
-			 	M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-			 	sqlite3_finalize(stmt_1);
-			 	if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-    			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-    			    goto Finish; 
-    			}
-			 	rc = thread_sqlite3_step(&stmt_1, db);
-				if(rc == SQLITE_ROW){		
+    			sqlite3_bind_text(stmt_1, 1, devId, -1, NULL);
+			 	rc = sqlite3_step(stmt_1);
+				if(rc == SQLITE_ROW)
+				{		
 			    	status = sqlite3_column_text(stmt_1,0);
 				    /*设备处于启动状态*/
-				    if(strcmp(status,"ON") == 0){
+				    if(strcmp(status,"ON") == 0)
+				    {
 					    /*get linkage table*/
-					    sprintf(sql_1,"select THRESHOLD,CONDITION,LINK_NAME from link_trigger_table where DEV_ID = \"%s\" and TYPE = %05d;",devId,param_type);
-						M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-						sqlite3_finalize(stmt_1);
-						if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-    					    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-    					    goto Finish; 
-    					}
-						while(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
-							threshold = sqlite3_column_int(stmt_1,0);
-					        condition = sqlite3_column_text(stmt_1,1);
-					        link_name = sqlite3_column_text(stmt_1,2);
-					        M1_LOG_DEBUG("threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
-					 		status = linkage_status(condition, threshold, value);
-					 		/*set linkage table*/
-					 		sprintf(sql_2,"update link_trigger_table set STATUS = \"%s\" where DEV_ID = \"%s\" and TYPE = %05d and LINK_NAME = \"%s\" ;",status,devId,param_type,link_name);
-					 		M1_LOG_DEBUG("sql_2:%s\n",sql_2);
-					 		sqlite3_finalize(stmt_2);
-							if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-    						    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-    						    goto Finish; 
-    						}
-							rc = thread_sqlite3_step(&stmt_2, db);
-							M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-							/*检查是否满足触发条件*/
-							linkage_check(db, link_name);
+    					sqlite3_bind_text(stmt_2, 1, devId, -1, NULL);
+    					sqlite3_bind_int(stmt_2, 2, param_type);
+						while(sqlite3_step(stmt_2) == SQLITE_ROW)
+						{
+							if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    						{
+								threshold = sqlite3_column_int(stmt_2,0);
+						        condition = sqlite3_column_text(stmt_2,1);
+						        link_name = sqlite3_column_text(stmt_2,2);
+						        M1_LOG_DEBUG("threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
+						 		status = linkage_status(condition, threshold, value);
+						 		/*set linkage table*/
+	    						sqlite3_bind_text(stmt_3, 1, status, -1, NULL);
+	    						sqlite3_bind_text(stmt_3, 2, devId, -1, NULL);
+	    						sqlite3_bind_int(stmt_3, 3, param_type);
+	    						sqlite3_bind_text(stmt_3, 4, link_name, -1, NULL);
+								rc = sqlite3_step(stmt_3);
+								M1_LOG_DEBUG("step() return %s, number:%03d\n", \
+									rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+								/*检查是否满足触发条件*/
+								linkage_check(db, link_name);
+					 		
+						 		sqlite3_reset(stmt_3);
+			 					sqlite3_clear_bindings(stmt_3);
+
+			 					rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+						        if(rc == SQLITE_OK)
+						        {
+						            M1_LOG_DEBUG("COMMIT OK\n");
+						        }
+						        else if(rc == SQLITE_BUSY)
+						        {
+						            M1_LOG_WARN("等待再次提交\n");
+						        }
+						        else
+						        {
+						            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
+						            sqlite3_free(errorMsg);
+						        }
+
+						    }
+						    else
+						    {
+						        M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+						        sqlite3_free(errorMsg);
+						    }
 					 	}
+					 	sqlite3_reset(stmt_2);
+		 				sqlite3_clear_bindings(stmt_2);
 				 	}
-			 	}	
+			 	}
+			 	sqlite3_reset(stmt_1);
+		 		sqlite3_clear_bindings(stmt_1);	
 		 	}
+		 	sqlite3_reset(stmt);
+		 	sqlite3_clear_bindings(stmt);
+
 	    	rc1 = fifo_read(&dev_data_fifo, &rowid);
 	    }while(rc1 > 0);
 
-		    Finish:
-		    free(sql);
-		    free(sql_1);
-		    free(sql_2);
-		    sqlite3_finalize(stmt);
-		 	sqlite3_finalize(stmt_1);
-		 	sqlite3_finalize(stmt_2);
+		Finish:
+		if(stmt)
+			sqlite3_finalize(stmt);
+		if(stmt_1)
+			sqlite3_finalize(stmt_1);
+		if(stmt_2)
+			sqlite3_finalize(stmt_2);
+		if(stmt_3)
+			sqlite3_finalize(stmt_3);
    }
  
 }
