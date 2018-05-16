@@ -753,19 +753,24 @@ int app_account_config_handle(payload_t data)
 int app_req_dis_name(payload_t data)
 {
     M1_LOG_DEBUG("app_req_dis_name\n"); 
-    int pdu_type = TYPE_M1_REPORT_DIS_NAME;
-    int rc,ret = M1_PROTOCOL_OK;
-    char* district = NULL, *dis_pic = NULL;
-    char* sql = (char*)malloc(300);
-    char* sql_1 = (char*)malloc(300);
-    char* sql_2 = (char*)malloc(300);
-    cJSON * pJsonRoot = NULL; 
-    cJSON * pduJsonObject = NULL;
-    cJSON * devDataObject= NULL;
-    cJSON * districtObject= NULL;
-    cJSON * devDataJsonArray = NULL;
-    sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
+    int pdu_type            = TYPE_M1_REPORT_DIS_NAME;
+    int rc                  = 0;
+    int ret                 = M1_PROTOCOL_OK;
+    char *district          = NULL;
+    char *dis_pic           = NULL;
+    char *account           = NULL;
+    char *sql               = NULL;
+    char *sql_1             = NULL;
+    char *sql_2             = NULL;
+    cJSON *pJsonRoot        = NULL; 
+    cJSON *pduJsonObject    = NULL;
+    cJSON *devDataObject    = NULL;
+    cJSON *districtObject   = NULL;
+    cJSON *devDataJsonArray = NULL;
+    sqlite3 *db             = NULL;
+    sqlite3_stmt *stmt      = NULL;
+    sqlite3_stmt *stmt_1    = NULL;
+    sqlite3_stmt *stmt_2    = NULL;
 
     db = data.db;
     /*get sql data json*/
@@ -805,35 +810,59 @@ int app_req_dis_name(payload_t data)
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
     /*获取用户账户信息*/
-    char* account = NULL;
-    sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
-    M1_LOG_DEBUG( "%s\n", sql_1);
-    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+    sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
+    M1_LOG_DEBUG( "%s\n", sql);
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-    if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
-        account =  sqlite3_column_text(stmt_1, 0);
+
+    sqlite3_bind_int(stmt, 1, data.clientFd);
+    if(sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        account = sqlite3_column_text(stmt_1, 0);
     }
-    if(account == NULL){
+    if(account == NULL)
+    {
         M1_LOG_ERROR( "user account do not exist\n");    
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
-    }else{
+    }
+    else
+    {
         M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
     }
 
     /*获取项目信息*/
-    sprintf(sql,"select distinct DIS_NAME from district_table where ACCOUNT = \"%s\";",account);
-    M1_LOG_DEBUG("sql:%s\n", sql);
-    sqlite3_finalize(stmt);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish; 
+    {
+        sql_1 = "select distinct DIS_NAME from district_table where ACCOUNT = ?;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_1);
+
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
     }
-    while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+    /*获取区域名称*/
+    {
+        sql_2 = "select DIS_PIC from district_table where DIS_NAME = ? order by ID desc limit 1;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_2);
+
+        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+    }
+
+    sqlite3_bind_text(stmt_1, 1, account, -1, NULL);
+    while(sqlite3_step(stmt_1) == SQLITE_ROW)
+    {
         districtObject = cJSON_CreateObject();
         if(NULL == districtObject)
         {
@@ -852,26 +881,27 @@ int app_req_dis_name(payload_t data)
         }
         M1_LOG_DEBUG("district:%s\n", district);
         cJSON_AddStringToObject(districtObject, "disName", district);
-        sprintf(sql_2,"select DIS_PIC from district_table where DIS_NAME = \"%s\" order by ID desc limit 1;", district);
-        M1_LOG_DEBUG("sql:%s\n", sql_2);
-        sqlite3_finalize(stmt_2);
-        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish; 
-        }
-        rc = thread_sqlite3_step(&stmt_2, db);
+       
+        sqlite3_bind_text(stmt_2, 1, district, -1, NULL);
+        rc = sqlite3_step(stmt_2);
         if(rc != SQLITE_ROW){
+            sqlite3_reset(stmt_2);
+            sqlite3_clear_bindings(stmt_2);
             continue;
         }
         dis_pic = sqlite3_column_text(stmt_2, 0);
         if(dis_pic == NULL){
+            sqlite3_reset(stmt_2);
+            sqlite3_clear_bindings(stmt_2);
             continue;
         }
         M1_LOG_DEBUG("dis_pic:%s\n", dis_pic);
         cJSON_AddStringToObject(districtObject, "disPic", dis_pic);
         //districtObject = cJSON_CreateString(district);
         cJSON_AddItemToArray(devDataJsonArray, districtObject);
+
+        sqlite3_reset(stmt_2);
+        sqlite3_clear_bindings(stmt_2);
     }
 
     char* p = cJSON_PrintUnformatted(pJsonRoot);
@@ -886,12 +916,13 @@ int app_req_dis_name(payload_t data)
     M1_LOG_DEBUG("string:%s\n",p);
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
     Finish:
-    free(sql);
-    free(sql_1);
-    free(sql_2);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
-    sqlite3_finalize(stmt_2);
+    if(stmt)
+        sqlite3_finalize(stmt);
+    if(stmt_1)
+        sqlite3_finalize(stmt_1);
+    if(stmt_2)
+        sqlite3_finalize(stmt_2);
+    
     cJSON_Delete(pJsonRoot);
 
     return  ret;
@@ -901,22 +932,28 @@ int app_req_dis_scen_name(payload_t data)
 {
     M1_LOG_DEBUG("app_req_dis_scen_name\n"); 
 
-    int pduType = TYPE_M1_REPORT_DIS_SCEN_NAME;
-    int number, i;
-    int rc, ret = M1_PROTOCOL_OK;
-    char* scenario = NULL, *scen_pic = NULL;
-    char* sql = (char*)malloc(300);
-    char* sql_1 = (char*)malloc(300);
-    char* sql_2 = (char*)malloc(300);
-    cJSON* devDataJson = NULL;
-    cJSON* pJsonRoot = NULL;
-    cJSON* pduJsonObject = NULL;
-    cJSON* devDataJsonArray = NULL;
-    cJSON* devDataObject = NULL;
-    cJSON* scenArray = NULL;
-    cJSON* scenJson = NULL;
-    sqlite3* db = NULL;
-    sqlite3_stmt *stmt = NULL,*stmt_1 = NULL,*stmt_2 = NULL;
+    int pduType             = TYPE_M1_REPORT_DIS_SCEN_NAME;
+    int number              = 0;
+    int i                   = 0;
+    int rc                  = 0;
+    int ret                 = M1_PROTOCOL_OK;
+    char *scenario          = NULL;
+    char *scen_pic          = NULL;
+    char *account           = NULL;
+    char *sql               = NULL;
+    char *sql_1             = NULL;
+    char *sql_2             = NULL;
+    cJSON *devDataJson      = NULL;
+    cJSON *pJsonRoot        = NULL;
+    cJSON *pduJsonObject    = NULL;
+    cJSON *devDataJsonArray = NULL;
+    cJSON *devDataObject    = NULL;
+    cJSON *scenArray        = NULL;
+    cJSON *scenJson         = NULL;
+    sqlite3 *db             = NULL;
+    sqlite3_stmt *stmt      = NULL;
+    sqlite3_stmt *stmt_1    = NULL;
+    sqlite3_stmt *stmt_2    = NULL;
 
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -963,97 +1000,129 @@ int app_req_dis_scen_name(payload_t data)
     M1_LOG_DEBUG("number:%d\n",number);
 
     /*获取用户账户信息*/
-    char* account = NULL;
-    sprintf(sql_1,"select ACCOUNT from account_info where CLIENT_FD = %03d order by ID desc limit 1;",data.clientFd);
-    M1_LOG_DEBUG( "%s\n", sql_1);
-    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish; 
-    }
-    if(thread_sqlite3_step(&stmt_1, db) == SQLITE_ROW){
-        account =  sqlite3_column_text(stmt_1, 0);
-    }
-    if(account == NULL){
-        M1_LOG_ERROR( "user account do not exist\n");    
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }else{
-        M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
-    }
-
-    for(i = 0; i < number; i++){
-        devDataJson = cJSON_GetArrayItem(data.pdu, i);
-        M1_LOG_DEBUG("district:%s\n",devDataJson->valuestring);
-        /*添加区域*/
-        devDataObject = cJSON_CreateObject();
-        if(NULL == devDataObject)
+    {
+        sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
+        M1_LOG_DEBUG("sql:%s\n", sql);
+    
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
         {
-            // create object faild, exit
-            M1_LOG_ERROR("devDataObject NULL\n");
-            cJSON_Delete(devDataObject);
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
-        cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-        cJSON_AddStringToObject(devDataObject, "district", devDataJson->valuestring);
-        /*添加场景*/
-        scenArray = cJSON_CreateArray();
-        if(NULL == scenArray)
-        {
-            // create object faild, exit
-            M1_LOG_ERROR("scenArray NULL\n");
-            cJSON_Delete(scenArray);
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish;
-        }
-        cJSON_AddItemToObject(devDataObject, "scenario", scenArray);
-        /*获取场景*/
-        sprintf(sql,"select distinct SCEN_NAME from scenario_table where DISTRICT = \"%s\" and ACCOUNT = \"%s\";",devDataJson->valuestring, account);
-        M1_LOG_DEBUG( "%s\n", sql);
-        sqlite3_finalize(stmt);
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
-        while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
 
-            scenJson = cJSON_CreateObject();
-            if(NULL == scenJson)
+        sqlite3_bind_int(stmt, 1, data.clientFd);
+
+        if(sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            account =  sqlite3_column_text(stmt_1, 0);
+        }
+        if(account == NULL)
+        {
+            M1_LOG_WARN( "user account do not exist\n");    
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+        else
+        {
+            M1_LOG_WARN("clientFd:%03d,account:%s\n",data.clientFd, account);
+        }
+    }
+
+    /*查询场景信息*/
+    {
+        sql_1 = "select distinct SCEN_NAME from scenario_table where DISTRICT = ? and ACCOUNT = ?;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_1);
+
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        sql_2 = "select SCEN_PIC from scenario_table where SCEN_NAME = ? order by ID desc limit 1;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_2);
+
+        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        for(i = 0; i < number; i++)
+        {
+            devDataJson = cJSON_GetArrayItem(data.pdu, i);
+            M1_LOG_DEBUG("district:%s\n",devDataJson->valuestring);
+            /*添加区域*/
+            devDataObject = cJSON_CreateObject();
+            if(NULL == devDataObject)
             {
                 // create object faild, exit
                 M1_LOG_ERROR("devDataObject NULL\n");
-                cJSON_Delete(scenJson);
+                cJSON_Delete(devDataObject);
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
-            /*添加场景名称到组中*/
-            scenario = sqlite3_column_text(stmt, 0);
-            if(scenario == NULL){
+            cJSON_AddItemToArray(devDataJsonArray, devDataObject);
+            cJSON_AddStringToObject(devDataObject, "district", devDataJson->valuestring);
+            /*添加场景*/
+            scenArray = cJSON_CreateArray();
+            if(NULL == scenArray)
+            {
+                // create object faild, exit
+                M1_LOG_ERROR("scenArray NULL\n");
+                cJSON_Delete(scenArray);
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
-            M1_LOG_DEBUG( "scenario:%s\n", scenario);
-            cJSON_AddStringToObject(scenJson, "scenName", scenario);
-            /*添加场景标识到组中*/
-            sprintf(sql_2,"select SCEN_PIC from scenario_table where SCEN_NAME = \"%s\" order by ID desc limit 1;", scenario);
-            sqlite3_finalize(stmt_2);
-            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }
-            rc = thread_sqlite3_step(&stmt_2, db);
-            if(rc != SQLITE_ROW)
-                continue;
-            scen_pic = sqlite3_column_text(stmt_2, 0);
-            M1_LOG_DEBUG( "scen_pic:%s\n", scen_pic);
-            cJSON_AddStringToObject(scenJson, "scenPic", scen_pic);
+            cJSON_AddItemToObject(devDataObject, "scenario", scenArray);
+            /*获取场景*/
+        
+            sqlite3_bind_text(stmt_1, 1, devDataJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt_1, 2, account, -1, NULL);
 
-            cJSON_AddItemToArray(scenArray, scenJson);
+            while(sqlite3_step(stmt_1) == SQLITE_ROW)
+            {
+                scenJson = cJSON_CreateObject();
+                if(NULL == scenJson)
+                {
+                    // create object faild, exit
+                    M1_LOG_ERROR("devDataObject NULL\n");
+                    cJSON_Delete(scenJson);
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish;
+                }
+                /*添加场景名称到组中*/
+                scenario = sqlite3_column_text(stmt, 0);
+                if(scenario == NULL){
+                    ret = M1_PROTOCOL_FAILED;
+                    goto Finish;
+                }
+                M1_LOG_DEBUG( "scenario:%s\n", scenario);
+                cJSON_AddStringToObject(scenJson, "scenName", scenario);
+                
+                sqlite3_bind_text(stmt_2, 1, scenario, -1, NULL);
+                rc = sqlite3_step(stmt_2);
+                if(rc != SQLITE_ROW)
+                {
+                    sqlite3_reset(stmt_2);
+                    sqlite3_clear_bindings(stmt_2);
+                    continue;
+                }
+                scen_pic = sqlite3_column_text(stmt_2, 0);
+                M1_LOG_DEBUG( "scen_pic:%s\n", scen_pic);
+                cJSON_AddStringToObject(scenJson, "scenPic", scen_pic);
+
+                cJSON_AddItemToArray(scenArray, scenJson);
+
+                sqlite3_reset(stmt_2);
+                sqlite3_clear_bindings(stmt_2);
+            }
+            sqlite3_reset(stmt_1);
+            sqlite3_clear_bindings(stmt_1);
         }
-
     }
 
     char* p = cJSON_PrintUnformatted(pJsonRoot);
@@ -1068,12 +1137,13 @@ int app_req_dis_scen_name(payload_t data)
     socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
     
     Finish:
-    free(sql);
-    free(sql_1);
-    free(sql_2);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
-    sqlite3_finalize(stmt_2);
+    if(stmt)
+        sqlite3_finalize(stmt);
+    if(stmt_1)
+        sqlite3_finalize(stmt_1);
+    if(stmt_2)
+        sqlite3_finalize(stmt_2);
+
     cJSON_Delete(pJsonRoot);
 
     return  ret;
