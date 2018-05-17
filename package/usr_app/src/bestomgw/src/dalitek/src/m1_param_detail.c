@@ -69,8 +69,12 @@ int app_set_param_descrip(payload_t data)
         goto Finish; 
     }
 
-    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
-    {
+    // if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    // {
+        sqlite3_bind_text(stmt, 1, devIdJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt, 2, typeJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt, 3, valueJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt, 4, descripJson->valuestring, -1, NULL);
         rc = sqlite3_step(stmt);
         M1_LOG_DEBUG("step() return %s, number:%03d\n",\
             rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
@@ -80,27 +84,27 @@ int app_set_param_descrip(payload_t data)
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
+        // rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        // if(rc == SQLITE_OK)
+        // {
+        //     M1_LOG_DEBUG("COMMIT OK\n");
+        // }
+        // else if(rc == SQLITE_BUSY)
+        // {
+        //     M1_LOG_WARN("等待再次提交\n");
+        // }
+        // else
+        // {
+        //     M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
+        //     sqlite3_free(errorMsg);
+        // }
 
-    }
-    else
-    {
-        M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
-        sqlite3_free(errorMsg);
-    }   
+    // }
+    // else
+    // {
+    //     M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+    //     sqlite3_free(errorMsg);
+    // }   
 
     Finish:
     if(stmt)
