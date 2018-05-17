@@ -65,12 +65,14 @@ int app_req_account_info_handle(payload_t data)
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
     M1_LOG_DEBUG("%s\n", sql);
 
-    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
+    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
         ret = M1_PROTOCOL_FAILED; 
         goto Finish; 
     }
-    while(sqlite3_step(stmt) == SQLITE_ROW){
+    while(sqlite3_step(stmt) == SQLITE_ROW)
+    {
 	    /*create pdu object*/	    
 	    account = sqlite3_column_text(stmt,0);
 	    M1_LOG_DEBUG("account:%s\n",account);
@@ -1042,7 +1044,7 @@ int app_req_dis_scen_name(payload_t data)
         }
 
         sql_2 = "select SCEN_PIC from scenario_table where SCEN_NAME = ? order by ID desc limit 1;";
-        M1_LOG_DEBUG("sql_1:%s\n", sql_2);
+        M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 
         if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
         {

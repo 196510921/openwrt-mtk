@@ -369,8 +369,8 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
     sqlite3_stmt* stmt = NULL;
     
     /*更新设备气筒信息*/
-    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
-    {
+    // if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    // {
         sql = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE) values\
         ((select DEV_NAME from all_dev where DEV_ID = ? order by ID desc limit 1),?,?,?)";
         M1_LOG_DEBUG("sql:%s\n",sql);
@@ -395,27 +395,27 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
+    //     rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+    //     if(rc == SQLITE_OK)
+    //     {
+    //         M1_LOG_DEBUG("COMMIT OK\n");
+    //     }
+    //     else if(rc == SQLITE_BUSY)
+    //     {
+    //         M1_LOG_WARN("等待再次提交\n");
+    //     }
+    //     else
+    //     {
+    //         M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
+    //         sqlite3_free(errorMsg);
+    //     }
 
-    }
-    else
-    {
-        M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
-        sqlite3_free(errorMsg);
-    } 
+    // }
+    // else
+    // {
+    //     M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+    //     sqlite3_free(errorMsg);
+    // } 
     
 
     Finish:

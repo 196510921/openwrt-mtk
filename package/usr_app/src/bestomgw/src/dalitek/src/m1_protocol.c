@@ -952,7 +952,8 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
           order by ID desc limit 1;";
     M1_LOG_DEBUG("%s\n", sql);
 
-    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
+    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
@@ -1219,6 +1220,10 @@ static int APP_echo_dev_info_handle(payload_t data)
                     devArrayJson = cJSON_GetArrayItem(devDataJson, j);
                     M1_LOG_DEBUG("  devId:%s\n",devArrayJson->valuestring);
 
+                    sqlite3_bind_int(stmt, 0, 1);
+                    sqlite3_bind_text(stmt, 1, "ON", -1, NULL);
+                    sqlite3_bind_text(stmt, 2, devArrayJson->valuestring, -1, NULL);
+                    sqlite3_bind_text(stmt, 3, APIdJson->valuestring, -1, NULL);
                     rc = sqlite3_step(stmt);   
                     M1_LOG_DEBUG("step() return %s, number:%03d\n",\
                         rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
@@ -2334,6 +2339,9 @@ void delete_account_conn_info(int clientFd)
             rc = sqlite3_step(stmt);
             M1_LOG_DEBUG("step() return %s\n", \
                 rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+            
+            if(stmt)
+                sqlite3_finalize(stmt);
         }
 
         {
@@ -2673,9 +2681,12 @@ int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
 
 static int create_sql_table(void)
 {
-    char* sql = (char*)malloc(600);
-    int rc,ret = M1_PROTOCOL_OK;
-    char* errmsg = NULL;
+    char* sql          = NULL;
+    int rc             = 0;
+    int ret            = M1_PROTOCOL_OK;
+    char *mac_addr     = NULL;
+    char *errmsg       = NULL;
+    sqlite3_stmt *stmt = NULL;
 
     sqlite3* db = 0;
     rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
@@ -2687,125 +2698,503 @@ static int create_sql_table(void)
         M1_LOG_DEBUG( "Opened database successfully\n");  
     }
     /*account_info*/
-    sprintf(sql,"create table account_info(ID INT PRIMARY KEY NOT NULL, ACCOUNT TEXT NOT NULL, CLIENT_FD INT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("account_info already exit: %s\n",errmsg);
-        sprintf(sql,"delete from account_info where ID > 0;");
-         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+    {
+        sql = "CREATE TABLE account_info (                           \
+                   ID        INTEGER PRIMARY KEY AUTOINCREMENT,      \
+                   ACCOUNT   TEXT,                                   \
+                   CLIENT_FD INTEGER                                 \
+               );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_WARN("account_info already exit: %s\n",errmsg);
+            sql = "delete from account_info where ID > 0;";
+            M1_LOG_DEBUG("%s:\n",sql);
+            rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+            if(rc != SQLITE_OK)
+            {
+                M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
+                sqlite3_free(errmsg);
+            }
+        }
+        /*account index*/
+        sql = "CREATE UNIQUE INDEX appAcount ON account_info (ACCOUNT ASC);";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_WARN("CREATE UNIQUE INDEX appAcount failed: %s\n",errmsg);
+            sqlite3_free(errmsg);
+        }
+        /*client_fdindex*/
+        sql = "CREATE UNIQUE INDEX appClient ON account_info (CLIENT_FD ASC);";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
             M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
+            sqlite3_free(errmsg);
         }
     }
-    sqlite3_free(errmsg);
+    
     /*account_table*/
-    sprintf(sql,"create table account_table(ID INT PRIMARY KEY NOT NULL, ACCOUNT TEXT NOT NULL, KEY TEXT NOT NULL,KEY_AUTH TEXT NOT NULL,REMOTE_AUTH TEXT NOT NULL,TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("account_table already exit: %s\n",errmsg);
-    }
-    sqlite3_free(errmsg);
-    /*all_dev*/
-    sprintf(sql,"create table all_dev(ID INT PRIMARY KEY NOT NULL, DEV_ID TEXT NOT NULL, DEV_NAME TEXT NOT NULL,AP_ID TEXT NOT NULL,PID INT NOT NULL,ADDED INT NOT NULL,NET INT NOT NULL, STATUS TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("all_dev already exit: %s\n",errmsg);
-    }
-    sqlite3_free(errmsg);
-    /*conn_info*/
-    sprintf(sql,"create table conn_info(ID INT PRIMARY KEY NOT NULL, AP_ID TEXT NOT NULL, CLIENT_FD INT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("conn_info already exit: %s\n",errmsg);
-        sprintf(sql,"delete from conn_info where ID > 0;");
+    {
+        sql = "CREATE TABLE account_table (                        \
+                ID          INTEGER PRIMARY KEY AUTOINCREMENT,     \
+                ACCOUNT     TEXT,                                  \
+                [KEY]       TEXT,                                  \
+                KEY_AUTH    TEXT,                                  \
+                REMOTE_AUTH TEXT,                                  \
+                TIME        TIME    NOT NULL                       \
+                                    DEFAULT CURRENT_TIMESTAMP      \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK){
-            M1_LOG_WARN("delete from conn_info failed: %s\n",errmsg);
+            M1_LOG_WARN("account_table already exit: %s\n",errmsg);
+        }
+        sqlite3_free(errmsg);
+
+        /*account index*/
+        sql = "DROP INDEX userAccount;\
+               CREATE UNIQUE INDEX userAccount ON account_table (ACCOUNT ASC);";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
+            sqlite3_free(errmsg);
         }
     }
-    sqlite3_free(errmsg);
+    /*all_dev*/
+    { 
+        sql = "CREATE TABLE all_dev (                           \
+                ID       INTEGER PRIMARY KEY AUTOINCREMENT,     \
+                DEV_ID   TEXT,                                  \
+                DEV_NAME TEXT,                                  \
+                ACCOUNT  TEXT,                                  \
+                AP_ID    TEXT,                                  \
+                PID      INTEGER,                               \
+                ADDED    INTEGER,                               \
+                NET      INTEGER,                               \
+                STATUS   TEXT,                                  \
+                TIME     TIME    DEFAULT CURRENT_TIMESTAMP      \
+                                 NOT NULL                       \
+            );"; 
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("all_dev: %s\n",errmsg);
+        }
+        /*dev_id,account,ap_id index*/
+        sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (   \
+                DEV_ID ASC,                                     \
+                ACCOUNT ASC,                                    \
+                AP_ID ASC                                       \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
+        }              
+    }
+    /*conn_info*/
+    {
+        sql = "CREATE TABLE conn_info (                        \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                AP_ID     TEXT,                                \
+                CLIENT_FD INTEGER                              \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_WARN("conn_info: %s\n",errmsg);
+            sql = "delete from conn_info where ID > 0;";
+            M1_LOG_DEBUG("%s:\n",sql);
+            rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+            if(rc != SQLITE_OK)
+            {
+                M1_LOG_WARN("delete from conn_info:%s\n",errmsg);
+            }
+            sqlite3_free(errmsg);   
+        }
+         
+        /*AP_ID index*/
+        sql = "CREATE INDEX apAccount ON conn_info (AP_ID ASC);";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
+        }
+        /*CLIENT_FD index*/
+        sql = "CREATE INDEX apClient ON conn_info (CLIENT_FD ASC);";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
+        }
+    }
     /*district_table*/
-    sprintf(sql,"CREATE TABLE district_table(ID INT PRIMARY KEY NOT NULL, DIS_NAME TEXT NOT NULL, DIS_PIC TEXT NOT NULL, AP_ID TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("district_table already exit: %s\n",errmsg);
+    {
+        sql = "CREATE TABLE district_table (                 \
+                ID       INTEGER PRIMARY KEY AUTOINCREMENT,  \
+                DIS_NAME TEXT,                               \
+                DIS_PIC  TEXT,                               \
+                AP_ID    TEXT,                               \
+                ACCOUNT  TEXT,                               \
+                TIME     TIME    NOT NULL                    \
+                                 DEFAULT CURRENT_TIMESTAMP   \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_WARN("district_table: %s\n",errmsg);
+        }
+        sqlite3_free(errmsg); 
+        /*DIS_NAME,AP_ID,ACCOUNT UNION index*/
+        sql = "CREATE INDEX district ON district_table (DIS_NAME ASC, AP_ID ASC, ACCOUNT ASC);";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("CREATE INDEX district: %s\n",errmsg);
+        }   
     }
-    sqlite3_free(errmsg);
+    
     /*link_exec_table*/
-    sprintf(sql,"CREATE TABLE link_exec_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, DELAY INT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
+    {
+        sql = "CREATE TABLE link_exec_table (             \
+            ID        INTEGER PRIMARY KEY AUTOINCREMENT,  \
+            LINK_NAME TEXT,                               \
+            DISTRICT  TEXT,                               \
+            AP_ID     TEXT,                               \
+            DEV_ID    TEXT,                               \
+            TYPE      INT,                                \
+            VALUE     INT,                                \
+            DELAY     INT,                                \
+            TIME      TIME    DEFAULT CURRENT_TIMESTAMP   \
+                              NOT NULL                    \
+        );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
+        }    
+        /*LINK_NAME,DISTRICT,DEV_ID,TYPE UNION index*/
+        sql = " CREATE UNIQUE INDEX linkExec ON link_exec_table (  \
+                LINK_NAME ASC,                                     \
+                DISTRICT ASC,                                      \
+                DEV_ID ASC,                                        \
+                TYPE ASC                                           \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
+        }
     }
-    sqlite3_free(errmsg);
     /*link_trigger_table*/
-    sprintf(sql,"CREATE TABLE link_trigger_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL,DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, THRESHOLD INT NOT NULL,CONDITION TEXT NOT NULL, LOGICAL TEXT NOT NULL, STATUS TEXT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
+    {
+        sql = "CREATE TABLE link_trigger_table (               \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                LINK_NAME TEXT,                                \
+                DISTRICT  TEXT,                                \
+                AP_ID     TEXT,                                \
+                DEV_ID    TEXT,                                \
+                TYPE      INT,                                 \
+                THRESHOLD INT,                                 \
+                CONDITION TEXT,                                \
+                LOGICAL   TEXT,                                \
+                STATUS    TEXT,                                \
+                TIME      TIME    NOT NULL                     \
+                                  DEFAULT CURRENT_TIMESTAMP    \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
+        }
+        /*LINK_NAME,DISTRICT,DEV_ID,TYPE UNION index*/
+        sql = "CREATE UNIQUE INDEX linkTrigger ON link_trigger_table (   \
+                LINK_NAME ASC,                                           \
+                DISTRICT ASC,                                            \
+                DEV_ID ASC,                                              \
+                TYPE ASC                                                 \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
+        }
     }
-    sqlite3_free(errmsg);
     /*linkage_table*/
-    sprintf(sql,"CREATE TABLE linkage_table(ID INT PRIMARY KEY NOT NULL, LINK_NAME TEXT NOT NULL, DISTRICT TEXT NOT NULL, EXEC_TYPE TEXT NOT NULL, EXEC_ID TEXT NOT NULL, STATUS TEXT NOT NULL, ENABLE TEXT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("linkage_table already exit: %s\n",errmsg);
+    {
+        sql = "CREATE TABLE linkage_table (                   \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,  \
+                LINK_NAME TEXT,                               \
+                DISTRICT  TEXT,                               \
+                EXEC_TYPE TEXT,                               \
+                EXEC_ID   TEXT,                               \
+                STATUS    TEXT,                               \
+                ENABLE    TEXT,                               \
+                TIME      TIME    NOT NULL                    \
+                                  DEFAULT CURRENT_TIMESTAMP   \
+            );";       
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("linkage_table: %s\n",errmsg);
+        }
+        /*LINK_NAME,DISTRICT,EXEC_TYPE,EXEC_ID index*/
+        sql = "CREATE UNIQUE INDEX linkage ON linkage_table (   \
+                LINK_NAME ASC,                                  \
+                DISTRICT ASC,                                   \
+                EXEC_TYPE ASC,                                  \
+                EXEC_ID ASC                                     \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("linkage_table: %s\n",errmsg);
+        }
     }
-    sqlite3_free(errmsg);
     /*param_table*/
-    sprintf(sql,"CREATE TABLE param_table(ID INT PRIMARY KEY NOT NULL, DEV_ID TEXT NOT NULL, DEV_NAME TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("param_table already exit: %s\n",errmsg);
+    {
+        sql = "CREATE TABLE param_table (                     \
+                ID       INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                DEV_ID   TEXT,                                \
+                DEV_NAME TEXT,                                \
+                TYPE     INT,                                 \
+                VALUE    INT,                                 \
+                TIME     TIME    NOT NULL                     \
+                                 DEFAULT CURRENT_TIMESTAMP    \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("param_table already exit: %s\n",errmsg);
+        }
+        /*DEV_ID,DEV_NAME,TYPE UNION index*/
+        sql = "CREATE UNIQUE INDEX param ON param_table (   \
+                DEV_ID ASC,                                 \
+                DEV_NAME ASC,                               \
+                TYPE ASC                                    \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
+        }
     }
-    sqlite3_free(errmsg);
     /*scen_alarm_table*/
-    sprintf(sql,"CREATE TABLE scen_alarm_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, HOUR INT NOT NULL,MINUTES INT NOT NULL, WEEK TEXT NOT NULL, STATUS TEXT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("scen_alarm_table already exit: %s\n",errmsg);
+    {
+        //sprintf(sql,"CREATE TABLE scen_alarm_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, HOUR INT NOT NULL,MINUTES INT NOT NULL, WEEK TEXT NOT NULL, STATUS TEXT NOT NULL, TIME TEXT NOT NULL);");
+        sql = "CREATE TABLE scen_alarm_table (                 \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                SCEN_NAME TEXT,                                \
+                HOUR      INT,                                 \
+                MINUTES   INT,                                 \
+                WEEK      TEXT,                                \
+                STATUS    TEXT,                                \
+                TIME      TIME    NOT NULL                     \
+                                  DEFAULT CURRENT_TIMESTAMP    \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("scen_alarm_table: %s\n",errmsg);
+        }
+
+        sql = "CREATE UNIQUE INDEX scenAlarm ON scen_alarm_table (SCEN_NAME ASC);";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("CREATE UNIQUE INDEX scenAlarm: %s\n",errmsg);
+        }
     }
-    sqlite3_free(errmsg);
     /*scenario_table*/
-    sprintf(sql,"CREATE TABLE scenario_table(ID INT PRIMARY KEY NOT NULL, SCEN_NAME TEXT NOT NULL, SCEN_PIC TEXT NOT NULL, DISTRICT TEXT NOT NULL, AP_ID TEXT NOT NULL, DEV_ID TEXT NOT NULL, TYPE INT NOT NULL, VALUE INT NOT NULL, DELAY INT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("scenario_table already exit: %s\n",errmsg);
+    {
+        sql = "CREATE TABLE scenario_table (                   \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                SCEN_NAME TEXT,                                \
+                SCEN_PIC  TEXT,                                \
+                DISTRICT  TEXT,                                \
+                AP_ID     TEXT,                                \
+                DEV_ID    TEXT,                                \
+                TYPE      INT,                                 \
+                VALUE     INT,                                 \
+                DELAY     INT,                                 \
+                ACCOUNT   TEXT,                                \
+                TIME      TIME    NOT NULL                     \
+                                  DEFAULT CURRENT_TIMESTAMP    \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("scenario_table already exit: %s\n",errmsg);
+        }
+        /*SCEN_NAME, DISTRICT,DEV_ID,TYPE,VALUE,ACCOUNT UNION index*/
+        sql = "CREATE INDEX scenario ON scenario_table (   \
+                SCEN_NAME ASC,                             \
+                DISTRICT ASC,                              \
+                DEV_ID ASC,                                \
+                TYPE ASC,                                  \
+                VALUE ASC,                                 \
+                ACCOUNT ASC                                \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("CREATE INDEX scenario: %s\n",errmsg);
+        }
     }
-    sqlite3_free(errmsg);
     /*project_table*/
-    sprintf(sql,"CREATE TABLE project_table(ID INT PRIMARY KEY NOT NULL, P_NAME TEXT NOT NULL, P_NUMBER TEXT NOT NULL, P_CREATOR TEXT NOT NULL, P_MANAGER TEXT NOT NULL, P_EDITOR TEXT NOT NULL, P_TEL TEXT NOT NULL, P_ADD TEXT NOT NULL, P_BRIEF TEXT NOT NULL, P_KEY TEXT NOT NULL, ACCOUNT TEXT NOT NULL, TIME TEXT NOT NULL);");
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("project_table already exit: %s\n",errmsg);
+    {
+        sql = "CREATE TABLE project_table (                    \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                P_NAME    TEXT,                                \
+                P_NUMBER  TEXT,                                \
+                P_CREATOR TEXT,                                \
+                P_MANAGER TEXT,                                \
+                P_EDITOR  TEXT,                                \
+                P_TEL     TEXT,                                \
+                P_ADD     TEXT,                                \
+                P_BRIEF   TEXT,                                \
+                P_KEY     TEXT,                                \
+                ACCOUNT   TEXT,                                \
+                TIME      TIME    NOT NULL                     \
+                                  DEFAULT CURRENT_TIMESTAMP    \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("project_table already exit: %s\n",errmsg);
+        }
+        /*P_NUMBER,P_EDITOR UNION index*/
+        sql = "CREATE UNIQUE INDEX project ON project_table (   \
+                P_NUMBER ASC,                                   \
+                P_EDITOR ASC                                    \
+            );";
+        M1_LOG_DEBUG("%s:\n",sql);
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("CREATE UNIQUE INDEX project: %s\n",errmsg);
+        }        
     }
-    sqlite3_free(errmsg);
     /*param_detail_table*/
-    sprintf(sql,"CREATE TABLE param_detail_table(ID INT PRIMARY KEY NOT NULL, DEV_ID TEXT NOT NULL,  TYPE INT NOT NULL, VALUE INT NOT NULL, DESCRIP TEXT NOT NULL, TIME TEXT NOT NULL);");
+    sql = "CREATE TABLE param_detail_table (                   \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                DEV_ID    TEXT,                                \
+                TYPE      INT,                                 \
+                VALUE     INT,                                 \
+                DESCRIP   TEXT,                                \
+                TIME      TIME    NOT NULL                     \
+                                  DEFAULT CURRENT_TIMESTAMP    \
+            );";
+    M1_LOG_DEBUG("%s:\n",sql);        
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK)
+    {
+        sqlite3_free(errmsg);
         M1_LOG_WARN("param_detail_table already exit: %s\n",errmsg);
     }
-    sqlite3_free(errmsg);
-    /*插入Dalitek账户*/
-    sprintf(sql,"insert into account_table(ID, ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH, TIME)values(1,\"Dalitek\",\"root\",\"on\",\"on\",\"20171023110000\");");
+    /*P_NUMBER,P_EDITOR UNION index*/
+    sql = "CREATE UNIQUE INDEX paramDetail ON project_table (   \
+            DEV_ID ASC,                                         \
+            TYPE ASC,                                           \
+            DESCRIP ASC                                         \
+        );";
+    M1_LOG_DEBUG("%s:\n",sql);
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK)
+    {
+        sqlite3_free(errmsg);
+        M1_LOG_WARN("CREATE UNIQUE INDEX paramDetail: %s\n",errmsg);
+    }
+    
+    /*插入Dalitek账户*/
+    sql = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)\
+        values(\"Dalitek\",\"root\",\"on\",\"on\");";
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+    if(rc != SQLITE_OK)
+    {
         M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
     }
     sqlite3_free(errmsg);
     /*插入项目信息*/
-    char* mac_addr = NULL;
-    mac_addr = get_eth0_mac_addr();
-    sprintf(sql,"insert into project_table(ID, P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT, TIME)values(1,\"M1\",\"%s\",\"Dalitek\",\"Dalitek\",\"Dalitek\",\"123456789\",\"ShangHai\",\"Brief\",\"123456\",\"Dalitek\",\"20171031161900\");",mac_addr);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK){
-        M1_LOG_WARN("insert into project_table fail: %s\n",errmsg);
+    {
+        mac_addr = get_eth0_mac_addr();
+        sql = "insert into project_table(P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT)\
+        values(?,?,?,?,?,?,?,?,?,?);";
+        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        sqlite3_bind_text(stmt, 1, "M1", -1, NULL);
+        sqlite3_bind_text(stmt, 2, mac_addr, -1, NULL);
+        sqlite3_bind_text(stmt, 3, "Dalitek", -1, NULL);
+        sqlite3_bind_text(stmt, 4, "Dalitek", -1, NULL);
+        sqlite3_bind_text(stmt, 5, "Dalitek", -1, NULL);
+        sqlite3_bind_text(stmt, 6, "Dalitek", -1, NULL);
+        sqlite3_bind_text(stmt, 7, "123456789", -1, NULL);
+        sqlite3_bind_text(stmt, 8, "ShangHai", -1, NULL);
+        sqlite3_bind_text(stmt, 9, "Brief", -1, NULL);
+        sqlite3_bind_text(stmt, 10, "123456", -1, NULL);
+        sqlite3_bind_text(stmt, 11, "Dalitek", -1, NULL);
+        
+        rc = sqlite3_step(stmt);
+        if(rc == SQLITE_ERROR)
+        {
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;   
+        }
     }
-    sqlite3_free(errmsg);
 
     Finish:
-    free(sql);
+    if(stmt)
+        sqlite3_finalize(stmt);
     sqlite3_close(db);
 
     return ret;
