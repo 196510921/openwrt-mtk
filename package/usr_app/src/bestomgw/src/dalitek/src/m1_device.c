@@ -372,7 +372,7 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
     // if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     // {
         sql = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE) values\
-        ((select DEV_NAME from all_dev where DEV_ID = ? order by ID desc limit 1),?,?,?)";
+        ((select DEV_NAME from all_dev where DEV_ID = ? order by ID desc limit 1),?,?,?);";
         M1_LOG_DEBUG("sql:%s\n",sql);
         
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -380,12 +380,10 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             goto Finish; 
         }
-
         sqlite3_bind_text(stmt, 1, data.devId, -1, NULL);
         sqlite3_bind_text(stmt, 2, data.devId, -1, NULL);
-        sqlite3_bind_text(stmt, 3, data.type, -1, NULL);
-        sqlite3_bind_text(stmt, 3, data.value, -1, NULL);
-
+        sqlite3_bind_int(stmt, 3, data.type);
+        sqlite3_bind_int(stmt, 4, data.value);
         rc = sqlite3_step(stmt);   
         M1_LOG_DEBUG("step() return %s, number:%03d\n",\
             rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);

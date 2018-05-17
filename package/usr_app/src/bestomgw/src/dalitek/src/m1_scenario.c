@@ -418,16 +418,14 @@ int scenario_create_handle(payload_t data)
 				goto Finish;	   		
 			}
 	    	delayArrayJson = cJSON_GetObjectItem(devJson, "delay");
-	    	if(delayArrayJson == NULL)
+	    	if(delayArrayJson != NULL)
 	    	{
-				ret = M1_PROTOCOL_FAILED;
-				goto Finish;	   		
-			}
-	    	number2 = cJSON_GetArraySize(delayArrayJson);
-	    	for(j = 0, delay = 0; j < number2; j++)
-	    	{
-	    		delayJson = cJSON_GetArrayItem(delayArrayJson, j);
-	    		delay += delayJson->valueint;
+				number2 = cJSON_GetArraySize(delayArrayJson);
+		    	for(j = 0, delay = 0; j < number2; j++)
+		    	{
+		    		delayJson = cJSON_GetArrayItem(delayArrayJson, j);
+		    		delay += delayJson->valueint;
+		    	}
 	    	}
 	    	M1_LOG_DEBUG("apId:%s, devId:%s\n",apIdJson->valuestring, devIdJson->valuestring);
 	    	paramArrayJson = cJSON_GetObjectItem(devJson, "param");
@@ -529,15 +527,33 @@ int scenario_alarm_create_handle(payload_t data)
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
 		/*获取收到数据包信息*/
 	    scenNameJson = cJSON_GetObjectItem(data.pdu, "scenarioName");
+	    if(scenNameJson == NULL)
+	    {
+	    	M1_LOG_DEBUG("scenName NULL\n");
+	    	ret = M1_PROTOCOL_FAILED;
+		    goto Finish;
+	    }
 	    M1_LOG_DEBUG("scenName:%s\n",scenNameJson->valuestring);
 	    hourJson = cJSON_GetObjectItem(data.pdu, "hour");
 	    M1_LOG_DEBUG("hour:%d\n",hourJson->valueint);
 	    minutesJson = cJSON_GetObjectItem(data.pdu, "minutes");
 	    M1_LOG_DEBUG("minutes:%d\n",minutesJson->valueint);
 	    weekJson = cJSON_GetObjectItem(data.pdu, "week");
+	    if(weekJson == NULL)
+	    {
+	    	M1_LOG_DEBUG("weekJson NULL\n");
+	    	ret = M1_PROTOCOL_FAILED;
+		    goto Finish;
+	    }
 	    M1_LOG_DEBUG("week:%s\n",weekJson->valuestring);
 	    statusJson = cJSON_GetObjectItem(data.pdu, "status");
-	    M1_LOG_DEBUG("status:%s\n",statusJson->valuestring);
+	    if(statusJson == NULL)
+	    {
+	    	M1_LOG_DEBUG("statusJson NULL\n");
+	    	ret = M1_PROTOCOL_FAILED;
+		    goto Finish;
+	    }
+	    	M1_LOG_DEBUG("status:%s\n",statusJson->valuestring);
 
 	    sql = "insert into scen_alarm_table(SCEN_NAME, HOUR, MINUTES, WEEK, STATUS) values(?,?,?,?,?);";
 	    M1_LOG_DEBUG("sql:%s\n",sql);
@@ -760,7 +776,7 @@ int app_req_scenario(payload_t data)
     /*获取设备名称*/
     {
     	sql_6 = "select DEV_NAME, PID from all_dev where DEV_ID = ? order by ID desc limit 1;";
-    	M1_LOG_DEBUG("sql_5:%s\n",sql_6);
+    	M1_LOG_DEBUG("sql_6:%s\n",sql_6);
 	    if(sqlite3_prepare_v2(db, sql_6, strlen(sql_6), &stmt_6, NULL) != SQLITE_OK)
 	    {
 		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -770,8 +786,8 @@ int app_req_scenario(payload_t data)
     }
 
     {
-    	sql_7 = "select TYPE, VALUE from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\" and ACCOUNT = \"%s\";";
-    	M1_LOG_DEBUG("sql_5:%s\n",sql_7);
+    	sql_7 = "select TYPE, VALUE from scenario_table where SCEN_NAME = ? and DEV_ID = ? and ACCOUNT = ?;";
+    	M1_LOG_DEBUG("sql_7:%s\n",sql_7);
 	    if(sqlite3_prepare_v2(db, sql_7, strlen(sql_7), &stmt_7, NULL) != SQLITE_OK)
 	    {
 		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -791,7 +807,7 @@ int app_req_scenario(payload_t data)
         	goto Finish;
 	    }
 	    cJSON_AddItemToArray(devDataJsonArray, devDataObject);
-	    scen_name = sqlite3_column_text(stmt, 0);
+	    scen_name = sqlite3_column_text(stmt_1, 0);
 	    cJSON_AddStringToObject(devDataObject, "scenName", scen_name);
 	    /*根据场景名称选出隶属区域*/
 		sqlite3_bind_text(stmt_2, 1, scen_name, -1, NULL);
@@ -930,14 +946,6 @@ int app_req_scenario(payload_t data)
 		    }
 		    cJSON_AddItemToObject(deviceObject, "param", paramArrayObject);
 			
-			sprintf(sql_2,"select TYPE, VALUE from scenario_table where SCEN_NAME = \"%s\" and DEV_ID = \"%s\" and ACCOUNT = \"%s\";",scen_name, dev_id,account);
-	    	sqlite3_finalize(stmt_2);
-	    	if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
-	    	{
-			    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-			    ret = M1_PROTOCOL_FAILED;
-			    goto Finish; 
-			}
 			sqlite3_bind_text(stmt_7, 1, scen_name, -1, NULL);
 			sqlite3_bind_text(stmt_7, 2, dev_id, -1, NULL);
 			sqlite3_bind_text(stmt_7, 3, account, -1, NULL);

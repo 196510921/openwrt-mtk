@@ -1458,13 +1458,13 @@ int user_login_handle(payload_t data)
     db = data.db;
     /*验证用户信息*/
     sql = "select KEY from account_table where ACCOUNT = ?;";
-    sqlite3_bind_text(stmt, 1, accountJson->valuestring, -1, NULL);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
+    sqlite3_bind_text(stmt, 1, accountJson->valuestring, -1, NULL);
 	if(sqlite3_step(stmt) == SQLITE_ROW)
     {
 		key = sqlite3_column_text(stmt, 0);

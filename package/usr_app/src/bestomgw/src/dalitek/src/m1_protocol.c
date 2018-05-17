@@ -197,7 +197,7 @@ void data_handle(m1_package_t* package)
     }
     check_offline_dev(db);
 
-    delete_client_db();
+    //delete_client_db();
 
     sql_close();
 
@@ -435,7 +435,7 @@ static int AP_report_dev_handle(payload_t data)
     /*事物开始*/
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
-        M1_LOG_DEBUG("BEGIN\n");
+        M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
         sql =   "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)\
                 values(?,?,?,?,?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
@@ -953,22 +953,18 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
           (select AP_ID from all_dev where DEV_ID = ? order by ID desc limit 1) \
           order by ID desc limit 1;";
     M1_LOG_DEBUG("%s\n", sql);
-
     if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-
-    sqlite3_bind_text(1, stmt, devIdJson->valuestring, -1, NULL);
-
+    sqlite3_bind_text(stmt, 1, devIdJson->valuestring, -1, NULL);
     rc = sqlite3_step(stmt);
-    if(rc == SQLITE_ROW){
+    if(rc == SQLITE_ROW)
+    {
         clientFd = sqlite3_column_int(stmt,0);
-
         char * p = cJSON_PrintUnformatted(data);
-        
         if(NULL == p)
         {    
             cJSON_Delete(data);
@@ -2135,7 +2131,9 @@ static void check_offline_dev(sqlite3*db)
             u8Time = abs(u8Time);
             M1_LOG_DEBUG("u8Time:%d\n",u8Time);
             if(u8Time > AP_HEART_BEAT_INTERVAL){
-                sprintf(sql_2,"update param_table set VALUE = 0 where DEV_ID = \"%s\" and TYPE = 16404;", apId);
+                //sprintf(sql_2,"update param_table set VALUE = 0 where DEV_ID = \"%s\" and TYPE = 16404;", apId);
+                /*测试将主公你太全都改为在线*/
+                sprintf(sql_2,"update param_table set VALUE = 1 where DEV_ID = \"%s\" and TYPE = 16404;", apId);
                 sqlite3_finalize(stmt_2);
                 if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
                     M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -2711,14 +2709,14 @@ static int create_sql_table(void)
         if(rc != SQLITE_OK)
         {
             M1_LOG_WARN("account_info already exit: %s\n",errmsg);
-            sql = "delete from account_info where ID > 0;";
-            M1_LOG_DEBUG("%s:\n",sql);
-            rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-            if(rc != SQLITE_OK)
-            {
-                M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
-                sqlite3_free(errmsg);
-            }
+            // sql = "delete from account_info where ID > 0;";
+            // M1_LOG_DEBUG("%s:\n",sql);
+            // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+            // if(rc != SQLITE_OK)
+            // {
+            //     M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
+            //     sqlite3_free(errmsg);
+            // }
         }
         /*account index*/
         sql = "CREATE UNIQUE INDEX appAcount ON account_info (\"ACCOUNT\" ASC);";
@@ -2812,13 +2810,13 @@ static int create_sql_table(void)
         if(rc != SQLITE_OK)
         {
             M1_LOG_WARN("conn_info: %s\n",errmsg);
-            sql = "delete from conn_info where ID > 0;";
-            M1_LOG_DEBUG("%s:\n",sql);
-            rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-            if(rc != SQLITE_OK)
-            {
-                M1_LOG_WARN("delete from conn_info:%s\n",errmsg);
-            }
+            // sql = "delete from conn_info where ID > 0;";
+            // M1_LOG_DEBUG("%s:\n",sql);
+            // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+            // if(rc != SQLITE_OK)
+            // {
+            //     M1_LOG_WARN("delete from conn_info:%s\n",errmsg);
+            // }
             sqlite3_free(errmsg);   
         }
          
@@ -3121,7 +3119,7 @@ static int create_sql_table(void)
     }
     
     /*插入Dalitek账户*/
-    sql = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)\
+    sql = "insert or replace into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)\
         values(\"Dalitek\",\"root\",\"on\",\"on\");";
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
     if(rc != SQLITE_OK)
@@ -3132,7 +3130,7 @@ static int create_sql_table(void)
     /*插入项目信息*/
     {
         mac_addr = get_eth0_mac_addr();
-        sql = "insert into project_table(P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT)\
+        sql = "insert or replace into project_table(P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT)\
         values(?,?,?,?,?,?,?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -3145,12 +3143,11 @@ static int create_sql_table(void)
         sqlite3_bind_text(stmt, 3, "Dalitek", -1, NULL);
         sqlite3_bind_text(stmt, 4, "Dalitek", -1, NULL);
         sqlite3_bind_text(stmt, 5, "Dalitek", -1, NULL);
-        sqlite3_bind_text(stmt, 6, "Dalitek", -1, NULL);
-        sqlite3_bind_text(stmt, 7, "123456789", -1, NULL);
-        sqlite3_bind_text(stmt, 8, "ShangHai", -1, NULL);
-        sqlite3_bind_text(stmt, 9, "Brief", -1, NULL);
-        sqlite3_bind_text(stmt, 10, "123456", -1, NULL);
-        sqlite3_bind_text(stmt, 11, "Dalitek", -1, NULL);
+        sqlite3_bind_text(stmt, 6, "123456789", -1, NULL);
+        sqlite3_bind_text(stmt, 7, "ShangHai", -1, NULL);
+        sqlite3_bind_text(stmt, 8, "Brief", -1, NULL);
+        sqlite3_bind_text(stmt, 9, "123456", -1, NULL);
+        sqlite3_bind_text(stmt, 10, "Dalitek", -1, NULL);
         
         rc = sqlite3_step(stmt);
         if(rc == SQLITE_ERROR)

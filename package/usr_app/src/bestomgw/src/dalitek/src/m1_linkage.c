@@ -329,8 +329,8 @@ int linkage_msg_handle(payload_t data)
     }
     /*link_exec_table*/
     {
-    	sql_2 = "insert or replace into link_exec_table(ID, LINK_NAME, DISTRICT, \
-    	AP_ID, DEV_ID, TYPE, VALUE, DELAY, TIME) values(?,?,?,?,?,?,?,?,?);";
+    	sql_2 = "insert or replace into link_exec_table(LINK_NAME, DISTRICT, \
+    	AP_ID, DEV_ID, TYPE, VALUE, DELAY) values(?,?,?,?,?,?,?);";
 	    M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 	    if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
 	    {
@@ -1067,7 +1067,7 @@ int app_req_linkage(payload_t data)
 	}
 	/*获取设备名称*/
 	{
-		sql_8 = "select AP_ID,DELAY from link_exec_table where LINK_NAME = ? and DEV_ID = ? order by ID desc limit 1;";
+		sql_8 = "select DEV_NAME, PID from all_dev where DEV_ID = ? order by ID desc limit 1;";
 		M1_LOG_DEBUG("sql_8:%s\n", sql_8);
 		if(sqlite3_prepare_v2(db, sql_8, strlen(sql_8), &stmt_8, NULL) != SQLITE_OK)
 	    {
@@ -1090,6 +1090,7 @@ int app_req_linkage(payload_t data)
 
     while(sqlite3_step(stmt) == SQLITE_ROW)
     {
+    	M1_LOG_DEBUG("1\n");
     	devDataObject = cJSON_CreateObject();
 	    if(NULL == devDataObject)
 	    {
@@ -1219,7 +1220,7 @@ int app_req_linkage(payload_t data)
 		    cJSON_AddItemToObject(devDataObject, "exeDev", execJsonArray);
 
 	    	sqlite3_bind_text(stmt_6, 1, link_name, -1, NULL);
-	    	while(sqlite3_step(stmt) == SQLITE_ROW)
+	    	while(sqlite3_step(stmt_6) == SQLITE_ROW)
 	    	{
 	    		execObject = cJSON_CreateObject();
 			    if(NULL == execObject)
