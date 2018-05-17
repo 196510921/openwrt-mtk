@@ -44,8 +44,10 @@ static void delete_client_db(void);
 /*variable******************************************************************************************************/
 extern pthread_mutex_t mutex_lock;
 sqlite3* db = NULL;
-const char* db_path = "/bin/dev_info.db";
-const char* sql_back_path = "/bin/sql_restore.sh";
+// const char* db_path = "/bin/dev_info.db";
+// const char* sql_back_path = "/bin/sql_restore.sh";
+const char* db_path = "dev_info.db";
+const char* sql_back_path = "sql_restore.sh";
 fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
 fifo_t msg_rd_fifo;
@@ -2719,7 +2721,7 @@ static int create_sql_table(void)
             }
         }
         /*account index*/
-        sql = "CREATE UNIQUE INDEX appAcount ON account_info (ACCOUNT ASC);";
+        sql = "CREATE UNIQUE INDEX appAcount ON account_info (\"ACCOUNT\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2728,7 +2730,7 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
         }
         /*client_fdindex*/
-        sql = "CREATE UNIQUE INDEX appClient ON account_info (CLIENT_FD ASC);";
+        sql = "CREATE UNIQUE INDEX appClient ON account_info (\"CLIENT_FD\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2757,8 +2759,7 @@ static int create_sql_table(void)
         sqlite3_free(errmsg);
 
         /*account index*/
-        sql = "DROP INDEX userAccount;\
-               CREATE UNIQUE INDEX userAccount ON account_table (ACCOUNT ASC);";
+        sql = "CREATE UNIQUE INDEX userAccount ON account_table (\"ACCOUNT\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2790,11 +2791,7 @@ static int create_sql_table(void)
             M1_LOG_WARN("all_dev: %s\n",errmsg);
         }
         /*dev_id,account,ap_id index*/
-        sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (   \
-                DEV_ID ASC,                                     \
-                ACCOUNT ASC,                                    \
-                AP_ID ASC                                       \
-            );";
+        sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC,\"AP_ID\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2826,7 +2823,7 @@ static int create_sql_table(void)
         }
          
         /*AP_ID index*/
-        sql = "CREATE INDEX apAccount ON conn_info (AP_ID ASC);";
+        sql = "CREATE UNIQUE INDEX apAccount ON conn_info (\"AP_ID\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2835,7 +2832,7 @@ static int create_sql_table(void)
             M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
         }
         /*CLIENT_FD index*/
-        sql = "CREATE INDEX apClient ON conn_info (CLIENT_FD ASC);";
+        sql = "CREATE UNIQUE INDEX apClient ON conn_info (\"CLIENT_FD\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2863,7 +2860,7 @@ static int create_sql_table(void)
         }
         sqlite3_free(errmsg); 
         /*DIS_NAME,AP_ID,ACCOUNT UNION index*/
-        sql = "CREATE INDEX district ON district_table (DIS_NAME ASC, AP_ID ASC, ACCOUNT ASC);";
+        sql = "CREATE UNIQUE INDEX district ON district_table (\"DIS_NAME\" ASC, \"AP_ID\" ASC, \"ACCOUNT\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2895,12 +2892,8 @@ static int create_sql_table(void)
             M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
         }    
         /*LINK_NAME,DISTRICT,DEV_ID,TYPE UNION index*/
-        sql = " CREATE UNIQUE INDEX linkExec ON link_exec_table (  \
-                LINK_NAME ASC,                                     \
-                DISTRICT ASC,                                      \
-                DEV_ID ASC,                                        \
-                TYPE ASC                                           \
-            );";
+        sql = " CREATE UNIQUE INDEX linkExec ON link_exec_table \
+               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2933,12 +2926,8 @@ static int create_sql_table(void)
             M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
         }
         /*LINK_NAME,DISTRICT,DEV_ID,TYPE UNION index*/
-        sql = "CREATE UNIQUE INDEX linkTrigger ON link_trigger_table (   \
-                LINK_NAME ASC,                                           \
-                DISTRICT ASC,                                            \
-                DEV_ID ASC,                                              \
-                TYPE ASC                                                 \
-            );";
+        sql = "CREATE UNIQUE INDEX linkTrigger ON link_trigger_table \
+               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -2968,12 +2957,8 @@ static int create_sql_table(void)
             M1_LOG_WARN("linkage_table: %s\n",errmsg);
         }
         /*LINK_NAME,DISTRICT,EXEC_TYPE,EXEC_ID index*/
-        sql = "CREATE UNIQUE INDEX linkage ON linkage_table (   \
-                LINK_NAME ASC,                                  \
-                DISTRICT ASC,                                   \
-                EXEC_TYPE ASC,                                  \
-                EXEC_ID ASC                                     \
-            );";
+        sql = "CREATE UNIQUE INDEX linkage ON linkage_table \
+               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"EXEC_TYPE\" ASC,\"EXEC_ID\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -3001,11 +2986,7 @@ static int create_sql_table(void)
             M1_LOG_WARN("param_table already exit: %s\n",errmsg);
         }
         /*DEV_ID,DEV_NAME,TYPE UNION index*/
-        sql = "CREATE UNIQUE INDEX param ON param_table (   \
-                DEV_ID ASC,                                 \
-                DEV_NAME ASC,                               \
-                TYPE ASC                                    \
-            );";
+        sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"DEV_NAME\" ASC,\"TYPE\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -3035,7 +3016,7 @@ static int create_sql_table(void)
             M1_LOG_WARN("scen_alarm_table: %s\n",errmsg);
         }
 
-        sql = "CREATE UNIQUE INDEX scenAlarm ON scen_alarm_table (SCEN_NAME ASC);";
+        sql = "CREATE UNIQUE INDEX scenAlarm ON scen_alarm_table (\"SCEN_NAME\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -3068,14 +3049,8 @@ static int create_sql_table(void)
             M1_LOG_WARN("scenario_table already exit: %s\n",errmsg);
         }
         /*SCEN_NAME, DISTRICT,DEV_ID,TYPE,VALUE,ACCOUNT UNION index*/
-        sql = "CREATE INDEX scenario ON scenario_table (   \
-                SCEN_NAME ASC,                             \
-                DISTRICT ASC,                              \
-                DEV_ID ASC,                                \
-                TYPE ASC,                                  \
-                VALUE ASC,                                 \
-                ACCOUNT ASC                                \
-            );";
+        sql = "CREATE UNIQUE INDEX scenario ON scenario_table \
+               (\"SCEN_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC,\"VALUE\" ASC,\"ACCOUNT\" ASC );";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -3109,10 +3084,7 @@ static int create_sql_table(void)
             M1_LOG_WARN("project_table already exit: %s\n",errmsg);
         }
         /*P_NUMBER,P_EDITOR UNION index*/
-        sql = "CREATE UNIQUE INDEX project ON project_table (   \
-                P_NUMBER ASC,                                   \
-                P_EDITOR ASC                                    \
-            );";
+        sql = "CREATE UNIQUE INDEX project ON project_table (\"P_NUMBER\" ASC,\"P_EDITOR\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -3139,11 +3111,7 @@ static int create_sql_table(void)
         M1_LOG_WARN("param_detail_table already exit: %s\n",errmsg);
     }
     /*P_NUMBER,P_EDITOR UNION index*/
-    sql = "CREATE UNIQUE INDEX paramDetail ON project_table (   \
-            DEV_ID ASC,                                         \
-            TYPE ASC,                                           \
-            DESCRIP ASC                                         \
-        );";
+    sql = "CREATE UNIQUE INDEX paramDetail ON param_detail_table (\"DEV_ID\" ASC,\"TYPE\" ASC,\"DESCRIP\" ASC);";
     M1_LOG_DEBUG("%s:\n",sql);
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
     if(rc != SQLITE_OK)
