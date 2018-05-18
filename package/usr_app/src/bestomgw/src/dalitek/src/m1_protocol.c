@@ -68,7 +68,6 @@ void m1_protocol_init(void)
     /*linkage execution fifo*/
     fifo_init(&link_exec_fifo, link_exec_buf, 256);
     /*delete cleint*/
-    /*linkage execution fifo*/
     fifo_init(&client_delete_fifo, client_delete_buf, 10);
 
     Init_PQueue(&head);
@@ -202,11 +201,6 @@ void data_handle(m1_package_t* package)
     sql_close();
 
     Finish:
-#if SQL_HISTORY_DEL
-    // if(sql_backup() != M1_PROTOCOL_OK){
-    //     M1_LOG_ERROR( "sql_backup failed\n");
-    // }
-#endif
     cJSON_Delete(rootJson);
     linkage_task();
 }
@@ -287,12 +281,14 @@ static int AP_report_data_handle(payload_t data)
             devDataJson = cJSON_GetArrayItem(data.pdu, i);
             if(devDataJson == NULL)
             {
+                M1_LOG_WARN("devDataJson NULL\n");
                 ret =  M1_PROTOCOL_FAILED;  
                 goto Finish;    
             }
             devNameJson = cJSON_GetObjectItem(devDataJson, "devName");
             if(devNameJson == NULL)
             {
+                M1_LOG_WARN("devNameJson NULL\n");
                 ret =  M1_PROTOCOL_FAILED;  
                 goto Finish;    
             }
@@ -300,6 +296,7 @@ static int AP_report_data_handle(payload_t data)
             devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
             if(devIdJson == NULL)
             {
+                M1_LOG_WARN("devIdJson NULL\n");
                 ret =  M1_PROTOCOL_FAILED;  
                 goto Finish;    
             }
@@ -307,6 +304,7 @@ static int AP_report_data_handle(payload_t data)
             paramJson = cJSON_GetObjectItem(devDataJson, "param");
             if(paramJson == NULL)
             {
+                M1_LOG_WARN("paramJson NULL\n");
                 ret =  M1_PROTOCOL_FAILED;  
                 goto Finish;    
             }
@@ -317,12 +315,14 @@ static int AP_report_data_handle(payload_t data)
                 paramDataJson = cJSON_GetArrayItem(paramJson, j);
                 if(paramDataJson == NULL)
                 {
+                    M1_LOG_WARN("paramDataJson NULL\n");
                     ret =  M1_PROTOCOL_FAILED;  
                     goto Finish;    
                 }   
                 typeJson = cJSON_GetObjectItem(paramDataJson, "type");
                 if(typeJson == NULL)
                 {
+                    M1_LOG_WARN("typeJson NULL\n");
                     ret =  M1_PROTOCOL_FAILED;  
                     goto Finish;    
                 }
@@ -330,6 +330,7 @@ static int AP_report_data_handle(payload_t data)
                 valueJson = cJSON_GetObjectItem(paramDataJson, "value");
                 if(valueJson == NULL)
                 {
+                    M1_LOG_WARN("valueJson NULL\n");
                     ret =  M1_PROTOCOL_FAILED;  
                     goto Finish;    
                 }
@@ -446,24 +447,32 @@ static int AP_report_dev_handle(payload_t data)
 
         for(i = 0; i< number; i++){
             paramDataJson = cJSON_GetArrayItem(devJson, i);
-            if(paramDataJson == NULL){
+            if(paramDataJson == NULL)
+            {
+                M1_LOG_WARN("paramDataJson NULL");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
             idJson = cJSON_GetObjectItem(paramDataJson, "devId");
-            if(idJson == NULL){
+            if(idJson == NULL)
+            {
+                M1_LOG_WARN("idJson NULL");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
             M1_LOG_DEBUG("devId:%s\n", idJson->valuestring);
             nameJson = cJSON_GetObjectItem(paramDataJson, "devName");
-            if(nameJson == NULL){
+            if(nameJson == NULL)
+            {
+                M1_LOG_WARN("nameJson NULL");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
             M1_LOG_DEBUG("devName:%s\n", nameJson->valuestring);
             pIdJson = cJSON_GetObjectItem(paramDataJson, "pId");
-            if(pIdJson == NULL){
+            if(pIdJson == NULL)
+            {
+                M1_LOG_WARN("pIdJson NULL\n");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
@@ -544,19 +553,25 @@ static int AP_report_ap_handle(payload_t data)
     db = data.db;
 
     pIdJson = cJSON_GetObjectItem(data.pdu,"pId");
-    if(pIdJson == NULL){
+    if(pIdJson == NULL)
+    {
+        M1_LOG_WARN("pIdJson NULL\n");
         ret = M1_PROTOCOL_FAILED;  
         goto Finish;
     }
     M1_LOG_DEBUG("pId:%05d\n",pIdJson->valueint);
     apIdJson = cJSON_GetObjectItem(data.pdu,"apId");
-    if(apIdJson == NULL){
+    if(apIdJson == NULL)
+    {
+        M1_LOG_WARN("apIdJson NULL\n");
         ret = M1_PROTOCOL_FAILED;  
         goto Finish;
     }
     M1_LOG_DEBUG("APId:%s\n",apIdJson->valuestring);
     apNameJson = cJSON_GetObjectItem(data.pdu,"apName");
-    if(apNameJson == NULL){
+    if(apNameJson == NULL)
+    {
+        M1_LOG_WARN("apNameJson NULL\n");
         ret = M1_PROTOCOL_FAILED;  
         goto Finish;
     }
@@ -818,14 +833,18 @@ static int APP_read_handle(payload_t data)
         {
             /*devName*/
             devName = sqlite3_column_text(stmt,0);
-            if(devName == NULL){
+            if(devName == NULL)
+            {
+                M1_LOG_WARN("devName NULL\n");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;       
             }
             cJSON_AddStringToObject(devDataObject, "devName", devName);
             /*pid*/
             pId = sqlite3_column_text(stmt,1);
-            if(pId == NULL){
+            if(pId == NULL)
+            {
+                M1_LOG_WARN("pId NULL\n");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;   
             }
@@ -1041,12 +1060,14 @@ static int APP_write_handle(payload_t data)
             devDataJson = cJSON_GetArrayItem(data.pdu, i);
             if(devDataJson == NULL)
             {
+                M1_LOG_WARN("devDataJson NULL \n");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
             devIdJson = cJSON_GetObjectItem(devDataJson, "devId");
             if(devIdJson == NULL)
             {
+                M1_LOG_WARN("devIdJson NULL \n");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
@@ -1055,6 +1076,7 @@ static int APP_write_handle(payload_t data)
             paramDataJson = cJSON_GetObjectItem(devDataJson, "param");
             if(paramDataJson == NULL)
             {
+                M1_LOG_WARN("paramDataJson NULL \n");
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;
             }
@@ -1066,12 +1088,14 @@ static int APP_write_handle(payload_t data)
                 paramArrayJson = cJSON_GetArrayItem(paramDataJson, j);
                 if(paramArrayJson == NULL)
                 {
+                    M1_LOG_WARN("paramArrayJson NULL \n");
                     ret = M1_PROTOCOL_FAILED;
                     goto Finish;
                 }
                 valueTypeJson = cJSON_GetObjectItem(paramArrayJson, "type");
                 if(valueTypeJson == NULL)
                 {
+                    M1_LOG_WARN("valueTypeJson NULL \n");
                     ret = M1_PROTOCOL_FAILED;
                     goto Finish;
                 }
@@ -1079,6 +1103,7 @@ static int APP_write_handle(payload_t data)
                 valueJson = cJSON_GetObjectItem(paramArrayJson, "value");
                 if(valueJson == NULL)
                 {
+                    M1_LOG_WARN("valueJson NULL \n");
                     ret = M1_PROTOCOL_FAILED;
                     goto Finish;
                 }
@@ -1479,6 +1504,7 @@ static int APP_net_control(payload_t data)
     apIdJson = cJSON_GetObjectItem(data.pdu, "apId");
     if(apIdJson == NULL)
     {
+        M1_LOG_WARN("apIdJson NULL\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
@@ -1486,6 +1512,7 @@ static int APP_net_control(payload_t data)
     valueJson = cJSON_GetObjectItem(data.pdu, "value");
     if(valueJson == NULL)
     {
+        M1_LOG_WARN("valueJson NULL\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
@@ -1811,19 +1838,25 @@ static int common_operate(payload_t data)
     }
 
     typeJson = cJSON_GetObjectItem(data.pdu, "type");
-    if(typeJson == NULL){
+    if(typeJson == NULL)
+    {
+        M1_LOG_WARN("typeJson NULL\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     M1_LOG_DEBUG("type:%s\n",typeJson->valuestring);
     idJson = cJSON_GetObjectItem(data.pdu, "id");   
-    if(idJson == NULL){
+    if(idJson == NULL)
+    {
+        M1_LOG_WARN("idJson NULL\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
     M1_LOG_DEBUG("id:%s\n",idJson->valuestring);
     operateJson = cJSON_GetObjectItem(data.pdu, "operate");   
-    if(operateJson == NULL){
+    if(operateJson == NULL)
+    {
+        M1_LOG_WARN("operateJson NULL\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
@@ -1940,7 +1973,9 @@ static int common_operate(payload_t data)
                     rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
                 if(rc == SQLITE_ROW){
                     scen_name = sqlite3_column_text(stmt,0);
-                    if(scen_name == NULL){
+                    if(scen_name == NULL)
+                    {
+                        M1_LOG_WARN("scen_name NULL \n");
                         ret = M1_PROTOCOL_FAILED;
                         goto Finish;
                     }
@@ -2431,6 +2466,7 @@ static int app_change_device_name(payload_t data)
     devNameObject = cJSON_GetObjectItem(data.pdu, "devName");   
     if(devNameObject == NULL)
     {
+        M1_LOG_WARN("devNameObject NULL\n");
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }

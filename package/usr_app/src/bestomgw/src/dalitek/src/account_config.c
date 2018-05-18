@@ -398,6 +398,8 @@ int app_account_config_handle(payload_t data)
     char *sql             = NULL;
     char *sql_1           = NULL;
     char *sql_2           = NULL;
+    char *sql_3           = NULL;
+    char *sql_4           = NULL;
     char *errorMsg        = NULL;
     char *ap_id           = NULL;
     char *dev_id          = NULL;
@@ -406,6 +408,7 @@ int app_account_config_handle(payload_t data)
     char *status          = NULL;
     char *dis_pic         = NULL;
     char *scen_pic        = NULL;
+    char* time            = NULL;
     int type              = 0;
     int value             = 0;
     int delay             = 0;
@@ -427,6 +430,8 @@ int app_account_config_handle(payload_t data)
     sqlite3_stmt *stmt    = NULL;
     sqlite3_stmt *stmt_1  = NULL;
     sqlite3_stmt *stmt_2  = NULL;
+    sqlite3_stmt *stmt_3  = NULL;
+    sqlite3_stmt *stmt_4  = NULL;
 
     /*获取数据库*/
     db = data.db;
@@ -519,6 +524,39 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             }
 
+            /*查询用户历史信息*/
+            sql_3 = "select DISTINCT TIME from district_table where ACCOUNT = ?;";
+            M1_LOG_DEBUG("%s\n",sql_3);
+
+            if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+            {
+                ret = M1_PROTOCOL_FAILED;
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                goto Finish; 
+            }
+
+            /*删除用户历史信息*/
+            sql_4 = "delete from district_table where ACCOUNT = ? and TIME = ?;";
+            M1_LOG_DEBUG("%s\n",sql_4);
+
+            if(sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL) != SQLITE_OK)
+            {
+                ret = M1_PROTOCOL_FAILED;
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                goto Finish; 
+            }            
+
+            /*查询用户历史信息*/
+            {
+                sqlite3_bind_text(stmt_3, 1,  accountJson->valuestring, -1, NULL);
+
+                rc = sqlite3_step(stmt_3);
+                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+
+                time = sqlite3_column_text(stmt_3, 0);
+            }
+
             districtArray = cJSON_GetObjectItem(data.pdu,"district");
             number = cJSON_GetArraySize(districtArray);
             for(i = 0; i < number; i++)
@@ -553,17 +591,36 @@ int app_account_config_handle(payload_t data)
                 sqlite3_reset(stmt_1);
                 sqlite3_clear_bindings(stmt_1);
             }
+            /*删除用户历史数据*/
+            if(time != NULL)
+            {
+                sqlite3_bind_text(stmt_4, 1,  accountJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt_4, 2,  time, -1, NULL);
+
+                rc = sqlite3_step(stmt_4);
+                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            }
 
             if(stmt_1)
             {
                 sqlite3_finalize(stmt_1);
                 stmt_1 = NULL;
             }
-
             if(stmt_2)
             {
                 sqlite3_finalize(stmt_2);
                 stmt_2 = NULL;
+            }
+            if(stmt_3)
+            {
+                sqlite3_finalize(stmt_3);
+                stmt_3 = NULL;
+            }
+            if(stmt_4)
+            {
+                sqlite3_finalize(stmt_4);
+                stmt_4 = NULL;
             }
         }
 
@@ -588,6 +645,39 @@ int app_account_config_handle(payload_t data)
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
+            }
+
+            /*查询用户历史信息*/
+            sql_2 = "select DISTINCT TIME from scenario_table where ACCOUNT = ?;";
+            M1_LOG_DEBUG("%s\n",sql_2);
+
+            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+            {
+                ret = M1_PROTOCOL_FAILED;
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                goto Finish; 
+            }
+
+            /*删除用户历史信息*/
+            sql_3 = "delete from scenario_table where ACCOUNT = ? and TIME = ?;";
+            M1_LOG_DEBUG("%s\n",sql_3);
+
+            if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+            {
+                ret = M1_PROTOCOL_FAILED;
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                goto Finish; 
+            }
+
+            /*查询用户历史信息*/
+            {
+                sqlite3_bind_text(stmt_2, 1,  accountJson->valuestring, -1, NULL);
+
+                rc = sqlite3_step(stmt_2);
+                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+
+                time = sqlite3_column_text(stmt_2, 0);
             }
 
             scenArray = cJSON_GetObjectItem(data.pdu,"scenario");
@@ -632,13 +722,37 @@ int app_account_config_handle(payload_t data)
                 sqlite3_reset(stmt);
                 sqlite3_clear_bindings(stmt);
             }
+
+             /*删除用户历史数据*/
+            if(time != NULL)
+            {
+                sqlite3_bind_text(stmt_3, 1,  accountJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt_3, 2,  time, -1, NULL);
+
+                rc = sqlite3_step(stmt_3);
+                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            }
+
             if(stmt)
             {
                 sqlite3_finalize(stmt);
+                stmt = NULL;
             }
             if(stmt_1)
             {
                 sqlite3_finalize(stmt_1);
+                stmt_1 = NULL;
+            }
+            if(stmt_2)
+            {
+                sqlite3_finalize(stmt_2);
+                stmt_2 = NULL;
+            }
+            if(stmt_3)
+            {
+                sqlite3_finalize(stmt_3);
+                stmt_3 = NULL;
             }
 
         }
@@ -654,12 +768,45 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             } 
 
-            sql_1 = "insert into all_dev(DEV_ID,DEV_NAME,AP_ID,PID,ADDED,NET,STATUS,ACCOUNT)values(?,?,?,?,?,?,?,?);";
+            sql_1 = "insert or replace into all_dev(DEV_ID,DEV_NAME,AP_ID,PID,ADDED,NET,STATUS,ACCOUNT)values(?,?,?,?,?,?,?,?);";
             M1_LOG_DEBUG("sql_1:%s\n",sql_1);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
+            }
+
+            /*查询用户历史信息*/
+            sql_2 = "select DISTINCT TIME from all_dev where ACCOUNT = ?;";
+            M1_LOG_DEBUG("%s\n",sql_2);
+
+            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+            {
+                ret = M1_PROTOCOL_FAILED;
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                goto Finish; 
+            }
+
+            /*删除用户历史信息*/
+            sql_3 = "delete from all_dev where ACCOUNT = ? and TIME = ?;";
+            M1_LOG_DEBUG("%s\n",sql_3);
+
+            if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+            {
+                ret = M1_PROTOCOL_FAILED;
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                goto Finish; 
+            }
+
+            /*查询用户历史信息*/
+            {
+                sqlite3_bind_text(stmt_2, 1,  accountJson->valuestring, -1, NULL);
+
+                rc = sqlite3_step(stmt_2);
+                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+
+                time = sqlite3_column_text(stmt_2, 0);
             }
 
             devArray = cJSON_GetObjectItem(data.pdu,"device");
@@ -708,13 +855,37 @@ int app_account_config_handle(payload_t data)
                 sqlite3_reset(stmt);
                 sqlite3_clear_bindings(stmt);
             }
+
+             /*删除用户历史数据*/
+            if(time != NULL)
+            {
+                sqlite3_bind_text(stmt_3, 1,  accountJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt_3, 2,  time, -1, NULL);
+
+                rc = sqlite3_step(stmt_3);
+                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            }
+
             if(stmt)
             {
                 sqlite3_finalize(stmt);
+                stmt = NULL;
             }
             if(stmt_1)
             {
                 sqlite3_finalize(stmt_1);
+                stmt_1 = NULL;
+            }
+            if(stmt_2)
+            {
+                sqlite3_finalize(stmt_2);
+                stmt_2 = NULL;
+            }
+            if(stmt_3)
+            {
+                sqlite3_finalize(stmt_3);
+                stmt_3 = NULL;
             }
 
         }
@@ -748,6 +919,10 @@ int app_account_config_handle(payload_t data)
         sqlite3_finalize(stmt_1);
     if(stmt_2)
         sqlite3_finalize(stmt_2);
+    if(stmt_3)
+        sqlite3_finalize(stmt_3);
+    if(stmt_4)
+        sqlite3_finalize(stmt_4);
 
     return  ret;
 }

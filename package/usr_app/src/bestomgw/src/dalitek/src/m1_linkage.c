@@ -244,6 +244,9 @@ int linkage_msg_handle(payload_t data)
 	int number1             = 0;
 	int number2             = 0;
 	char* errorMsg          = NULL;
+	char* time_0            = NULL;
+	char* time_1            = NULL;
+	char* time_2            = NULL;
 	/*Json*/
 	cJSON* linkNameJson     = NULL;
 	cJSON* districtJson     = NULL;
@@ -267,10 +270,22 @@ int linkage_msg_handle(payload_t data)
 	char* sql               = NULL;
 	char* sql_1             = NULL;
 	char* sql_2             = NULL;
+	char* sql_0_1           = NULL;
+	char* sql_1_1           = NULL;
+	char* sql_2_1           = NULL;
+	char* sql_0_2           = NULL;
+	char* sql_1_2           = NULL;
+	char* sql_2_2           = NULL;
 	sqlite3* db             = NULL;
 	sqlite3_stmt *stmt      = NULL;
 	sqlite3_stmt *stmt_1    = NULL;
 	sqlite3_stmt *stmt_2    = NULL;
+	sqlite3_stmt *stmt_0_1  = NULL;
+	sqlite3_stmt *stmt_1_1  = NULL;
+	sqlite3_stmt *stmt_2_1  = NULL;
+	sqlite3_stmt *stmt_0_2  = NULL;
+	sqlite3_stmt *stmt_1_2  = NULL;
+	sqlite3_stmt *stmt_2_2  = NULL;
 
 	if(data.pdu == NULL){
 		ret = M1_PROTOCOL_FAILED;	
@@ -340,6 +355,126 @@ int linkage_msg_handle(payload_t data)
     	}
 
     }
+    /*查询linkage_table历史数据时间*/
+    {
+    	sql_0_1 = "select DISTINCT TIME from linkage_table where LINK_NAME = ? and DISTRICT = ? ;";
+	    M1_LOG_DEBUG("%s\n",sql_0_1);
+	    if(sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL) != SQLITE_OK)
+	    {
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
+    }
+    /*删除linkage_table没被跟新数据*/
+    {
+    	sql_0_2 = "delete from linkage_table where LINK_NAME = ? and DISTRICT = ? and TIME = ?;";
+	    M1_LOG_DEBUG("%s\n",sql_0_2);
+	    if(sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL) != SQLITE_OK)
+	    {
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
+    }
+    /*查询link_trigger_table历史数据时间*/
+    {
+    	sql_1_1 = "select DISTINCT TIME from link_trigger_table where LINK_NAME = ? and DISTRICT = ?;";
+	    M1_LOG_DEBUG("%s\n",sql_1_1);
+	    if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
+	    {
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
+    }
+    /*删除link_trigger_table没被跟新数据*/
+    {
+    	sql_1_2 = "delete from link_trigger_table where LINK_NAME = ? and DISTRICT = ? and TIME = ?;";
+	    M1_LOG_DEBUG("%s\n",sql_1_2);
+	    if(sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL) != SQLITE_OK)
+	    {
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
+    }
+    /*查询link_exec_table历史数据时间*/
+    {
+    	sql_2_1 = "select DISTINCT TIME from link_exec_table where LINK_NAME = ? and DISTRICT = ?;";
+	    M1_LOG_DEBUG("%s\n",sql_2_1);
+	    if(sqlite3_prepare_v2(db, sql_2_1, strlen(sql_2_1), &stmt_2_1, NULL) != SQLITE_OK)
+	    {
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
+    }
+    /*删除link_exec_table没被跟新数据*/
+    {
+    	sql_2_2 = "delete from link_exec_table where LINK_NAME = ? and DISTRICT = ? and TIME = ?;";
+	    M1_LOG_DEBUG("%s\n",sql_2_2);
+	    if(sqlite3_prepare_v2(db, sql_2_2, strlen(sql_2_2), &stmt_2_2, NULL) != SQLITE_OK)
+	    {
+    	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    ret = M1_PROTOCOL_FAILED;
+    	    goto Finish; 
+    	}
+    }
+
+    /*查询历史数据时间*/
+    {
+    	/*linkage table*/
+    	sqlite3_bind_text(stmt_0_1, 1,  linkNameJson->valuestring, -1, NULL);
+		sqlite3_bind_text(stmt_0_1, 2,  districtJson->valuestring, -1, NULL);
+
+		rc = sqlite3_step(stmt_0_1);
+		M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+               
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        }
+        else
+        {
+        	time_0 = sqlite3_column_text(stmt_0_1, 0);
+        }
+
+        /*linkage_trigger_table*/
+		sqlite3_bind_text(stmt_1_1, 1,  linkNameJson->valuestring, -1, NULL);
+		sqlite3_bind_text(stmt_1_1, 2,  districtJson->valuestring, -1, NULL);
+
+		rc = sqlite3_step(stmt_1_1);
+		M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+               
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        }
+        else
+        {
+        	time_1 = sqlite3_column_text(stmt_1_1, 0);
+        }      
+
+        /*linkage_exec_table*/
+		sqlite3_bind_text(stmt_2_1, 1,  linkNameJson->valuestring, -1, NULL);
+		sqlite3_bind_text(stmt_2_1, 2,  districtJson->valuestring, -1, NULL);
+
+		rc = sqlite3_step(stmt_2_1);
+		M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+               
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        }
+        else
+        {
+        	time_2 = sqlite3_column_text(stmt_2_1, 0);
+        }  
+    }
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
@@ -396,7 +531,7 @@ int linkage_msg_handle(payload_t data)
 		    }
 
 	    }
-	    /*联动执行*/
+	    /*联动执行信息*/
 	    if(strcmp( execTypeJson->valuestring, "scenario") != 0)
 	    {
 		    number1 = cJSON_GetArraySize(executeJson);
@@ -443,6 +578,50 @@ int linkage_msg_handle(payload_t data)
 		    	}
 		    }
 		}
+
+		/*删除表中历史无效数据*/
+		{
+			/*linkage_trigger_table*/
+			if(time_0 != NULL)
+			{
+				sqlite3_bind_text(stmt_0_2, 1,  linkNameJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt_0_2, 2,  districtJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt_0_2, 3,  time_0, -1, NULL);
+
+				rc = sqlite3_step(stmt_0_2);
+				M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+		            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+		               	
+			}
+			/*linkage_trigger_table*/
+			if(time_1 != NULL)
+			{
+				sqlite3_bind_text(stmt_1_2, 1,  linkNameJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt_1_2, 2,  districtJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt_1_2, 3,  time_1, -1, NULL);
+
+				rc = sqlite3_step(stmt_1_2);
+				M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+		            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+		               	
+			}
+
+			/*linkage_exec_table*/
+			if(time_2 != NULL)
+			{
+				sqlite3_bind_text(stmt_2_2, 1,  linkNameJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt_2_2, 2,  districtJson->valuestring, -1, NULL);
+				sqlite3_bind_text(stmt_2_2, 3,  time_2, -1, NULL);
+
+				rc = sqlite3_step(stmt_2_2);
+				M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+		            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+		               	
+			}
+			
+
+		}
+
 		rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
         if(rc == SQLITE_OK)
         {
@@ -472,6 +651,18 @@ int linkage_msg_handle(payload_t data)
     	sqlite3_finalize(stmt_1);
     if(stmt_2)
     	sqlite3_finalize(stmt_2);
+    if(stmt_0_1)
+    	sqlite3_finalize(stmt_0_1);
+    if(stmt_1_1)
+    	sqlite3_finalize(stmt_1_1);
+    if(stmt_2_1)
+    	sqlite3_finalize(stmt_2_1);
+    if(stmt_0_2)
+    	sqlite3_finalize(stmt_0_2);
+    if(stmt_1_2)
+    	sqlite3_finalize(stmt_1_2);
+    if(stmt_2_2)
+    	sqlite3_finalize(stmt_2_2);
 
     return ret;
 }
@@ -677,8 +868,11 @@ static void linkage_check(sqlite3* db, char* link_name)
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
     	    goto Finish; 
     	}
-    	sqlite3_bind_text(stmt_2, 1, rowid, -1, NULL);
+    	sqlite3_bind_text(stmt_2, 1, link_name, -1, NULL);
 		rc = sqlite3_step(stmt_2);
+		M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+	        rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+		
 		if(rc == SQLITE_ROW)
 		{
 			rowid = sqlite3_column_int(stmt_2,0);
@@ -747,7 +941,7 @@ int trigger_cb_handle(sqlite3* db)
 	    }
 	    /*检查设备启/停状态*/
 	    {
-	    	sql_1 = "select STATUS from all_dev where DEV_ID = ?;";
+	    	sql_1 = "select STATUS from all_dev where DEV_ID = ? order by ID desc limit 1;";
 	    	M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 	    	if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
 	    	{
@@ -796,56 +990,57 @@ int trigger_cb_handle(sqlite3* db)
 				    /*设备处于启动状态*/
 				    if(strcmp(status,"ON") == 0)
 				    {
-					    /*get linkage table*/
-    					sqlite3_bind_text(stmt_2, 1, devId, -1, NULL);
-    					sqlite3_bind_int(stmt_2, 2, param_type);
-						while(sqlite3_step(stmt_2) == SQLITE_ROW)
-						{
-							if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
-    						{
-								threshold = sqlite3_column_int(stmt_2,0);
-						        condition = sqlite3_column_text(stmt_2,1);
-						        link_name = sqlite3_column_text(stmt_2,2);
-						        M1_LOG_DEBUG("threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
-						 		status = linkage_status(condition, threshold, value);
-						 		/*set linkage table*/
-	    						sqlite3_bind_text(stmt_3, 1, status, -1, NULL);
-	    						sqlite3_bind_text(stmt_3, 2, devId, -1, NULL);
-	    						sqlite3_bind_int(stmt_3, 3, param_type);
-	    						sqlite3_bind_text(stmt_3, 4, link_name, -1, NULL);
-								rc = sqlite3_step(stmt_3);
-								M1_LOG_DEBUG("step() return %s, number:%03d\n", \
-									rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-								/*检查是否满足触发条件*/
-								linkage_check(db, link_name);
-					 		
-						 		sqlite3_reset(stmt_3);
-			 					sqlite3_clear_bindings(stmt_3);
+				    	if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    					{
+						    /*get linkage table*/
+	    					sqlite3_bind_text(stmt_2, 1, devId, -1, NULL);
+	    					sqlite3_bind_int(stmt_2, 2, param_type);
+							while(sqlite3_step(stmt_2) == SQLITE_ROW)
+							{
+									threshold = sqlite3_column_int(stmt_2,0);
+							        condition = sqlite3_column_text(stmt_2,1);
+							        link_name = sqlite3_column_text(stmt_2,2);
+							        M1_LOG_DEBUG("threshold:%05d, condition:%s\n, link_name:%s\n", threshold, condition, link_name);
+							 		status = linkage_status(condition, threshold, value);
+							 		/*set linkage table*/
+		    						sqlite3_bind_text(stmt_3, 1, status, -1, NULL);
+		    						sqlite3_bind_text(stmt_3, 2, devId, -1, NULL);
+		    						sqlite3_bind_int(stmt_3, 3, param_type);
+		    						sqlite3_bind_text(stmt_3, 4, link_name, -1, NULL);
+									rc = sqlite3_step(stmt_3);
+									M1_LOG_DEBUG("step() return %s, number:%03d\n", \
+										rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+									/*检查是否满足触发条件*/
+									linkage_check(db, link_name);
+						 		
+							 		sqlite3_reset(stmt_3);
+				 					sqlite3_clear_bindings(stmt_3);
 
-			 					rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-						        if(rc == SQLITE_OK)
-						        {
-						            M1_LOG_DEBUG("COMMIT OK\n");
-						        }
-						        else if(rc == SQLITE_BUSY)
-						        {
-						            M1_LOG_WARN("等待再次提交\n");
-						        }
-						        else
-						        {
-						            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-						            sqlite3_free(errorMsg);
-						        }
-
+			 					
+					 		}
+					 		sqlite3_reset(stmt_2);
+		 					sqlite3_clear_bindings(stmt_2);
+		 					rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+						    if(rc == SQLITE_OK)
+						    {
+						        M1_LOG_DEBUG("COMMIT OK\n");
+						    }
+						    else if(rc == SQLITE_BUSY)
+						    {
+						        M1_LOG_WARN("等待再次提交\n");
 						    }
 						    else
 						    {
-						        M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+						        M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
 						        sqlite3_free(errorMsg);
 						    }
-					 	}
-					 	sqlite3_reset(stmt_2);
-		 				sqlite3_clear_bindings(stmt_2);
+
+						}
+						else
+						{
+						    M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+						    sqlite3_free(errorMsg);
+						}
 				 	}
 			 	}
 			 	sqlite3_reset(stmt_1);
@@ -874,7 +1069,7 @@ void trigger_cb(void* udp, int type, char const* db_name, char const* table_name
 {
 	int rc;
 
-	M1_LOG_DEBUG("trigger_cb\n");
+	M1_LOG_INFO("trigger_cb\n");
 	rc = strcmp(udp, "AP_report_data_handle");
 	if((0 == rc) && rowid > 0)
 	{
