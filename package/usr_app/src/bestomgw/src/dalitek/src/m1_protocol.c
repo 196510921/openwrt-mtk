@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <malloc.h>
+#include <math.h>
 
 #include "m1_protocol.h"
 #include "socket_server.h"
@@ -2100,86 +2101,149 @@ static int common_operate(payload_t data)
     return ret;
 }
 
-#define AP_HEART_BEAT_INTERVAL   2   //min
+#define AP_HEART_BEAT_INTERVAL   (2*60)   //seconds
 /*查询离线设备*/
 static void check_offline_dev(sqlite3*db)
 {
     M1_LOG_DEBUG("check_offline_dev\n");
-    int rc = 0;
-    static char preTime[4] = {0};
-    char* curTime = (char*)malloc(30);
-    char *time = NULL;
-    int u8CurTime = 0, u8Time = 0;
-    char* apId = NULL;
-    char* errorMsg = NULL;
-    char* sql = NULL;
-    char* sql_1 = (char*)malloc(300);
-    char* sql_2 = (char*)malloc(300);
-    sqlite3_stmt* stmt = NULL;
+    int rc               = 0;
+    char *time           = NULL;
+    int curTime          = 0;
+    int sqlTime          = 0;
+    int interval         = 0;
+    char* apId           = NULL;
+    char* errorMsg       = NULL;
+    char* sql            = NULL;
+    char* sql_1          = NULL;
+    char* sql_2          = NULL;
+    char* sql_3          = NULL;
+    char* sql_4          = NULL;
+    sqlite3_stmt* stmt   = NULL;
     sqlite3_stmt* stmt_1 = NULL;
     sqlite3_stmt* stmt_2 = NULL;
+    sqlite3_stmt* stmt_3 = NULL;
+    sqlite3_stmt* stmt_4 = NULL;
 
-    getNowTime(curTime);
-    /*当前时间*/
-    M1_LOG_DEBUG("curTime:%x,%x,%x,%x\n",curTime[8],curTime[9],curTime[10],curTime[11]);
-    u8CurTime = (curTime[8] - preTime[0])*60*10 + (curTime[9] - preTime[1]) * 60  + (curTime[10] - preTime[2]) * 10 + curTime[11] - preTime[3];
-    u8CurTime = abs(u8CurTime);
-    M1_LOG_DEBUG("u8CurTime:%d\n",u8CurTime);
-    
-    if(u8CurTime < 2){
-        goto Finish;
-    }
-    memcpy(preTime, &curTime[8], 4);
-    M1_LOG_DEBUG("preTime:%x,%x,%x,%x\n",preTime[0],preTime[1],preTime[2],preTime[3]);
     /*获取AP ID*/
     sql = "select AP_ID from all_dev where DEV_ID = AP_ID;";
     M1_LOG_DEBUG("string:%s\n",sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         goto Finish; 
     }
-    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK){
+
+    /*查询数据库时间*/
+    sql_1 = "select TIME from param_table where DEV_ID = ? and TYPE = 16404 order by ID desc limit 1;";
+    M1_LOG_DEBUG("string:%s\n",sql_1);
+            
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        goto Finish; 
+    }
+    /*当前时间格式化*/
+    sql_2 = "select strftime('%s','now');";
+    M1_LOG_DEBUG("%s\n",sql_2);
+            
+    if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        goto Finish; 
+    }
+    /*数据库时间格式化*/
+    sql_3 = "select strftime('%s',?);";
+    M1_LOG_DEBUG("%s\n",sql_3);
+            
+    if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        goto Finish; 
+    }
+    /*更新AP在线状态*/
+    {
+        sql_4 = "update param_table set VALUE = ? where DEV_ID = ? and TYPE = ?;";
+        if(sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            goto Finish; 
+        }
+    }
+
+    {
+        /*当前时间格式化*/
+        rc = sqlite3_step(stmt_2);
+        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        }
+
+        curTime = sqlite3_column_int(stmt_2, 0);
+        M1_LOG_DEBUG("curTime:%x\n",curTime);
+    }
+
+    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    {
         M1_LOG_DEBUG("BEGIN:\n");
-        while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW){
+        while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW)
+        {
             apId = sqlite3_column_text(stmt, 0);
             /*检查时间*/
-            sprintf(sql_1,"select TIME from param_table where DEV_ID = \"%s\" and TYPE = 16404 order by ID desc limit 1;", apId);
-            M1_LOG_DEBUG("string:%s\n",sql_1);
-            sqlite3_finalize(stmt_1);
-            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                goto Finish; 
-            }
+            sqlite3_bind_text(stmt_1, 1, apId, -1, NULL);
             rc = thread_sqlite3_step(&stmt_1, db);
-            if(rc != SQLITE_ROW){
-                M1_LOG_DEBUG("rc != SQLITE_ROW\n");
+            if(rc != SQLITE_ROW)
+            {
+                M1_LOG_WARN("rc != SQLITE_ROW\n");
                 continue;
             }
             time = sqlite3_column_text(stmt_1, 0);
-            if(time == NULL){
+            if(time == NULL)
+            {
                 M1_LOG_DEBUG("time == NULL\n");
                 continue;
             }
-             M1_LOG_DEBUG("time: %s\n",time);
-            /*获取的上一次时间*/
-            u8Time = (curTime[8] - time[8]) * 60 * 10 + (curTime[9] - time[9]) * 60 + (curTime[10] - time[10]) * 10 + curTime[11] - time[11];
-            u8Time = abs(u8Time);
-            M1_LOG_DEBUG("u8Time:%d\n",u8Time);
-            if(u8Time > AP_HEART_BEAT_INTERVAL){
-                //sprintf(sql_2,"update param_table set VALUE = 0 where DEV_ID = \"%s\" and TYPE = 16404;", apId);
-                /*测试将主公你太全都改为在线*/
-                sprintf(sql_2,"update param_table set VALUE = 1 where DEV_ID = \"%s\" and TYPE = 16404;", apId);
-                sqlite3_finalize(stmt_2);
-                if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK){
-                    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                    goto Finish; 
+            M1_LOG_DEBUG("time: %s\n",time);
+           
+            {
+                /*数据库时间格式化*/
+                sqlite3_bind_text(stmt_3, 1, time, -1, NULL);
+                rc = sqlite3_step(stmt_3);
+                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                    rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                    
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 }
-                rc = thread_sqlite3_step(&stmt_2, db);
-                if(rc == SQLITE_ERROR){
+
+                sqlTime = sqlite3_column_int(stmt_3, 0);
+                M1_LOG_DEBUG("sqlTime:%x\n",sqlTime);
+            }
+            interval = curTime - sqlTime;
+            interval = abs(interval);
+            M1_LOG_DEBUG("interval:%x\n",interval);
+            if(interval > AP_HEART_BEAT_INTERVAL)
+            {
+
+                sqlite3_bind_int(stmt_4, 1, 0);
+                sqlite3_bind_text(stmt_4, 2, apId, -1, NULL);
+                sqlite3_bind_int(stmt_4, 3, 16404);
+                rc = sqlite3_step(stmt_4);
+                if(rc == SQLITE_ERROR)
+                {
                     M1_LOG_WARN("update failed\n");
                     continue;
                 }
+                sqlite3_reset(stmt_4);
+                sqlite3_clear_bindings(stmt_4);    
             }
+            sqlite3_reset(stmt_1);
+            sqlite3_clear_bindings(stmt_1);
+            sqlite3_reset(stmt_3);
+            sqlite3_clear_bindings(stmt_3);
         }
 
          rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
@@ -2205,13 +2269,16 @@ static void check_offline_dev(sqlite3*db)
     }
 
     Finish:
-
-    free(curTime);
-    free(sql_1);
-    free(sql_2);
-    sqlite3_finalize(stmt);
-    sqlite3_finalize(stmt_1);
-    sqlite3_finalize(stmt_2);
+    if(stmt)
+        sqlite3_finalize(stmt);
+    if(stmt_1)
+        sqlite3_finalize(stmt_1);
+    if(stmt_2)
+        sqlite3_finalize(stmt_2);
+    if(stmt_3)
+        sqlite3_finalize(stmt_3);
+    if(stmt_4)
+        sqlite3_finalize(stmt_4);
 }
 
 static int ap_heartbeat_handle(payload_t data)
@@ -2236,7 +2303,7 @@ static int ap_heartbeat_handle(payload_t data)
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
-        sql = "update param_table set VALUE = 1 where DEV_ID = ? and TYPE = ?;";
+        sql = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
         M1_LOG_DEBUG("string:%s\n",sql);
 
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -2246,8 +2313,10 @@ static int ap_heartbeat_handle(payload_t data)
             goto Finish; 
         }
 
-        sqlite3_bind_text(stmt, 1, apIdJson->valuestring, -1, NULL);
-        sqlite3_bind_int(stmt, 2, valueType);
+        M1_LOG_DEBUG("string:%s\n",apIdJson->valuestring);
+        sqlite3_bind_int(stmt, 1, 1);
+        sqlite3_bind_text(stmt, 2, apIdJson->valuestring, -1, NULL);
+        sqlite3_bind_int(stmt, 3, valueType);
 
         rc = sqlite3_step(stmt);
         M1_LOG_DEBUG("step() return %s\n", \
@@ -3020,7 +3089,8 @@ static int create_sql_table(void)
             M1_LOG_WARN("param_table already exit: %s\n",errmsg);
         }
         /*DEV_ID,DEV_NAME,TYPE UNION index*/
-        sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"DEV_NAME\" ASC,\"TYPE\" ASC);";
+        //sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"DEV_NAME\" ASC,\"TYPE\" ASC);";
+        sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"TYPE\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
