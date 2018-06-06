@@ -480,22 +480,6 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
             sqlite3_reset(stmt_1);
             sqlite3_clear_bindings(stmt_1);
         }
-
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -504,6 +488,11 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
     if(stmt)
         sqlite3_finalize(stmt);
     if(stmt_1)

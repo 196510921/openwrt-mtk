@@ -619,23 +619,7 @@ int linkage_msg_handle(payload_t data)
 		               	
 			}
 			
-
 		}
-
-		rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
 
     }
     else
@@ -645,6 +629,13 @@ int linkage_msg_handle(payload_t data)
     }
 
     Finish:
+
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt)
     	sqlite3_finalize(stmt);
     if(stmt_1)
@@ -1020,20 +1011,12 @@ int trigger_cb_handle(sqlite3* db)
 					 		}
 					 		sqlite3_reset(stmt_2);
 		 					sqlite3_clear_bindings(stmt_2);
-		 					rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-						    if(rc == SQLITE_OK)
-						    {
-						        M1_LOG_DEBUG("COMMIT OK\n");
-						    }
-						    else if(rc == SQLITE_BUSY)
-						    {
-						        M1_LOG_WARN("等待再次提交\n");
-						    }
-						    else
-						    {
-						        M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-						        sqlite3_free(errorMsg);
-						    }
+		 					
+		 					rc = sql_commit(db);
+    						if(rc == SQLITE_OK)
+    						{
+    						    M1_LOG_DEBUG("COMMIT OK\n");
+    						}
 
 						}
 						else
@@ -1069,7 +1052,7 @@ void trigger_cb(void* udp, int type, char const* db_name, char const* table_name
 {
 	int rc;
 
-	M1_LOG_INFO("trigger_cb\n");
+	M1_LOG_DEBUG("trigger_cb\n");
 	rc = strcmp(udp, "AP_report_data_handle");
 	if((0 == rc) && rowid > 0)
 	{
@@ -1621,23 +1604,13 @@ int app_linkage_enable(payload_t data)
     {
 		sqlite3_bind_text(stmt, 1, enableObject->valuestring, -1, NULL);
 		sqlite3_bind_text(stmt, 2, linkObject->valuestring, -1, NULL);
-	  	while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW);
+	  	while(sqlite3_step(stmt) == SQLITE_ROW);
 		
-		rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
+		rc = sql_commit(db);
+	    if(rc == SQLITE_OK)
+	    {
+	        M1_LOG_DEBUG("COMMIT OK\n");
+	    }
     }
     else
     {

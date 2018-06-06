@@ -823,7 +823,7 @@ int app_account_config_handle(payload_t data)
                 M1_LOG_DEBUG("devIdObject->valuestring:%s\n",devIdObject->valuestring);
 
                 sqlite3_bind_text(stmt, 1, devIdObject->valuestring, -1, NULL);
-                while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW)
+                while(sqlite3_step(stmt) == SQLITE_ROW)
                 {
                     dev_name = sqlite3_column_text(stmt, 0);
                     ap_id = sqlite3_column_text(stmt, 1);
@@ -889,22 +889,6 @@ int app_account_config_handle(payload_t data)
             }
 
         }
-
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -913,6 +897,12 @@ int app_account_config_handle(payload_t data)
     }    
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt)
         sqlite3_finalize(stmt);
     if(stmt_1)
@@ -1686,21 +1676,6 @@ int user_login_handle(payload_t data)
             ret = M1_PROTOCOL_FAILED;
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -1709,6 +1684,12 @@ int user_login_handle(payload_t data)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+    
     if(stmt)
         sqlite3_finalize(stmt);
     if(stmt_1)
@@ -1863,21 +1844,6 @@ int app_change_user_key(payload_t data)
             goto Finish;
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -1886,6 +1852,12 @@ int app_change_user_key(payload_t data)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt)
         sqlite3_finalize(stmt);
     if(stmt_1)

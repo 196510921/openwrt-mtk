@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <time.h>
 
 #include "m1_common_log.h"
 
@@ -373,7 +374,21 @@ void printf_buffer_color(char * pBuf, int usBufLen)
 }
 
 
-
+char *get_cur_time(void)  
+{  
+    char s[20];  
+    time_t t;  
+    struct tm* ltime;  
+  
+  
+    time(&t);  
+  
+  
+    ltime = localtime(&t);  
+  
+    return asctime(ltime);
+    //strftime(s, 20, "%Y-%m-%d %H:%M:%S", ltime);  
+}
 
 
 

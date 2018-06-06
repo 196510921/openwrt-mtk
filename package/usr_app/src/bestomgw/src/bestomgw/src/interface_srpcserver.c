@@ -258,7 +258,7 @@ void SRPC_RxCB(int clientFd)
 		M1_LOG_ERROR( "client_block null\n");
 		return;
 	}
-	M1_LOG_INFO("clientFd:%d,rx len:%05d, rx header:%x,%x,%x,%x, rx data:%s\n",clientFd, \
+	M1_LOG_DEBUG("clientFd:%d,rx len:%05d, rx header:%x,%x,%x,%x, rx data:%s\n",clientFd, \
 		len, tcpRxBuf[0],tcpRxBuf[1],tcpRxBuf[2],tcpRxBuf[3],tcpRxBuf+4);
 	rc = client_write(&client_block->stack_block, tcpRxBuf, len);
 	if(rc != TCP_SERVER_SUCCESS)
@@ -429,7 +429,7 @@ int client_write(stack_mem_t* d, char* data, int len)
 		distance = (((distance << 8) & 0xff00) | ((distance >> 8) & 0xff)) & 0xffff;
 	}
 
-	M1_LOG_INFO("len:%05d, distance:%05d\n",len, distance);
+	M1_LOG_DEBUG("len:%05d, distance:%05d\n",len, distance);
 	rc = stack_push(d, data, len ,distance);
 	if(rc != TCP_SERVER_SUCCESS)
 		M1_LOG_WARN( "client write failed\n");

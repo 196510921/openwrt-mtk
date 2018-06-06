@@ -93,21 +93,7 @@ int district_create_handle(payload_t data)
             sqlite3_reset(stmt);
             sqlite3_clear_bindings(stmt); 
         }
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
+        
     }
     else
     {
@@ -116,6 +102,11 @@ int district_create_handle(payload_t data)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
     
     if(stmt)
         sqlite3_finalize(stmt);

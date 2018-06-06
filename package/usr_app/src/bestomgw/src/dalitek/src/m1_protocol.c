@@ -45,10 +45,10 @@ static void delete_client_db(void);
 /*variable******************************************************************************************************/
 extern pthread_mutex_t mutex_lock;
 sqlite3* db = NULL;
-// const char* db_path = "/bin/dev_info.db";
-// const char* sql_back_path = "/bin/sql_restore.sh";
-const char* db_path = "dev_info.db";
-const char* sql_back_path = "sql_restore.sh";
+const char* db_path = "/bin/dev_info.db";
+const char* sql_back_path = "/bin/sql_restore.sh";
+// const char* db_path = "dev_info.db";
+// const char* sql_back_path = "sql_restore.sh";
 fifo_t dev_data_fifo;
 fifo_t link_exec_fifo;
 fifo_t msg_rd_fifo;
@@ -361,22 +361,6 @@ static int AP_report_data_handle(payload_t data)
 
             }
         }
-
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -385,8 +369,14 @@ static int AP_report_data_handle(payload_t data)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }  
+
     if(stmt != NULL)
-        sqlite3_finalize(stmt);
+        sqlite3_finalize(stmt);  
 
     trigger_cb_handle(db);
     return ret;
@@ -500,21 +490,6 @@ static int AP_report_dev_handle(payload_t data)
             sqlite3_clear_bindings(stmt);
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -523,9 +498,14 @@ static int AP_report_dev_handle(payload_t data)
     } 
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt != NULL)
         sqlite3_finalize(stmt);
-
     return ret;  
 }
 
@@ -670,21 +650,6 @@ static int AP_report_ap_handle(payload_t data)
             stmt = NULL;
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -693,10 +658,14 @@ static int AP_report_ap_handle(payload_t data)
     }
 
     Finish:
-    
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt != NULL)
         sqlite3_finalize(stmt);
-
     return ret;  
 }
 
@@ -1128,21 +1097,6 @@ static int APP_write_handle(payload_t data)
                 sqlite3_clear_bindings(stmt);
             }
         }
-        
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
 
     }
     else
@@ -1152,6 +1106,12 @@ static int APP_write_handle(payload_t data)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt != NULL)
         sqlite3_finalize(stmt);
 
@@ -1217,10 +1177,10 @@ static int APP_echo_dev_info_handle(payload_t data)
             }
             M1_LOG_DEBUG("AP_ID:%s\n",APIdJson->valuestring);\
 
-            sqlite3_bind_int(stmt, 0, 1);
-            sqlite3_bind_text(stmt, 1, "ON", -1, NULL);
-            sqlite3_bind_text(stmt, 2, APIdJson->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt, 1, 1);
+            sqlite3_bind_text(stmt, 2, "ON", -1, NULL);
             sqlite3_bind_text(stmt, 3, APIdJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt, 4, APIdJson->valuestring, -1, NULL);
 
             rc = sqlite3_step(stmt);   
             M1_LOG_DEBUG("step() return %s, number:%03d\n",\
@@ -1244,10 +1204,10 @@ static int APP_echo_dev_info_handle(payload_t data)
                     devArrayJson = cJSON_GetArrayItem(devDataJson, j);
                     M1_LOG_DEBUG("  devId:%s\n",devArrayJson->valuestring);
 
-                    sqlite3_bind_int(stmt, 0, 1);
-                    sqlite3_bind_text(stmt, 1, "ON", -1, NULL);
-                    sqlite3_bind_text(stmt, 2, devArrayJson->valuestring, -1, NULL);
-                    sqlite3_bind_text(stmt, 3, APIdJson->valuestring, -1, NULL);
+                    sqlite3_bind_int(stmt, 1, 1);
+                    sqlite3_bind_text(stmt, 2, "ON", -1, NULL);
+                    sqlite3_bind_text(stmt, 3, devArrayJson->valuestring, -1, NULL);
+                    sqlite3_bind_text(stmt, 4, APIdJson->valuestring, -1, NULL);
                     rc = sqlite3_step(stmt);   
                     M1_LOG_DEBUG("step() return %s, number:%03d\n",\
                         rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
@@ -1263,21 +1223,6 @@ static int APP_echo_dev_info_handle(payload_t data)
             }
         }
 
-         rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -1286,9 +1231,14 @@ static int APP_echo_dev_info_handle(payload_t data)
     }  
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt != NULL)
         sqlite3_finalize(stmt);
-
     return ret;
 }
 
@@ -2070,21 +2020,6 @@ static int common_operate(payload_t data)
             }
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -2093,8 +2028,13 @@ static int common_operate(payload_t data)
     }
 
     Finish:    
-    free(sql);
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
 
+    free(sql);
     if(stmt != NULL)
         sqlite3_finalize(stmt);
 
@@ -2187,13 +2127,13 @@ static void check_offline_dev(sqlite3*db)
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
-        M1_LOG_DEBUG("BEGIN:\n");
-        while(thread_sqlite3_step(&stmt, db) == SQLITE_ROW)
+        M1_LOG_DEBUG("BEGIN IMMEDIATE:\n");
+        while(sqlite3_step(stmt) == SQLITE_ROW)
         {
             apId = sqlite3_column_text(stmt, 0);
             /*检查时间*/
             sqlite3_bind_text(stmt_1, 1, apId, -1, NULL);
-            rc = thread_sqlite3_step(&stmt_1, db);
+            rc = sqlite3_step(stmt_1);
             if(rc != SQLITE_ROW)
             {
                 M1_LOG_WARN("rc != SQLITE_ROW\n");
@@ -2246,21 +2186,6 @@ static void check_offline_dev(sqlite3*db)
             sqlite3_clear_bindings(stmt_3);
         }
 
-         rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -2269,6 +2194,13 @@ static void check_offline_dev(sqlite3*db)
     }
 
     Finish:
+
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt)
         sqlite3_finalize(stmt);
     if(stmt_1)
@@ -2321,22 +2253,6 @@ static int ap_heartbeat_handle(payload_t data)
         rc = sqlite3_step(stmt);
         M1_LOG_DEBUG("step() return %s\n", \
             rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
-
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -2345,6 +2261,12 @@ static int ap_heartbeat_handle(payload_t data)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt != NULL)
         sqlite3_finalize(stmt);
 
@@ -2465,22 +2387,6 @@ void delete_account_conn_info(int clientFd)
             M1_LOG_DEBUG("step() return %s\n", \
                 rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
         }
-
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -2489,6 +2395,12 @@ void delete_account_conn_info(int clientFd)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
+
     if(stmt)
         sqlite3_finalize(stmt);
 
@@ -2563,22 +2475,6 @@ static int app_change_device_name(payload_t data)
             ret = M1_PROTOCOL_FAILED;
             goto Finish;   
         }
-
-         rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -2587,12 +2483,16 @@ static int app_change_device_name(payload_t data)
     }
 
     Finish:
+    rc = sql_commit(db);
+    if(rc == SQLITE_OK)
+    {
+        M1_LOG_DEBUG("COMMIT OK\n");
+    }
     if(stmt)
         sqlite3_finalize(stmt);
 
     return ret;
 }
-
 
 void getNowTime(char* _time)
 {
@@ -2605,18 +2505,6 @@ void getNowTime(char* _time)
     
     sprintf(_time, "%04d%02d%02d%02d%02d%02d", nowTime.tm_year + 1900, nowTime.tm_mon+1, nowTime.tm_mday, 
       nowTime.tm_hour, nowTime.tm_min, nowTime.tm_sec);
-}
-
-/*Hex to int*/
-static uint8_t hex_to_uint8(int h)
-{
-    if( (h>='0' && h<='9') ||  (h>='a' && h<='f') ||  (h>='A' && h<='F') )
-        h += 9*(1&(h>>6));
-    else{
-        return 0;
-    }
-
-    return (uint8_t)(h & 0xf);
 }
 
 void setLocalTime(char* time)
@@ -2682,43 +2570,6 @@ void delay_send_task(void)
     }
 }
 
-int sql_id(sqlite3* db, char* sql)
-{
-    M1_LOG_DEBUG("sql_id\n");
-    sqlite3_stmt* stmt = NULL;
-    int id, total_column, rc;
-    /*get id*/
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL) != SQLITE_OK){
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        goto Finish; 
-    }
-    rc = thread_sqlite3_step(&stmt, db);
-    if(rc == SQLITE_ROW){
-            id = (sqlite3_column_int(stmt, 0) + 1);
-    }else{
-        id = 1;
-    }
-
-    Finish:
-    sqlite3_finalize(stmt);
-    return id;
-}
-
-int sql_row_number(sqlite3* db, char*sql)
-{
-    char** p_result;
-    char* errmsg;
-    int n_row, n_col, rc;
-    rc = sqlite3_get_table(db, sql, &p_result,&n_row, &n_col, &errmsg);
-    if(rc != SQLITE_OK)
-        M1_LOG_ERROR("sql_row_number failed:%s\n",errmsg);
-
-    sqlite3_free(errmsg);
-    sqlite3_free_table(p_result);
-
-    return n_row;
-}
-
 int sql_exec(sqlite3* db, char*sql)
 {
     sqlite3_stmt* stmt = NULL;
@@ -2729,7 +2580,7 @@ int sql_exec(sqlite3* db, char*sql)
         goto Finish; 
     }
     do{
-        rc = thread_sqlite3_step(&stmt, db);
+        rc = sqlite3_step(stmt);
     }while(rc == SQLITE_ROW);
    
     Finish:
@@ -2769,16 +2620,23 @@ int sql_close(void)
     return rc;
 }
 
-int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db)
+int sql_commit(sqlite3* db)
 {
-    int sleep_acount = 0;
-    int rc;
+    int rc         = 0;
     char* errorMsg = NULL;
 
-    rc = sqlite3_step(*stmt);   
-    M1_LOG_DEBUG("step() return %s, number:%03d\n", rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK)){
-        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+    rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+    if(rc != SQLITE_OK)
+    {
+        if(rc == SQLITE_BUSY)
+        {
+            M1_LOG_WARN("等待再次提交\n");
+        }
+        else
+        {
+            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
+            sqlite3_free(errorMsg);
+        }
     }
 
     return rc;

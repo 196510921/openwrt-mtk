@@ -116,6 +116,7 @@ void show_info(char *str);
 void show_item_warn(char *str);
 void show_error(char *str);
 
+char *get_cur_time(void);
 
 typedef enum M1_LOG_LEVEL
 {
@@ -149,7 +150,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         if(m1LogLevel <= M1_LOG_LEVEL_INFO)\
         {\
             //printf("[info] %s:%d %s()| "format"\n", __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
-            printf("[info] %s %s:%d %s()| "format"\n", __TIME__, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
+            printf("[info] %s %s:%d %s()| "format"\n", get_cur_time(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
             fflush(stdout);\
         }\
     }
@@ -158,7 +159,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
     {\
         if(m1LogLevel <= M1_LOG_LEVEL_WARN)\
         {\
-            printf("[warn] %s %s:%d %s()| "format"\n", __TIME__, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
+            printf("[warn] %s %s:%d %s()| "format"\n", get_cur_time(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
             fflush(stdout);\
         }\
     }
@@ -167,7 +168,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
     {\
         if(m1LogLevel <= M1_LOG_LEVEL_ERROR)\
         {\
-            printf("[error] %s %s:%d %s()| "format"\n", __TIME__,__FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
+            printf("[error] %s %s:%d %s()| "format"\n", get_cur_time(),__FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
             fflush(stderr);\
         }\
     }
@@ -195,7 +196,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         if(m1LogLevel <= M1_LOG_LEVEL_INFO)\
         {\
             show_info("[info]:");\
-            printf(":%s %d %s()| "format"\n", __TIME__,__LINE__, __FUNCTION__, ##__VA_ARGS__);\
+            printf(":%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__, ##__VA_ARGS__);\
             fflush(stdout);\
         }\
     }
@@ -205,7 +206,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         if(m1LogLevel <= M1_LOG_LEVEL_WARN)\
         {\
             show_item_warn("[warn]:");\
-            printf("%s %d %s()| "format"\n", __TIME__,__LINE__, __FUNCTION__, ##__VA_ARGS__);\
+            printf("%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__, ##__VA_ARGS__);\
             fflush(stdout);\
         }\
     }
@@ -215,7 +216,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         if(m1LogLevel <= M1_LOG_LEVEL_ERROR)\
         {\
             show_error("[error]:");\
-            printf("%s %d %s()| "format"\n", __TIME__,__LINE__, __FUNCTION__, ##__VA_ARGS__);\
+            printf("%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__, ##__VA_ARGS__);\
             fflush(stderr);\
         }\
     }

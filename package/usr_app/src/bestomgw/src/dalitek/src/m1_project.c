@@ -241,21 +241,11 @@ int app_create_project(payload_t data)
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        rc = sql_commit(db);
         if(rc == SQLITE_OK)
         {
             M1_LOG_DEBUG("COMMIT OK\n");
         }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
-        }
-
     }
     else
     {
@@ -331,7 +321,7 @@ int app_get_project_config(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-    if(thread_sqlite3_step(&stmt, db) == SQLITE_ERROR)
+    if(sqlite3_step(stmt) == SQLITE_ERROR)
     {
     	ret = M1_PROTOCOL_FAILED;
     	goto Finish;
@@ -459,19 +449,10 @@ int app_change_project_config(payload_t data)
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        rc = sql_commit(db);
         if(rc == SQLITE_OK)
         {
             M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
         }
 
     }
@@ -587,19 +568,10 @@ int app_change_project_key(payload_t data)
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         }
 
-        rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
+        rc = sql_commit(db);
         if(rc == SQLITE_OK)
         {
             M1_LOG_DEBUG("COMMIT OK\n");
-        }
-        else if(rc == SQLITE_BUSY)
-        {
-            M1_LOG_WARN("等待再次提交\n");
-        }
-        else
-        {
-            M1_LOG_WARN("COMMIT errorMsg:%s\n",errorMsg);
-            sqlite3_free(errorMsg);
         }
 
     }

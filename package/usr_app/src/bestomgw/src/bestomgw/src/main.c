@@ -125,7 +125,7 @@ static void socket_poll(void)
 					M1_LOG_DEBUG("zllMain: adding fd %d to poll()\n", pollFds[pollFdIdx].fd);
 				}
 
-				M1_LOG_INFO("zllMain: waiting for poll()\n");
+				M1_LOG_DEBUG("zllMain: waiting for poll()\n");
 
 				poll(pollFds, (numClientFds), -1);
 				M1_LOG_INFO("poll out\n");
