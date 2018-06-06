@@ -185,7 +185,7 @@ int scenario_exec(char* data, sqlite3* db)
 
 				sqlite3_bind_text(stmt_3, 1, data, -1, NULL);
 				sqlite3_bind_text(stmt_3, 2, dev_id, -1, NULL);
-				sqlite3_bind_text(stmt_3, 2, "Dalitek", -1, NULL);
+				sqlite3_bind_text(stmt_3, 3, "Dalitek", -1, NULL);
 				while(sqlite3_step(stmt_3) == SQLITE_ROW)
 				{
 					type = sqlite3_column_int(stmt_3,0);

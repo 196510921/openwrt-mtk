@@ -434,7 +434,7 @@ int client_write(stack_mem_t* d, char* data, int len)
 	if(rc != TCP_SERVER_SUCCESS)
 		M1_LOG_WARN( "client write failed\n");
 	
-	M1_LOG_INFO("write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	M1_LOG_DEBUG("write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	//pthread_mutex_unlock(&mutex_lock_sock);
 	return rc;
 }
