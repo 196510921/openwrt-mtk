@@ -1349,7 +1349,8 @@ static int APP_req_added_dev_info_handle(payload_t data)
         goto Finish; 
     }
 
-    sqlite3_bind_text(stmt_1, 1, account, -1, NULL);
+    //sqlite3_bind_text(stmt_1, 1, account, -1, NULL);
+    sqlite3_bind_text(stmt_1, 1, "Dalitek", -1, NULL);
     while(sqlite3_step(stmt_1) == SQLITE_ROW)
     {
         apId   = sqlite3_column_text(stmt_1, 0);

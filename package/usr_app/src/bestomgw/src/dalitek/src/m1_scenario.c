@@ -116,7 +116,7 @@ int scenario_exec(char* data, sqlite3* db)
 	}
 	/*查询参数*/
 	{
-		sql_3 = "select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = ? and DEV_ID = ?;";
+		sql_3 = "select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = ? and DEV_ID = ? and ACCOUNT = ?;";
 		M1_LOG_DEBUG("sql_3:%s\n",sql_3);
 		if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
 		{
@@ -185,6 +185,7 @@ int scenario_exec(char* data, sqlite3* db)
 
 				sqlite3_bind_text(stmt_3, 1, data, -1, NULL);
 				sqlite3_bind_text(stmt_3, 2, dev_id, -1, NULL);
+				sqlite3_bind_text(stmt_3, 2, "Dalitek", -1, NULL);
 				while(sqlite3_step(stmt_3) == SQLITE_ROW)
 				{
 					type = sqlite3_column_int(stmt_3,0);
