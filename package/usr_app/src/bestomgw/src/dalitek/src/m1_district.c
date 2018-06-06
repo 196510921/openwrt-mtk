@@ -14,18 +14,26 @@
 int district_create_handle(payload_t data)
 {
 	M1_LOG_DEBUG("district_create_handle\n");
-    int rc, ret = M1_PROTOCOL_OK;
-    int number1,i;
-    int row_number = 0;
-    char* sql_1 = (char*)malloc(300);
-    char* errorMsg = NULL;
-    char* sql = NULL;
+    int rc                  = 0;
+    int ret                 = M1_PROTOCOL_OK;
+    int number1             = 0;
+    int i                   = 0;
+    int j                   = 0;
+    int accountNum          = 0;
+    char* accountTmp        = NULL;
+    char* accountBuf[100]   = {0};
+    char* errorMsg          = NULL;
+    char* sql               = NULL;
+    char* sql_1_1           = NULL;
+    char* sql_1_2           = NULL;
     cJSON* districtNameJson = NULL;
-    cJSON* disPicJson = NULL;
-	cJSON* apIdJson = NULL;
-	cJSON* apIdArrayJson = NULL;
-	sqlite3* db = NULL;
-	sqlite3_stmt* stmt = NULL;
+    cJSON* disPicJson       = NULL;
+	cJSON* apIdJson         = NULL;
+	cJSON* apIdArrayJson    = NULL;
+	sqlite3* db             = NULL;
+	sqlite3_stmt* stmt      = NULL;
+    sqlite3_stmt* stmt_1_1  = NULL;
+    sqlite3_stmt* stmt_1_2  = NULL;
 
 	if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;  
@@ -66,10 +74,67 @@ int district_create_handle(payload_t data)
         goto Finish; 
     }
 
+    /*查询场景历史数据时间*/
+    {
+        sql_1_1 = "select DISTINCT ACCOUNT from district_table where DIS_NAME = ?;";
+        M1_LOG_DEBUG("%s\n",sql_1_1);
+        if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+    }
+    /*删除场景无效历史数据*/
+    {
+        sql_1_2 = "delete from district_table where DIS_NAME = ?;";
+        M1_LOG_DEBUG("%s\n",sql_1_2);
+        if(sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+    }
+
 	/*linkage_table*/
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
+
+        /*查询区域拥有者*/
+        {
+            sqlite3_bind_text(stmt_1_1, 1, districtNameJson->valuestring, -1, NULL);
+
+            while(sqlite3_step(stmt_1_1) == SQLITE_ROW)
+            {
+                accountTmp = sqlite3_column_text(stmt_1_1, 0);
+                if(accountTmp != NULL)
+                {
+                    if(strcmp(accountTmp, "Dalitek") == 0)
+                    continue;
+
+                    accountBuf[accountNum] = (char*)malloc(strlen(accountTmp) + 1);
+                    memcpy(accountBuf[accountNum], accountTmp, strlen(accountTmp) + 1);
+                    M1_LOG_DEBUG("accountBuf[%d]:%s\n",accountNum,accountBuf[accountNum]);
+                    accountNum++;
+                }
+                else
+                {
+                    M1_LOG_WARN("account NULL\n");
+                }
+            }
+        
+        }
+        /*删除区域无效历史数据*/
+        {
+            sqlite3_bind_text(stmt_1_2, 1, districtNameJson->valuestring, -1, NULL);
+            rc = sqlite3_step(stmt_1_2);
+            M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+        }
+
+
         /*存取到数据表scenario_table中*/
         for(i = 0; i < number1; i++)
         {
@@ -84,14 +149,24 @@ int district_create_handle(payload_t data)
     		rc = sqlite3_step(stmt);   
             M1_LOG_DEBUG("step() return %s, number:%03d\n",\
                 rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-                
-            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-            {
-                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            }
 
             sqlite3_reset(stmt);
             sqlite3_clear_bindings(stmt); 
+
+            for(j = 0; j < accountNum; j++)
+            {
+                sqlite3_bind_text(stmt, 1, districtNameJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 2, disPicJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 4, accountBuf[j], -1, NULL);
+
+                rc = sqlite3_step(stmt);   
+                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
+                    rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+
+                sqlite3_reset(stmt);
+                sqlite3_clear_bindings(stmt);
+            }
         }
         
     }
@@ -108,8 +183,19 @@ int district_create_handle(payload_t data)
         M1_LOG_DEBUG("COMMIT OK\n");
     }
     
+    /*释放malloc*/
+    for(j = 0; j < accountNum; j++)
+    {
+        if(accountBuf[j])
+            free(accountBuf[j]);
+    }
+
     if(stmt)
         sqlite3_finalize(stmt);
+    if(stmt_1_1)
+        sqlite3_finalize(stmt_1_1);
+    if(stmt_1_2)
+        sqlite3_finalize(stmt_1_2);
     
     return ret;
     
