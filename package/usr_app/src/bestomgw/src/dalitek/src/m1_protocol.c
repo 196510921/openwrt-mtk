@@ -561,7 +561,7 @@ static int AP_report_ap_handle(payload_t data)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         /*更新conn_info表信息*/
-        sql = "insert or replace into conn_info(AP_ID, CLIENT_FD) values(?,?)";
+        sql = "insert or replace into conn_info(AP_ID, CLIENT_FD) values(?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -1404,7 +1404,8 @@ static int APP_req_added_dev_info_handle(payload_t data)
             cJSON_AddStringToObject(devObject, "devId", devId);
             cJSON_AddStringToObject(devObject, "devName", devName);
         }
-         
+        sqlite3_reset(stmt_2);
+        sqlite3_clear_bindings(stmt_2); 
     }
    
     char * p = cJSON_PrintUnformatted(pJsonRoot);
@@ -2692,14 +2693,14 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
         }
         /*client_fdindex*/
-        sql = "CREATE UNIQUE INDEX appClient ON account_info (\"CLIENT_FD\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
-            sqlite3_free(errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX appClient ON account_info (\"CLIENT_FD\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
+        //     sqlite3_free(errmsg);
+        // }
     }
     
     /*account_table*/
@@ -2794,14 +2795,14 @@ static int create_sql_table(void)
             M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
         }
         /*CLIENT_FD index*/
-        sql = "CREATE UNIQUE INDEX apClient ON conn_info (\"CLIENT_FD\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX apClient ON conn_info (\"CLIENT_FD\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
+        // }
     }
     /*district_table*/
     {

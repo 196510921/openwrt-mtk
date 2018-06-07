@@ -26,7 +26,7 @@ int app_req_account_info_handle(payload_t data)
 	sqlite3* db             = NULL;
     sqlite3_stmt* stmt      = NULL;
     
-    sql = "select ACCOUNT from account_table order by ID";
+    sql = "select ACCOUNT from account_table order by ID;";
     db = data.db;
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
@@ -1753,7 +1753,7 @@ int app_change_user_key(payload_t data)
     /*获取数据库*/
     db = data.db;
     /*获取用户登录名称*/
-    sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1";
+    sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG("sql:%s\n", sql);
 
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)

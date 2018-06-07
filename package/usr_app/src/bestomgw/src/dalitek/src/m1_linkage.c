@@ -118,7 +118,7 @@ static int device_exec(char* data, sqlite3* db)
 	/*clientFd*/
 	{
 		sql_3 = "select CLIENT_FD from conn_info where AP_ID = ?;";
-		M1_LOG_DEBUG("sql_1:%s\n",sql_3);
+		M1_LOG_DEBUG("%s\n",sql_3);
 		if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -922,7 +922,9 @@ int trigger_cb_handle(sqlite3* db)
 	    }
 	    /*check linkage table*/
 	    {
-	    	sql = "select VALUE, DEV_ID, TYPE from param_table where rowid = ?;";
+	    	//sql = "select VALUE, DEV_ID, TYPE from param_table where rowid = ?;";
+	    	sql = "select a.VALUE,a.DEV_ID,a.TYPE from param_table as a,\
+                  link_trigger_table as b where a.TYPE = b.TYPE and a.rowid = ? limit 1;";
 	    	M1_LOG_DEBUG("sql:%s\n",sql);
 	    	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
 	    	{

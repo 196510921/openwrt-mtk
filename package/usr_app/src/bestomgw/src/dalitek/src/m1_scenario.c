@@ -816,7 +816,7 @@ int app_req_scenario(payload_t data)
 
     /*取场景名称*/
     {
-    	sql_1 = "select distinct SCEN_NAME from scenario_table where ACCOUNT = ?";
+    	sql_1 = "select distinct SCEN_NAME from scenario_table where ACCOUNT = ?;";
 	    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 	    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
 	    {

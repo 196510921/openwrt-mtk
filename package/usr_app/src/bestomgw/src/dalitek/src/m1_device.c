@@ -336,7 +336,7 @@ int ap_upload_testing_to_app(cJSON* devData, sqlite3* db)
     }
     M1_LOG_DEBUG("string:%s\n",p);
 
-    sql = "select CLIENT_FD from account_info";
+    sql = "select CLIENT_FD from account_info;";
     M1_LOG_DEBUG("sql:%s\n",sql);
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
     {
@@ -442,7 +442,7 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
         goto Finish; 
     }
 
-    sql_1 = "delete from linkage_table where EXEC_ID = ?";
+    sql_1 = "delete from linkage_table where EXEC_ID = ?;";
     M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 
     if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
