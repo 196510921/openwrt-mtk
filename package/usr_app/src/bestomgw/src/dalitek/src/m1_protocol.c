@@ -1844,8 +1844,8 @@ static int common_operate(payload_t data)
         if(strcmp(typeJson->valuestring, "device") == 0){
             if(strcmp(operateJson->valuestring, "delete") == 0){
                 /*通知到ap*/
-                // if(m1_del_dev_from_ap(db, idJson->valuestring) != M1_PROTOCOL_OK)
-                //     M1_LOG_ERROR("m1_del_dev_from_ap error\n");
+                if(m1_del_dev_from_ap(db, idJson->valuestring) != M1_PROTOCOL_OK)
+                    M1_LOG_ERROR("m1_del_dev_from_ap error\n");
                 /*删除all_dev中的子设备*/
                 sprintf(sql,"delete from all_dev where DEV_ID = \"%s\";",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
