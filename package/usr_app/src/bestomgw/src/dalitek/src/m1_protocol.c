@@ -350,11 +350,11 @@ static int AP_report_data_handle(payload_t data)
                 sqlite3_bind_int(stmt, 3,typeJson->valueint);
                 sqlite3_bind_int(stmt, 4, valueJson->valueint);
                 rc = sqlite3_step(stmt);   
-                M1_LOG_DEBUG("step() return %s, number:%03d\n", \
-                    rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-                
-                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK)){
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
                 }
                 sqlite3_reset(stmt); 
                 sqlite3_clear_bindings(stmt);
@@ -479,11 +479,11 @@ static int AP_report_dev_handle(payload_t data)
             sqlite3_bind_text(stmt, 8,  "Dalitek", -1, NULL);
 
             rc = sqlite3_step(stmt);   
-            M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
-            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK)){
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
             }
 
             sqlite3_reset(stmt); 
@@ -573,12 +573,11 @@ static int AP_report_ap_handle(payload_t data)
         sqlite3_bind_int(stmt, 2, data.clientFd);
 
         rc = sqlite3_step(stmt);   
-        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
         }
 
         if(stmt != NULL)
@@ -607,12 +606,11 @@ static int AP_report_ap_handle(payload_t data)
         sqlite3_bind_text(stmt, 8,  "Dalitek", -1, NULL);
     
         rc = sqlite3_step(stmt);   
-        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
         }
 
         if(stmt != NULL)
@@ -636,12 +634,11 @@ static int AP_report_ap_handle(payload_t data)
         sqlite3_bind_int(stmt, 4, 1);
     
         rc = sqlite3_step(stmt);   
-        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
         }
 
         if(stmt != NULL)
@@ -798,7 +795,13 @@ static int APP_read_handle(payload_t data)
 
         sqlite3_bind_text(stmt, 1, dev_id, -1, NULL);
 
-        rc = sqlite3_step(stmt);
+        rc = sqlite3_step(stmt);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
         if(rc == SQLITE_ROW)
         {
             /*devName*/
@@ -860,6 +863,12 @@ static int APP_read_handle(payload_t data)
             sqlite3_bind_int(stmt_1, 2, paramJson->valueint);
             
             rc = sqlite3_step(stmt_1);
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
             if(rc == SQLITE_ROW)
             {
                 /*date value*/
@@ -949,7 +958,13 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
         goto Finish; 
     }
     sqlite3_bind_text(stmt, 1, devIdJson->valuestring, -1, NULL);
-    rc = sqlite3_step(stmt);
+    rc = sqlite3_step(stmt);   
+    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+    {
+        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        if(rc == SQLITE_CORRUPT)
+            exit(0);
+    }
     if(rc == SQLITE_ROW)
     {
         clientFd = sqlite3_column_int(stmt,0);
@@ -1085,12 +1100,11 @@ static int APP_write_handle(payload_t data)
                 sqlite3_bind_int(stmt, 4, valueJson->valueint);
 
                 rc = sqlite3_step(stmt);   
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                    rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                 {
-                    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
                 }
 
                 sqlite3_reset(stmt);   
@@ -1183,12 +1197,11 @@ static int APP_echo_dev_info_handle(payload_t data)
             sqlite3_bind_text(stmt, 4, APIdJson->valuestring, -1, NULL);
 
             rc = sqlite3_step(stmt);   
-            M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
             if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
             {
-                M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
             }
 
             sqlite3_reset(stmt);   
@@ -1209,12 +1222,11 @@ static int APP_echo_dev_info_handle(payload_t data)
                     sqlite3_bind_text(stmt, 3, devArrayJson->valuestring, -1, NULL);
                     sqlite3_bind_text(stmt, 4, APIdJson->valuestring, -1, NULL);
                     rc = sqlite3_step(stmt);   
-                    M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                        rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                     {
-                        M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        if(rc == SQLITE_CORRUPT)
+                            exit(0);
                     }
 
                     sqlite3_reset(stmt);   
@@ -1320,6 +1332,12 @@ static int APP_req_added_dev_info_handle(payload_t data)
 
     sqlite3_bind_int(stmt, 1, data.clientFd);
     rc = sqlite3_step(stmt);   
+    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+    {
+        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        if(rc == SQLITE_CORRUPT)
+            exit(0);
+    }   
     if(rc == SQLITE_ROW)
     {
         account =  sqlite3_column_text(stmt, 0);
@@ -1481,9 +1499,13 @@ static int APP_net_control(payload_t data)
 
     sqlite3_bind_text(stmt, 1, apIdJson->valuestring, -1, NULL);
 
-    rc = sqlite3_step(stmt);
-    M1_LOG_DEBUG("step() return %s\n", \
-        rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+    rc = sqlite3_step(stmt);   
+    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+    {
+        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        if(rc == SQLITE_CORRUPT)
+            exit(0);
+    }
     if(rc == SQLITE_ROW){
         clientFd = sqlite3_column_int(stmt,0);
         M1_LOG_DEBUG("clientFd:%05d\n",clientFd);          
@@ -1921,9 +1943,13 @@ static int common_operate(payload_t data)
                     ret = M1_PROTOCOL_FAILED;
                     goto Finish; 
                 }
-                rc = sqlite3_step(stmt);
-                M1_LOG_DEBUG("step() return %s\n", \
-                    rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+                rc = sqlite3_step(stmt);   
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
                 if(rc == SQLITE_ROW){
                     scen_name = sqlite3_column_text(stmt,0);
                     if(scen_name == NULL)
@@ -2115,12 +2141,11 @@ static void check_offline_dev(sqlite3*db)
     {
         /*当前时间格式化*/
         rc = sqlite3_step(stmt_2);
-        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
-            M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
         }
 
         curTime = sqlite3_column_int(stmt_2, 0);
@@ -2135,7 +2160,13 @@ static void check_offline_dev(sqlite3*db)
             apId = sqlite3_column_text(stmt, 0);
             /*检查时间*/
             sqlite3_bind_text(stmt_1, 1, apId, -1, NULL);
-            rc = sqlite3_step(stmt_1);
+            rc = sqlite3_step(stmt_1); 
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
             if(rc != SQLITE_ROW)
             {
                 M1_LOG_WARN("rc != SQLITE_ROW\n");
@@ -2152,13 +2183,12 @@ static void check_offline_dev(sqlite3*db)
             {
                 /*数据库时间格式化*/
                 sqlite3_bind_text(stmt_3, 1, time, -1, NULL);
-                rc = sqlite3_step(stmt_3);
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                    rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-                    
+                rc = sqlite3_step(stmt_3);  
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                 {
-                    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
                 }
 
                 sqlTime = sqlite3_column_int(stmt_3, 0);
@@ -2173,7 +2203,13 @@ static void check_offline_dev(sqlite3*db)
                 sqlite3_bind_int(stmt_4, 1, 0);
                 sqlite3_bind_text(stmt_4, 2, apId, -1, NULL);
                 sqlite3_bind_int(stmt_4, 3, 16404);
-                rc = sqlite3_step(stmt_4);
+                rc = sqlite3_step(stmt_4);  
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
                 if(rc == SQLITE_ERROR)
                 {
                     M1_LOG_WARN("update failed\n");
@@ -2252,9 +2288,13 @@ static int ap_heartbeat_handle(payload_t data)
         sqlite3_bind_text(stmt, 2, apIdJson->valuestring, -1, NULL);
         sqlite3_bind_int(stmt, 3, valueType);
 
-        rc = sqlite3_step(stmt);
-        M1_LOG_DEBUG("step() return %s\n", \
-            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+        rc = sqlite3_step(stmt);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
     }
     else
     {
@@ -2364,9 +2404,13 @@ void delete_account_conn_info(int clientFd)
 
             sqlite3_bind_int(stmt, 1, clientFd);
 
-            rc = sqlite3_step(stmt);
-            M1_LOG_DEBUG("step() return %s\n", \
-                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+            rc = sqlite3_step(stmt);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
             
             if(stmt)
                 sqlite3_finalize(stmt);
@@ -2385,9 +2429,13 @@ void delete_account_conn_info(int clientFd)
 
             sqlite3_bind_int(stmt, 1, clientFd);
 
-            rc = sqlite3_step(stmt);
-            M1_LOG_DEBUG("step() return %s\n", \
-                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR");
+            rc = sqlite3_step(stmt);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
         }
     }
     else
@@ -2471,7 +2519,13 @@ static int app_change_device_name(payload_t data)
         sqlite3_bind_text(stmt, 1, devNameObject->valuestring, -1, NULL);
         sqlite3_bind_text(stmt, 2, devIdObject->valuestring, -1, NULL);
 
-        rc = sqlite3_step(stmt);
+        rc = sqlite3_step(stmt);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
         if(rc == SQLITE_ERROR)
         {
             ret = M1_PROTOCOL_FAILED;
@@ -3115,7 +3169,13 @@ static int create_sql_table(void)
         sqlite3_bind_text(stmt, 9, "123456", -1, NULL);
         sqlite3_bind_text(stmt, 10, "Dalitek", -1, NULL);
         
-        rc = sqlite3_step(stmt);
+        rc = sqlite3_step(stmt);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
         if(rc == SQLITE_ERROR)
         {
             ret = M1_PROTOCOL_FAILED;

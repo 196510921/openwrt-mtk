@@ -129,9 +129,19 @@ int district_create_handle(payload_t data)
         /*删除区域无效历史数据*/
         {
             sqlite3_bind_text(stmt_1_2, 1, districtNameJson->valuestring, -1, NULL);
-            rc = sqlite3_step(stmt_1_2);
-            M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+            rc = sqlite3_step(stmt_1_2);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
         }
 
 
@@ -146,9 +156,13 @@ int district_create_handle(payload_t data)
     		sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
     		sqlite3_bind_text(stmt, 4, "Dalitek", -1, NULL);
 
-    		rc = sqlite3_step(stmt);   
-            M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+    		rc = sqlite3_step(stmt);     
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
 
             sqlite3_reset(stmt);
             sqlite3_clear_bindings(stmt); 
@@ -160,9 +174,13 @@ int district_create_handle(payload_t data)
                 sqlite3_bind_text(stmt, 3, apIdJson->valuestring, -1, NULL);
                 sqlite3_bind_text(stmt, 4, accountBuf[j], -1, NULL);
 
-                rc = sqlite3_step(stmt);   
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                    rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                rc = sqlite3_step(stmt);     
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
 
                 sqlite3_reset(stmt);
                 sqlite3_clear_bindings(stmt);
@@ -354,7 +372,13 @@ int app_req_district(payload_t data)
         
         /*添加区域图片*/
         sqlite3_bind_text(stmt_2, 1, dist_name, -1, NULL);
-	    rc = sqlite3_step(stmt_2);
+	    rc = sqlite3_step(stmt_2);     
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
         if(rc != SQLITE_ROW)
         {
             sqlite3_reset(stmt_2);
@@ -393,8 +417,12 @@ int app_req_district(payload_t data)
             /*取出apName*/
             sqlite3_bind_text(stmt_4, 1, ap_id, -1, NULL);
 		    rc = sqlite3_step(stmt_4); 
-			M1_LOG_DEBUG("step() return %s\n", \
-                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR"); 
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            } 
 			if(rc == SQLITE_ROW)
             {
 				ap_name = sqlite3_column_text(stmt_4,0);

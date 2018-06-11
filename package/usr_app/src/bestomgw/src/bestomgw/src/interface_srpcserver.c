@@ -255,7 +255,7 @@ void SRPC_RxCB(int clientFd)
 
 	client_block = client_stack_block_req(clientFd);
 	if(NULL == client_block){
-		M1_LOG_ERROR( "client_block null\n");
+		M1_LOG_ERROR("client_block null\n");
 		return;
 	}
 	M1_LOG_DEBUG("clientFd:%d,rx len:%05d, rx header:%x,%x,%x,%x, rx data:%s\n",clientFd, \

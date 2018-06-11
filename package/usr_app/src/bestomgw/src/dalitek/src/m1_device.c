@@ -74,7 +74,13 @@ int m1_del_dev_from_ap(sqlite3* db, char* devId)
         }
 
         sqlite3_bind_text(stmt, 1, devId, -1, NULL);
-        rc = sqlite3_step(stmt);
+        rc = sqlite3_step(stmt);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
         if(rc == SQLITE_ROW)
         {
             clientFd = sqlite3_column_int(stmt, 0);
@@ -171,7 +177,13 @@ int m1_del_ap(sqlite3* db, char* apId)
     }
 
     sqlite3_bind_text(stmt, 1, apId, -1, NULL);
-    rc = sqlite3_step(stmt);
+    rc = sqlite3_step(stmt);   
+    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+    {
+        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        if(rc == SQLITE_CORRUPT)
+            exit(0);
+    }
     if(rc == SQLITE_ROW)
     {
         clientFd = sqlite3_column_int(stmt, 0);
@@ -252,7 +264,13 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
         }
 
         sqlite3_bind_text(stmt, 1, devIdJson->valuestring, -1, NULL);
-        rc = sqlite3_step(stmt);
+        rc = sqlite3_step(stmt);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
         if(rc == SQLITE_ROW)
         {
             clientFd = sqlite3_column_int(stmt, 0);
@@ -385,12 +403,11 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         sqlite3_bind_int(stmt, 3, data.type);
         sqlite3_bind_int(stmt, 4, data.value);
         rc = sqlite3_step(stmt);   
-        M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-            rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-            
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
         }
 
     //     rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
@@ -468,13 +485,12 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
             
             sqlite3_bind_text(stmt_1, 1, dev_id, -1, NULL);
             
-            rc = sqlite3_step(stmt_1);   
-            M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-                
+            rc = sqlite3_step(stmt_1);     
             if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
             }
 
             sqlite3_reset(stmt_1);

@@ -151,6 +151,12 @@ int scenario_exec(char* data, sqlite3* db)
 			/*检查设备启/停状态*/
 			sqlite3_bind_text(stmt_2, 1, dev_id, -1, NULL);
 		 	rc = sqlite3_step(stmt_2);
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
 		   	if(rc == SQLITE_ROW)
 		   	{
 				status = sqlite3_column_text(stmt_2,0);
@@ -217,7 +223,13 @@ int scenario_exec(char* data, sqlite3* db)
   			 	M1_LOG_INFO("p:%s\n",p);
 		    	/*get clientfd*/
 		    	sqlite3_bind_text(stmt_4, 1, ap_id, -1, NULL);
-		    	rc = sqlite3_step(stmt_4);
+		    	rc = sqlite3_step(stmt_4);    
+            	if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            	{
+            	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            	    if(rc == SQLITE_CORRUPT)
+            	        exit(0);
+            	}
 		    	if(rc == SQLITE_ROW)
 		    	{
 					clientFd = sqlite3_column_int(stmt_4,0);
@@ -413,9 +425,13 @@ int scenario_create_handle(payload_t data)
 			sqlite3_bind_text(stmt, 4, weekJson->valuestring, -1, NULL);
 			sqlite3_bind_text(stmt, 5, statusJson->valuestring, -1, NULL);
 			
-			rc = sqlite3_step(stmt);
-			if((rc != SQLITE_ROW) && (rc!= SQLITE_DONE)) 
-				M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+			rc = sqlite3_step(stmt);     
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
 		}
 		
 		/*获取联动表 id*/
@@ -458,9 +474,13 @@ int scenario_create_handle(payload_t data)
 		{
 			sqlite3_bind_text(stmt_1_2, 1,  scenNameJson->valuestring, -1, NULL);
 			sqlite3_bind_text(stmt_1_2, 2,  districtJson->valuestring, -1, NULL);
-			rc = sqlite3_step(stmt_1_2);
-			M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-			           rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+			rc = sqlite3_step(stmt_1_2);    
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
 		}
 
 	    /*存取到数据表scenario_table中*/
@@ -539,9 +559,13 @@ int scenario_create_handle(payload_t data)
 				sqlite3_bind_int(stmt_1, 8, delay);
 				sqlite3_bind_text(stmt_1, 9, "Dalitek",-1,NULL);
 
-				rc = sqlite3_step(stmt_1);
-				M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-			           rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+				rc = sqlite3_step(stmt_1);    
+            	if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            	{
+            	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            	    if(rc == SQLITE_CORRUPT)
+            	        exit(0);
+            	}
 
 				sqlite3_reset(stmt_1);
 				sqlite3_clear_bindings(stmt_1);
@@ -560,9 +584,13 @@ int scenario_create_handle(payload_t data)
 					sqlite3_bind_int(stmt_1, 8, delay);
 					sqlite3_bind_text(stmt_1, 9, accountBuf[k],-1,NULL);
 
-					rc = sqlite3_step(stmt_1);
-					M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-			           rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+					rc = sqlite3_step(stmt_1);   
+            		if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            		{
+            		    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            		    if(rc == SQLITE_CORRUPT)
+            		        exit(0);
+            		}
 
 					sqlite3_reset(stmt_1);
 					sqlite3_clear_bindings(stmt_1);
@@ -674,9 +702,13 @@ int scenario_alarm_create_handle(payload_t data)
 	if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
 	{
 
-		rc = sqlite3_step(stmt);
-		M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-		           rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+		rc = sqlite3_step(stmt);     
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
 
 		rc = sql_commit(db);
     	if(rc == SQLITE_OK)
@@ -907,7 +939,13 @@ int app_req_scenario(payload_t data)
 	    cJSON_AddStringToObject(devDataObject, "scenName", scen_name);
 	    /*根据场景名称选出隶属区域*/
 		sqlite3_bind_text(stmt_2, 1, scen_name, -1, NULL);
-	    rc = sqlite3_step(stmt_2); 
+	    rc = sqlite3_step(stmt_2);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        } 
 		if(rc == SQLITE_ROW)
 		{
 			district = sqlite3_column_text(stmt_2, 0);
@@ -935,7 +973,13 @@ int app_req_scenario(payload_t data)
 	    cJSON_AddItemToObject(devDataObject, "alarm", alarmObject);
 
 	    sqlite3_bind_text(stmt_3, 1, scen_name, -1, NULL);
-	    rc = sqlite3_step(stmt_3); 
+	    rc = sqlite3_step(stmt_3);    
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        } 
 		if(rc == SQLITE_ROW)
 		{
 			hour = sqlite3_column_int(stmt_3, 0);
@@ -976,7 +1020,13 @@ int app_req_scenario(payload_t data)
 		   	/*获取AP_ID*/
 			sqlite3_bind_text(stmt_5, 1, scen_name, -1, NULL);
 			sqlite3_bind_text(stmt_5, 2, dev_id, -1, NULL);
-	    	rc = sqlite3_step(stmt_5); 
+	    	rc = sqlite3_step(stmt_5);
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            } 
 			if(rc == SQLITE_ROW)
 			{
 				ap_id = sqlite3_column_text(stmt_5, 0);
@@ -1023,6 +1073,12 @@ int app_req_scenario(payload_t data)
 		   	/*获取设备名称*/
 			sqlite3_bind_text(stmt_6, 1, dev_id, -1, NULL);
 	    	rc = sqlite3_step(stmt_6); 
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
 			if(rc == SQLITE_ROW)
 			{
 				dev_name = sqlite3_column_text(stmt_6, 0);

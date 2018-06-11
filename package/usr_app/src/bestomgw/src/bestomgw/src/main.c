@@ -67,6 +67,7 @@ int main(int argc, char* argv[])
 	int retval = 0;
 	pthread_t t1,t2,t3,t4,t5;
 
+	M1_LOG_ERROR("error log testing!!!");
 	SRPC_Init();
 #if TCP_CLIENT_ENABLE
 	tcp_client_connect();

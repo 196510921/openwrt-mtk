@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "utils.h"
 
 #define DEBUG_LOG_OUTPUT_TO_FD     0
 #define DEBUF_FILE_NANE_OUTPUT     0
@@ -217,6 +218,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         {\
             show_error("[error]:");\
             printf("%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__, ##__VA_ARGS__);\
+            WriteLog("/mnt/syslog.log",format);\
             fflush(stderr);\
         }\
     }
@@ -231,5 +233,6 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
     }
 
 #endif  //DEBUF_FILE_NANE_OUTPUT
+
 
 #endif  //M1_COMMON_LOG_H

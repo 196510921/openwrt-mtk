@@ -481,12 +481,11 @@ int app_account_config_handle(payload_t data)
             sqlite3_bind_text(stmt, 4,  remoteAuthJson->valuestring, -1, NULL);
 
             rc = sqlite3_step(stmt);   
-            M1_LOG_DEBUG("step() return %s, number:%03d\n", \
-                rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-                    
             if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
             }
             
             if(stmt)
@@ -550,9 +549,13 @@ int app_account_config_handle(payload_t data)
             {
                 sqlite3_bind_text(stmt_3, 1,  accountJson->valuestring, -1, NULL);
 
-                rc = sqlite3_step(stmt_3);
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                rc = sqlite3_step(stmt_3);   
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
 
                 time = sqlite3_column_text(stmt_3, 0);
             }
@@ -576,14 +579,14 @@ int app_account_config_handle(payload_t data)
                     sqlite3_bind_text(stmt_2, 3, ap_id, -1, NULL);
                     sqlite3_bind_text(stmt_2, 4, accountJson->valuestring, -1, NULL);
                     
-                    rc = sqlite3_step(stmt_2);   
-                    M1_LOG_DEBUG("step() return %s, number:%03d\n", \
-                        rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
-                    
+                    rc = sqlite3_step(stmt_2); 
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                     {
                         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                    }
+                        if(rc == SQLITE_CORRUPT)
+                            exit(0);
+                    }  
+            
                     sqlite3_reset(stmt_2);
                     sqlite3_clear_bindings(stmt_2);
                 }
@@ -598,8 +601,12 @@ int app_account_config_handle(payload_t data)
                 sqlite3_bind_text(stmt_4, 2,  time, -1, NULL);
 
                 rc = sqlite3_step(stmt_4);
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
             }
 
             if(stmt_1)
@@ -673,9 +680,13 @@ int app_account_config_handle(payload_t data)
             {
                 sqlite3_bind_text(stmt_2, 1,  accountJson->valuestring, -1, NULL);
 
-                rc = sqlite3_step(stmt_2);
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                rc = sqlite3_step(stmt_2); 
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
 
                 time = sqlite3_column_text(stmt_2, 0);
             }
@@ -708,9 +719,13 @@ int app_account_config_handle(payload_t data)
                     sqlite3_bind_int(stmt_1, 8, delay);
                     sqlite3_bind_text(stmt_1, 9, accountJson->valuestring, -1, NULL);
 
-                    rc = sqlite3_step(stmt_1);   
-                    M1_LOG_DEBUG("step() return %s, number:%03d\n", \
-                        rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                    rc = sqlite3_step(stmt_1);     
+                    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                    {
+                        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        if(rc == SQLITE_CORRUPT)
+                            exit(0);
+                    }
                         
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                     {
@@ -730,8 +745,12 @@ int app_account_config_handle(payload_t data)
                 sqlite3_bind_text(stmt_3, 2,  time, -1, NULL);
 
                 rc = sqlite3_step(stmt_3);
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
             }
 
             if(stmt)
@@ -802,9 +821,13 @@ int app_account_config_handle(payload_t data)
             {
                 sqlite3_bind_text(stmt_2, 1,  accountJson->valuestring, -1, NULL);
 
-                rc = sqlite3_step(stmt_2);
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                rc = sqlite3_step(stmt_2);  
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
 
                 time = sqlite3_column_text(stmt_2, 0);
             }
@@ -841,9 +864,13 @@ int app_account_config_handle(payload_t data)
                     sqlite3_bind_text(stmt_1, 7, status, -1, NULL);
                     sqlite3_bind_text(stmt_1, 8, accountJson->valuestring, -1, NULL);
             
-                    rc = sqlite3_step(stmt_1);   
-                    M1_LOG_DEBUG("step() return %s, number:%03d\n", \
-                        rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                    rc = sqlite3_step(stmt_1);     
+                    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                    {
+                        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        if(rc == SQLITE_CORRUPT)
+                            exit(0);
+                    }
                         
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                     {
@@ -863,8 +890,12 @@ int app_account_config_handle(payload_t data)
                 sqlite3_bind_text(stmt_3, 2,  time, -1, NULL);
 
                 rc = sqlite3_step(stmt_3);
-                M1_LOG_DEBUG("step() return %s, number:%03d\n",\
-                       rc == SQLITE_DONE ? "SQLITE_DONE": rc == SQLITE_ROW ? "SQLITE_ROW" : "SQLITE_ERROR",rc);
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
             }
 
             if(stmt)
@@ -1050,7 +1081,13 @@ int app_req_dis_name(payload_t data)
         cJSON_AddStringToObject(districtObject, "disName", district);
        
         sqlite3_bind_text(stmt_2, 1, district, -1, NULL);
-        rc = sqlite3_step(stmt_2);
+        rc = sqlite3_step(stmt_2); 
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
         if(rc != SQLITE_ROW){
             sqlite3_reset(stmt_2);
             sqlite3_clear_bindings(stmt_2);
@@ -1272,6 +1309,12 @@ int app_req_dis_scen_name(payload_t data)
                 
                 sqlite3_bind_text(stmt_2, 1, scenario, -1, NULL);
                 rc = sqlite3_step(stmt_2);
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
                 if(rc != SQLITE_ROW)
                 {
                     sqlite3_reset(stmt_2);
@@ -1513,6 +1556,12 @@ int app_req_dis_dev(payload_t data)
                 /*pId,apName,apId*/
                 sqlite3_bind_text(stmt_2, 1, apId, -1, NULL);
                 rc = sqlite3_step(stmt_2);
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
                 if(rc == SQLITE_ROW)
                 {
                     pId = sqlite3_column_text(stmt_2, 0);
@@ -1670,7 +1719,13 @@ int user_login_handle(payload_t data)
         }
         sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
         sqlite3_bind_int(stmt_1, 2, data.clientFd);
-        rc = sqlite3_step(stmt_1);
+        rc = sqlite3_step(stmt_1); 
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
         if(rc == SQLITE_ERROR)
         {
             ret = M1_PROTOCOL_FAILED;
