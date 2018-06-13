@@ -191,7 +191,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         {\
             printf("[debug]:%d %s()| "format"\n", __LINE__, __FUNCTION__, ##__VA_ARGS__);\
             bzero(m1LogBuf,512);\
-            sprintf(m1LogBuf,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
+            snprintf(m1LogBuf,512,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
             WriteLog("/mnt/syslog.log",m1LogBuf);\
             fflush(stdout);\
         }\
@@ -204,7 +204,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
             show_info("[info]:");\
             printf(":%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__, ##__VA_ARGS__);\
             bzero(m1LogBuf,512);\
-            sprintf(m1LogBuf,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
+            snprintf(m1LogBuf,512,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
             WriteLog("/mnt/syslog.log",m1LogBuf);\
             fflush(stdout);\
         }\
@@ -217,7 +217,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
             show_item_warn("[warn]:");\
             printf("%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__, ##__VA_ARGS__);\
             bzero(m1LogBuf,512);\
-            sprintf(m1LogBuf,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
+            snprintf(m1LogBuf,512,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
             WriteLog("/mnt/syslog.log",m1LogBuf);\
             fflush(stdout);\
         }\
@@ -230,7 +230,7 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
             show_error("[error]:");\
             printf("%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__, ##__VA_ARGS__);\
             bzero(m1LogBuf,512);\
-            sprintf(m1LogBuf,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
+            snprintf(m1LogBuf,512,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
             WriteLog("/mnt/syslog.log",m1LogBuf);\
             fflush(stderr);\
         }\

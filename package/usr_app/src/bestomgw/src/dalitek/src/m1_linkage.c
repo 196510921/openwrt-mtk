@@ -481,6 +481,8 @@ int linkage_msg_handle(payload_t data)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
 
+        sql_commit_flag = 1;
+
 		sqlite3_bind_text(stmt, 1,  linkNameJson->valuestring, -1, NULL);
 		sqlite3_bind_text(stmt, 2,  districtJson->valuestring, -1, NULL);
 		sqlite3_bind_text(stmt, 3,  execTypeJson->valuestring, -1, NULL);

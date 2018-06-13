@@ -390,6 +390,7 @@ int scenario_create_handle(payload_t data)
 	/*事物开启*/
 	if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
 	{
+		sql_commit_flag = 1;
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
 		if(alarmJson != NULL)
 		{	
