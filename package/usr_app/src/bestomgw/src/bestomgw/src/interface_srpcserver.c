@@ -354,26 +354,7 @@ client_block_t* client_stack_block_req(int clientFd)
 
 int client_block_destory(int clientFd)
 {
-	#if 0
-	pthread_mutex_lock(&mutex_lock_sock);
-	M1_LOG_DEBUG( "block_destory\n");
-	int i;
-
-	for(i = 0; i <  STACK_BLOCK_NUM; i++){
-
-		if(clientFd == client_block[i].clientFd){
-			client_block[i].clientFd = 0;
-			if(TCP_SERVER_FAILED == stack_block_destroy(client_block[i].stack_block)){
-				M1_LOG_ERROR("block_destroy failed\n");
-				pthread_mutex_unlock(&mutex_lock_sock);
-				return TCP_SERVER_FAILED;
-			}
-		}
-	}
-	pthread_mutex_unlock(&mutex_lock_sock);
-	return TCP_SERVER_SUCCESS;
-	#endif
-	M1_LOG_DEBUG( "block_destory\n");
+	M1_LOG_INFO( "block_destory\n");
 	int i;
 
 	for(i = 0; i <  STACK_BLOCK_NUM; i++){
