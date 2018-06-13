@@ -635,8 +635,7 @@ int app_account_config_handle(payload_t data)
         /*删除重复用户信息*/
         {
             
-            sql = "select DISTRICT,AP_ID,DEV_ID,TYPE,VALUE,DELAY,SCEN_PIC from scenario_table where \
-                   SCEN_NAME = ? and ACCOUNT = \"Dalitek\";";
+            sql = "select DISTRICT,AP_ID,DEV_ID,TYPE,VALUE,DELAY,SCEN_PIC from scenario_table where SCEN_NAME = ? and ACCOUNT = \"Dalitek\";";
             M1_LOG_DEBUG("sql:%s\n",sql);
             if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
             {
@@ -645,8 +644,7 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             } 
 
-            sql_1 = "insert or replace into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, \
-                    VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
+            sql_1 = "insert or replace into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
             M1_LOG_DEBUG("sql_1:%s\n",sql_1);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  

@@ -354,8 +354,7 @@ int scenario_create_handle(payload_t data)
 	}
 
 	{
-		sql_1 = "insert or replace into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)\
-		values(?,?,?,?,?,?,?,?,?);";
+		sql_1 = "insert or replace into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
 		M1_LOG_DEBUG("%s\n",sql_1);
 		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
 		{

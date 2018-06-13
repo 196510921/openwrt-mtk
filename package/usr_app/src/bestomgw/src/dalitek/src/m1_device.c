@@ -62,8 +62,9 @@ int m1_del_dev_from_ap(sqlite3* db, char* devId)
 
     /*获取clientFd*/
     {
-        sql = "select CLIENT_FD from conn_info where AP_ID \
-        in(select AP_ID from all_dev where DEV_ID = ? order by ID desc limit 1) order by ID desc limit 1;";
+        // sql = "select CLIENT_FD from conn_info where AP_ID \
+        // in(select AP_ID from all_dev where DEV_ID = ? order by ID desc limit 1) order by ID desc limit 1;";
+        sql = "select a.CLIENT_FD from conn_info as a, all_dev as b where a.AP_ID = b.AP_ID and b.DEV_ID = ? limit 1;";
         M1_LOG_DEBUG("sql:%s\n",sql);
 
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -252,8 +253,9 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
     M1_LOG_DEBUG("apId:%s”\n",devIdJson->valuestring);
 
     {
-        sql = "select CLIENT_FD from conn_info where AP_ID \
-        in(select AP_ID from all_dev where DEV_ID = ? order by ID desc limit 1) order by ID desc limit 1;";
+        // sql = "select CLIENT_FD from conn_info where AP_ID \
+        // in(select AP_ID from all_dev where DEV_ID = ? order by ID desc limit 1) order by ID desc limit 1;";
+        sql = "select a.CLIENT_FD from conn_info as a, all_dev as b where a.AP_ID = b.AP_ID and b.DEV_ID = ? limit 1;";
         M1_LOG_DEBUG("sql:%s\n",sql);
 
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -381,16 +383,20 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
 {
     M1_LOG_DEBUG("app_update_param_table\n");
     
-    int rc             = 0;
-    char* errorMsg     = NULL;
-    char* sql          = NULL;
-    sqlite3_stmt* stmt = NULL;
+    int rc               = 0;
+    char* devName        = NULL;
+    char* errorMsg       = NULL;
+    char* sql            = NULL;
+    char* sql_1          = NULL;
+    sqlite3_stmt* stmt   = NULL;
+    sqlite3_stmt* stmt_1 = NULL;
     
     /*更新设备气筒信息*/
     // if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     // {
-        sql = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE) values\
-        ((select DEV_NAME from all_dev where DEV_ID = ? order by ID desc limit 1),?,?,?);";
+
+        sql = "select DEV_NAME from all_dev where DEV_ID = ? limit 1";
+
         M1_LOG_DEBUG("sql:%s\n",sql);
         
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -398,11 +404,31 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             goto Finish; 
         }
+
         sqlite3_bind_text(stmt, 1, data.devId, -1, NULL);
-        sqlite3_bind_text(stmt, 2, data.devId, -1, NULL);
-        sqlite3_bind_int(stmt, 3, data.type);
-        sqlite3_bind_int(stmt, 4, data.value);
         rc = sqlite3_step(stmt);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
+
+        devName = sqlite3_column_text(stmt, 0);
+
+        sql_1 = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE) values (?,?,?,?);";
+        M1_LOG_DEBUG("sql:%s\n",sql_1);
+        
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            goto Finish; 
+        }
+        sqlite3_bind_text(stmt_1, 1, devName, -1, NULL);
+        sqlite3_bind_text(stmt_1, 2, data.devId, -1, NULL);
+        sqlite3_bind_int(stmt_1, 3, data.type);
+        sqlite3_bind_int(stmt_1, 4, data.value);
+        rc = sqlite3_step(stmt_1);   
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
@@ -436,6 +462,8 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
     Finish:
     if(stmt)
         sqlite3_finalize(stmt);
+    if(stmt_1)
+        sqlite3_finalize(stmt_1);
 }
 
 /*删除AP下子设备联动业务*/

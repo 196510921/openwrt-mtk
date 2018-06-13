@@ -324,8 +324,7 @@ int linkage_msg_handle(payload_t data)
     db = data.db;
     /*linkage_table*/
     {
-    	sql = "insert or replace into linkage_table(LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, STATUS, ENABLE)\
-	     values(?,?,?,?,?,?);";
+    	sql = "insert or replace into linkage_table(LINK_NAME, DISTRICT, EXEC_TYPE, EXEC_ID, STATUS, ENABLE)values(?,?,?,?,?,?);";
 	    M1_LOG_DEBUG("sql:%s\n",sql);
 	    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
 	    {
@@ -337,8 +336,7 @@ int linkage_msg_handle(payload_t data)
     }
     /*link_trigger_table*/
     {
-    	sql_1 = "insert or replace into link_trigger_table(LINK_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, \
-    	THRESHOLD, CONDITION,LOGICAL,STATUS)values(?,?,?,?,?,?,?,?,?);";
+    	sql_1 = "insert or replace into link_trigger_table(LINK_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, THRESHOLD, CONDITION,LOGICAL,STATUS)values(?,?,?,?,?,?,?,?,?);";
 	    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
 	    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
 	    {
@@ -350,8 +348,7 @@ int linkage_msg_handle(payload_t data)
     }
     /*link_exec_table*/
     {
-    	sql_2 = "insert or replace into link_exec_table(LINK_NAME, DISTRICT, \
-    	AP_ID, DEV_ID, TYPE, VALUE, DELAY) values(?,?,?,?,?,?,?);";
+    	sql_2 = "insert or replace into link_exec_table(LINK_NAME, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY) values(?,?,?,?,?,?,?);";
 	    M1_LOG_DEBUG("sql_2:%s\n",sql_2);
 	    if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
 	    {
@@ -951,8 +948,7 @@ int trigger_cb_handle(sqlite3* db)
 	    /*check linkage table*/
 	    {
 	    	//sql = "select VALUE, DEV_ID, TYPE from param_table where rowid = ?;";
-	    	sql = "select a.VALUE,a.DEV_ID,a.TYPE from param_table as a,\
-                  link_trigger_table as b where a.TYPE = b.TYPE and a.rowid = ? limit 1;";
+	    	sql = "select a.VALUE,a.DEV_ID,a.TYPE from param_table as a,link_trigger_table as b where a.TYPE = b.TYPE and a.rowid = ? limit 1;";
 	    	M1_LOG_DEBUG("sql:%s\n",sql);
 	    	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
 	    	{
@@ -1090,6 +1086,8 @@ int trigger_cb_handle(sqlite3* db)
 			sqlite3_finalize(stmt_2);
 		if(stmt_3)
 			sqlite3_finalize(stmt_3);
+
+		M1_LOG_DEBUG("trigger_cb_handle end\n");
    }
  
 }

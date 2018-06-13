@@ -80,6 +80,8 @@ void fm_print(char* str, unsigned int ulFormat);
 #define FM_PRINT_MID     "m"
 #define FM_PRINT_END     "\033[0m"
 
+extern char m1LogBuf[];
+
 /*
 |---------------|---------------|---------------|---------------|
      前景色           背景色        特殊样式        光标控制
@@ -218,7 +220,9 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
         {\
             show_error("[error]:");\
             printf("%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__, ##__VA_ARGS__);\
-            WriteLog("/mnt/syslog.log",format);\
+            bzero(m1LogBuf,512);\
+            sprintf(m1LogBuf,"%s %d %s()| "format"\n", get_cur_time(),__LINE__, __FUNCTION__,##__VA_ARGS__);\
+            WriteLog("/mnt/syslog.log",m1LogBuf);\
             fflush(stderr);\
         }\
     }

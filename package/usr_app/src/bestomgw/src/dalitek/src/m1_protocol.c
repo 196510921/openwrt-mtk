@@ -378,6 +378,8 @@ static int AP_report_data_handle(payload_t data)
     if(stmt != NULL)
         sqlite3_finalize(stmt);  
 
+    M1_LOG_DEBUG("AP_report_data_handle end\n");
+
     trigger_cb_handle(db);
     return ret;
 }
@@ -444,8 +446,7 @@ static int AP_report_dev_handle(payload_t data)
         goto Finish; 
     }
 
-    sql_2 = "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)\
-                values(?,?,?,?,?,?,?,?);";
+    sql_2 = "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
     if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -650,8 +651,7 @@ static int AP_report_ap_handle(payload_t data)
             goto Finish; 
         }
 
-        sql_1_2 = "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)\
-              values(?,?,?,?,?,?,?,?);";
+        sql_1_2 = "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL) != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -1050,9 +1050,10 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     devIdJson     = cJSON_GetObjectItem(dataArrayJson, "devId");
     M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
 
-    sql = "select CLIENT_FD from conn_info where AP_ID in \
-          (select AP_ID from all_dev where DEV_ID = ? order by ID desc limit 1) \
-          order by ID desc limit 1;";
+    // sql = "select CLIENT_FD from conn_info where AP_ID in \
+    //       (select AP_ID from all_dev where DEV_ID = ? order by ID desc limit 1) \
+    //       order by ID desc limit 1;";
+    sql = "select a.CLIENT_FD from conn_info as a, all_dev as b where a.AP_ID = b.AP_ID and b.DEV_ID = ? limit 1;";
     M1_LOG_DEBUG("%s\n", sql);
     if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
     {
@@ -1127,8 +1128,7 @@ static int APP_write_handle(payload_t data)
     //     goto Finish;  
     // }
 
-    sql = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE) \
-               values((select DEV_NAME from all_dev where DEV_ID = ? order by ID desc limit 1),?,?,?);";
+    sql = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE)values((select DEV_NAME from all_dev where DEV_ID = ? limit 1),?,?,?);";
     M1_LOG_DEBUG("%s\n", sql);
 
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -1724,8 +1724,9 @@ static int M1_report_ap_info(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
-    sql = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID = AP_ID and ACCOUNT in \
-          (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
+    // sql = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID = AP_ID and ACCOUNT in \
+    //       (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
+    sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID = a.AP_ID and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
     M1_LOG_DEBUG( "%s\n", sql);
 
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
@@ -1836,8 +1837,9 @@ static int M1_report_dev_info(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
-    sql = "select DEV_ID, DEV_NAME, PID from all_dev where AP_ID != DEV_ID and AP_ID = ? and  ACCOUNT in \
-          (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
+    // sql = "select DEV_ID, DEV_NAME, PID from all_dev where AP_ID != DEV_ID and AP_ID = ? and  ACCOUNT in \
+    //       (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
+    sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
     M1_LOG_DEBUG("sql:%s", sql);
 
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -2911,7 +2913,8 @@ static int create_sql_table(void)
             M1_LOG_WARN("all_dev: %s\n",errmsg);
         }
         /*dev_id,account,ap_id index*/
-        sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC,\"AP_ID\" ASC);";
+        //sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC,\"AP_ID\" ASC);";
+        sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC);";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
@@ -3242,8 +3245,7 @@ static int create_sql_table(void)
     }
     
     /*插入Dalitek账户*/
-    sql = "insert or replace into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)\
-        values(\"Dalitek\",\"root\",\"on\",\"on\");";
+    sql = "insert or replace into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(\"Dalitek\",\"root\",\"on\",\"on\");";
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
     if(rc != SQLITE_OK)
     {
@@ -3253,8 +3255,7 @@ static int create_sql_table(void)
     /*插入项目信息*/
     {
         mac_addr = get_eth0_mac_addr();
-        sql = "insert or replace into project_table(P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT)\
-        values(?,?,?,?,?,?,?,?,?,?);";
+        sql = "insert or replace into project_table(P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT)values(?,?,?,?,?,?,?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;

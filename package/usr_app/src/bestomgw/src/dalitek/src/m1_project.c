@@ -187,21 +187,24 @@ int app_confirm_project(payload_t data)
 int app_create_project(payload_t data)
 {
 	M1_LOG_DEBUG("app_create_project\n");
-    int rc              = 0;
-    int ret             = M1_PROTOCOL_OK;
+    int rc               = 0;
+    int ret              = M1_PROTOCOL_OK;
+    char*  account       = NULL;
     /*Json*/
-	cJSON* pNameJson    = NULL;
-	cJSON* pNumberJson  = NULL;
-	cJSON* pCreatorJson = NULL;
-	cJSON* pManagerJson = NULL;
-	cJSON* pTelJson     = NULL;
-	cJSON* pAddJson     = NULL;
-	cJSON* pBriefJson   = NULL;
+	cJSON* pNameJson     = NULL;
+	cJSON* pNumberJson   = NULL;
+	cJSON* pCreatorJson  = NULL;
+	cJSON* pManagerJson  = NULL;
+	cJSON* pTelJson      = NULL;
+	cJSON* pAddJson      = NULL;
+	cJSON* pBriefJson    = NULL;
     /*sql*/
-    char* sql           = NULL;
-    char* errorMsg      = NULL;
-    sqlite3* db         = NULL;
-    sqlite3_stmt* stmt  = NULL;
+    char* sql            = NULL;
+    char* sql_1          = NULL;
+    char* errorMsg       = NULL;
+    sqlite3* db          = NULL;
+    sqlite3_stmt* stmt   = NULL;
+    sqlite3_stmt* stmt_1 = NULL;
 
 	pNameJson = cJSON_GetObjectItem(data.pdu, "pName");   
     M1_LOG_DEBUG("pName:%s\n",pNameJson->valuestring);
@@ -221,10 +224,34 @@ int app_create_project(payload_t data)
     db = data.db;
 
     {
-        sql = "insert or replace into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)\
-        values(?,?,?,?,?,?,?,?,?,(select ACCOUNT from account_info where CLIENT_FD = ?));";
+        sql = "select ACCOUNT from account_info where CLIENT_FD = ? limit 1;";
         M1_LOG_DEBUG( "%s\n", sql);
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        sqlite3_bind_int(stmt, 1, data.clientFd);
+        if(sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            account = sqlite3_column_text(stmt, 0);
+        }
+        if(account == NULL)
+        {
+            M1_LOG_ERROR( "user account do not exist\n");    
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+
+    }
+
+
+    {
+        sql_1 = "insert or replace into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)values(?,?,?,?,?,?,?,?,?,?);";
+        M1_LOG_DEBUG( "%s\n", sql_1);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;
@@ -234,17 +261,18 @@ int app_create_project(payload_t data)
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
-        sqlite3_bind_text(stmt, 1, pNameJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 2, pNumberJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 3, pCreatorJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 4, pManagerJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 5, pCreatorJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 6, pTelJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 7, pAddJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 8, pBriefJson->valuestring, -1, NULL);
-       	sqlite3_bind_text(stmt, 9, "123456", -1, NULL);
+        sqlite3_bind_text(stmt_1, 1, pNameJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_1, 2, pNumberJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_1, 3, pCreatorJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_1, 4, pManagerJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_1, 5, pCreatorJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_1, 6, pTelJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_1, 7, pAddJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_1, 8, pBriefJson->valuestring, -1, NULL);
+       	sqlite3_bind_text(stmt_1, 9, "123456", -1, NULL);
+        sqlite3_bind_text(stmt_1, 10, account, -1, NULL);
     
-        rc = sqlite3_step(stmt);     
+        rc = sqlite3_step(stmt_1);     
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
@@ -267,6 +295,8 @@ int app_create_project(payload_t data)
     Finish:
     if(stmt)
  	  sqlite3_finalize(stmt);
+    if(stmt_1)
+      sqlite3_finalize(stmt_1);
 
     return ret;	
 }
@@ -390,22 +420,28 @@ int app_change_project_config(payload_t data)
 {
 	M1_LOG_DEBUG("app_change_project_config\n");
 
-    int rc              = 0;
-    int ret             = M1_PROTOCOL_OK;
+    int rc               = 0;
+    int ret              = M1_PROTOCOL_OK;
+    char* pKey           = NULL;
+    char* account        = NULL;
     /*Json*/
-    cJSON *pNameJson    = NULL;
-    cJSON *pNumberJson  = NULL;
-    cJSON *pCreatorJson = NULL;
-    cJSON *pManagerJson = NULL;
-    cJSON *pTelJson     = NULL;
-    cJSON *pAddJson     = NULL;
-    cJSON *pBriefJson   = NULL;
-    cJSON *pEditorJson  = NULL;
-    char* errorMsg      = NULL;
+    cJSON *pNameJson     = NULL;
+    cJSON *pNumberJson   = NULL;
+    cJSON *pCreatorJson  = NULL;
+    cJSON *pManagerJson  = NULL;
+    cJSON *pTelJson      = NULL;
+    cJSON *pAddJson      = NULL;
+    cJSON *pBriefJson    = NULL;
+    cJSON *pEditorJson   = NULL;
+    char* errorMsg       = NULL;
     /*sql*/
-    char *sql           = NULL;
-    sqlite3 *db         = NULL;
-    sqlite3_stmt *stmt  = NULL;
+    char *sql            = NULL;
+    char *sql_1          = NULL;
+    char *sql_2          = NULL;
+    sqlite3 *db          = NULL;
+    sqlite3_stmt *stmt   = NULL;
+    sqlite3_stmt *stmt_1 = NULL;
+    sqlite3_stmt *stmt_2 = NULL;
 
     getNowTime(time);
     pNameJson = cJSON_GetObjectItem(data.pdu, "pName");   
@@ -428,10 +464,62 @@ int app_change_project_config(payload_t data)
     db = data.db;
 
     {
-        sql = "insert into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)\
-        values(?,?,?,?,?,?,?,?,(select P_KEY from project_table order by ID desc limit 1),(select ACCOUNT from account_info where CLIENT_FD = ?));";
+        sql = "select P_KEY from project_table order by ID desc limit 1;";
         M1_LOG_DEBUG("sql:%s\n", sql);
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        rc = sqlite3_step(stmt);     
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
+        pKey = sqlite3_column_text(stmt, 0);
+        if(pKey == NULL)
+        {
+            M1_LOG_WARN("pKey NULL\n");
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+    }
+
+    {
+        sql_1 = "select ACCOUNT from account_info where CLIENT_FD = ?;";
+        M1_LOG_DEBUG("sql:%s\n", sql_1);
+        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+        sqlite3_bind_int(stmt_1, 1, data.clientFd);
+        rc = sqlite3_step(stmt_1);     
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
+        account = sqlite3_column_text(stmt_1, 0);
+        if(account == NULL)
+        {
+            M1_LOG_WARN("account NULL\n");
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+    }
+
+    {
+        sql_2 = "insert into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)\
+        values(?,?,?,?,?,?,?,?,?,?);";
+        M1_LOG_DEBUG("sql:%s\n", sql_2);
+        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;
@@ -441,17 +529,18 @@ int app_change_project_config(payload_t data)
     }
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
-        sqlite3_bind_text(stmt, 1, pNameJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 2, pNumberJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 3, pCreatorJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 4, pManagerJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 5, pEditorJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 6, pTelJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 7, pAddJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt, 8, pBriefJson->valuestring, -1, NULL);
-        sqlite3_bind_int(stmt, 9,  data.clientFd);
+        sqlite3_bind_text(stmt_2, 1, pNameJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_2, 2, pNumberJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_2, 3, pCreatorJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_2, 4, pManagerJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_2, 5, pEditorJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_2, 6, pTelJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_2, 7, pAddJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_2, 8, pBriefJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_2, 9, pKey, -1, NULL);
+        sqlite3_bind_text(stmt_2, 10, account, -1, NULL);
     
-        rc = sqlite3_step(stmt);     
+        rc = sqlite3_step(stmt_2);     
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
@@ -475,6 +564,10 @@ int app_change_project_config(payload_t data)
     Finish:
     if(stmt)
       sqlite3_finalize(stmt);
+  if(stmt_1)
+      sqlite3_finalize(stmt_1);
+  if(stmt_2)
+      sqlite3_finalize(stmt_2);
 
     return ret; 
 }

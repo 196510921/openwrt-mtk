@@ -1,0 +1,14 @@
+Tue Jun 12 08:58:39 2018
+ 70 main()| error log testing!!!
+
+Tue Jun 12 08:58:39 2018
+ 3278 create_sql_table()| step() return HƒìH‰ÂA¹nL, number:25673304
+
+
+Tue Jun 12 09:00:06 2018
+ 70 main()| error log testing!!!
+
+Tue Jun 12 09:00:06 2018
+ 3278 create_sql_table()| step() return SQLITE_ERROR, number:008
+
+

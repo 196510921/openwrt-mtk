@@ -633,12 +633,12 @@ void WriteLog(char *filname, char *str)
 {
 	char buf[512];
 
-	time_t timep; 
+	//time_t timep; 
 	FILE *fp = NULL;
-	struct tm *p; 
+	//struct tm *p; 
  
-	time(&timep); 
-	p = localtime(&timep); 
+	//time(&timep); 
+	//p = localtime(&timep); 
 	memset(buf,0,sizeof(buf));
 	#if 0  //PRINT_DEBUG
 		sprintf(buf,"%d-%d-%d %d:%d:%d : ",(1900+p->tm_year),(1+p->tm_mon),\
