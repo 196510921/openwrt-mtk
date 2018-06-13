@@ -395,6 +395,7 @@ int app_account_config_handle(payload_t data)
     int number            = 0;
     int rc                = 0;
     int ret               = M1_PROTOCOL_OK;
+    int sql_commit_flag   = 0;
     char *sql             = NULL;
     char *sql_1           = NULL;
     char *sql_2           = NULL;
@@ -462,9 +463,10 @@ int app_account_config_handle(payload_t data)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
+        sql_commit_flag = 1;
+
         /*插入到account_table*/
-        {
-            
+        {   
             sql = "insert or replace into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(?,?,?,?);";
             M1_LOG_DEBUG("sql:%s\n",sql);
 
@@ -926,10 +928,13 @@ int app_account_config_handle(payload_t data)
     }    
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt)
@@ -1647,20 +1652,26 @@ int user_login_handle(payload_t data)
 {
 	M1_LOG_DEBUG("user_login_handle\n");
 
-    int rc               = 0;
-    int ret              = M1_PROTOCOL_OK;
-    char *errorMsg       = NULL;
-    char *account        = NULL;
-    char *key            = NULL;
+    int rc                 = 0;
+    int ret                = M1_PROTOCOL_OK;
+    int sql_commit_flag    = 0;
+    int clientFd           = 0;
+    char *errorMsg         = NULL;
+    char *account          = NULL;
+    char *key              = NULL;
 	/*Json*/
-    cJSON *accountJson   = NULL;
-	cJSON *keyJson       = NULL;
+    cJSON *accountJson     = NULL;
+	cJSON *keyJson         = NULL;
     /*sql*/
-    char *sql            = NULL;
-    char *sql_1          = NULL;
-	sqlite3 *db          = NULL;
-    sqlite3_stmt *stmt   = NULL;
-    sqlite3_stmt *stmt_1 = NULL;
+    char *sql              = NULL;
+    char *sql_0_1          = NULL;
+    char *sql_0_2          = NULL;
+    char *sql_1            = NULL;
+	sqlite3 *db            = NULL;
+    sqlite3_stmt *stmt     = NULL;
+    sqlite3_stmt *stmt_0_1 = NULL;
+    sqlite3_stmt *stmt_0_2 = NULL;
+    sqlite3_stmt *stmt_1   = NULL;
 
     accountJson = cJSON_GetObjectItem(data.pdu, "account");
     M1_LOG_DEBUG("account:%s\n",accountJson->valuestring);
@@ -1704,31 +1715,79 @@ int user_login_handle(payload_t data)
         stmt = NULL;
     }
 
-    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    sql_0_1 = "select CLIENT_FD from account_info where ACCOUNT = ?;";
+    M1_LOG_DEBUG("%s\n",sql_0_1);
+    if(sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL) != SQLITE_OK)
     {
-    	/*插入用户信息*/	
-    	sql_1 = "insert or replace into account_info(ACCOUNT,CLIENT_FD)values(?,?);";
-        M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
-        {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish; 
-        }
-        sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
-        sqlite3_bind_int(stmt_1, 2, data.clientFd);
-        rc = sqlite3_step(stmt_1); 
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
+
+    sql_0_2 = "update account_info set CLIENT_FD = ? where ACCOUNT = ?;";
+    M1_LOG_DEBUG("%s\n",sql_0_2);
+    if(sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL) != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
+
+    /*插入用户信息*/  
+    sql_1 = "insert into account_info(ACCOUNT,CLIENT_FD)values(?,?);";
+    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
+    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
+
+
+    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    { 
+        sql_commit_flag = 1;
+
+        sqlite3_bind_int(stmt_0_1, 2, accountJson->valuestring);
+        rc = sqlite3_step(stmt_0_1); 
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
                 exit(0);
         }
-        if(rc == SQLITE_ERROR)
+        if(rc == SQLITE_ROW)
         {
-            ret = M1_PROTOCOL_FAILED;
+            clientFd = sqlite3_column_int(stmt_0_1, 0);
+            if(clientFd != data.clientFd)
+            {
+                sqlite3_bind_int(stmt_0_2, 1, data.clientFd);
+                sqlite3_bind_text(stmt_0_2, 2, accountJson->valuestring, -1, NULL);
+                rc = sqlite3_step(stmt_0_2);   
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
+            }   
         }
-
+        else
+        {
+            sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt_1, 2, data.clientFd);
+            rc = sqlite3_step(stmt_1); 
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
+            if(rc == SQLITE_ERROR)
+            {
+                ret = M1_PROTOCOL_FAILED;
+            }
+        }
     }
     else
     {
@@ -1737,14 +1796,21 @@ int user_login_handle(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
     
     if(stmt)
         sqlite3_finalize(stmt);
+    if(stmt_0_1)
+        sqlite3_finalize(stmt_0_1);
+    if(stmt_0_2)
+        sqlite3_finalize(stmt_0_2);
     if(stmt_1)
         sqlite3_finalize(stmt_1);
     
@@ -1758,6 +1824,7 @@ int app_change_user_key(payload_t data)
     /*sqlite3*/
     int rc                = 0;
     int ret               = M1_PROTOCOL_OK;
+    int sql_commit_flag   = 0;
     int clientFd          = 0;
     char *errorMsg        = NULL;
     char *key             = NULL;
@@ -1880,6 +1947,8 @@ int app_change_user_key(payload_t data)
     
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
+        sql_commit_flag = 1;
+
         sql_2 = "update account_table set KEY = ? where account = ?;";
         M1_LOG_DEBUG("sql_2:%s\n", sql_2);
         if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
@@ -1905,10 +1974,13 @@ int app_change_user_key(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt)

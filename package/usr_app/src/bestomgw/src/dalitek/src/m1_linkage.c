@@ -247,6 +247,7 @@ int linkage_msg_handle(payload_t data)
 	int delay               = 0;
 	int rc                  = 0;
 	int ret                 = M1_PROTOCOL_OK;
+	int sql_commit_flag     = 0;
 	int number1             = 0;
 	int number2             = 0;
 	char* errorMsg          = NULL;
@@ -645,11 +646,13 @@ int linkage_msg_handle(payload_t data)
     }
 
     Finish:
-
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+    	rc = sql_commit(db);
+	    if(rc == SQLITE_OK)
+	    {
+	        M1_LOG_DEBUG("COMMIT OK\n");
+	    }
     }
 
     if(stmt)

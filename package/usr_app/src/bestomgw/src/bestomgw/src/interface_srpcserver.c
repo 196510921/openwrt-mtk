@@ -456,7 +456,8 @@ void client_read(void)
 		// if(client_block[i].clientFd == 0){
 		// 	goto Finish;
 		// }
-		if(client_block_get_fd(i) == 0){
+		if(client_block_get_fd(i) == 0)
+		{
 			goto Finish;
 		}
 		d = &client_block[i].stack_block;

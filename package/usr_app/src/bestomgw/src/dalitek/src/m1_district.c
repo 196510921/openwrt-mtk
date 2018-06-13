@@ -16,6 +16,7 @@ int district_create_handle(payload_t data)
 	M1_LOG_DEBUG("district_create_handle\n");
     int rc                  = 0;
     int ret                 = M1_PROTOCOL_OK;
+    int sql_commit_flag     = 0;
     int number1             = 0;
     int i                   = 0;
     int j                   = 0;
@@ -101,6 +102,7 @@ int district_create_handle(payload_t data)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
+        sql_commit_flag = 1;
 
         /*查询区域拥有者*/
         {
@@ -195,10 +197,13 @@ int district_create_handle(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
     
     /*释放malloc*/

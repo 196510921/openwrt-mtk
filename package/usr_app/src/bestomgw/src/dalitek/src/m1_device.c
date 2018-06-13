@@ -394,7 +394,6 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
     /*更新设备气筒信息*/
     // if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     // {
-
         sql = "select DEV_NAME from all_dev where DEV_ID = ? limit 1";
 
         M1_LOG_DEBUG("sql:%s\n",sql);
@@ -471,6 +470,7 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
 {
     M1_LOG_DEBUG("clear_ap_related_linkage\n");
     int  rc              = 0;
+    int sql_commit_flag  = 0;
     char *errorMsg       = NULL;
     char *dev_id         = NULL;
     char *sql            = NULL;
@@ -499,6 +499,8 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
+        sql_commit_flag = 1;
+
         sqlite3_bind_text(stmt, 1, ap_id, -1, NULL);
         sqlite3_bind_text(stmt, 2, "Dalitek", -1, NULL);
         while(sqlite3_step(stmt) == SQLITE_ROW)
@@ -532,10 +534,13 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
     if(stmt)
         sqlite3_finalize(stmt);

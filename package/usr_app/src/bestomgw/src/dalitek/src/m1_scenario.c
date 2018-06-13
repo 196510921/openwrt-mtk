@@ -276,6 +276,7 @@ int scenario_create_handle(payload_t data)
 	int delay             = 0;
 	int rc                = 0;
 	int ret               = M1_PROTOCOL_OK;
+	int sql_commit_flag   = 0;
 	int number1           = 0;
 	int number2           = 0;
 	int accountNum        = 0;
@@ -605,10 +606,13 @@ int scenario_create_handle(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+    	rc = sql_commit(db);
+	    if(rc == SQLITE_OK)
+	    {
+	        M1_LOG_DEBUG("COMMIT OK\n");
+	    }
     }
     /*释放malloc*/
     for(k = 0; k < accountNum; k++)
@@ -651,7 +655,6 @@ int scenario_alarm_create_handle(payload_t data)
 	/*获取数据库*/
 	db = data.db;
 
-    M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
 	/*获取收到数据包信息*/
 	scenNameJson = cJSON_GetObjectItem(data.pdu, "scenarioName");
 	if(scenNameJson == NULL)

@@ -225,6 +225,7 @@ static int AP_report_data_handle(payload_t data)
     int number2          = 0;
     int rc               = 0;
     int ret              = M1_PROTOCOL_OK;
+    int sql_commit_flag  = 0;
     char* errorMsg       = NULL;
     char* sql            = NULL;
     /*sqlite3*/
@@ -266,6 +267,7 @@ static int AP_report_data_handle(payload_t data)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
+        sql_commit_flag = 1;
 
         sql = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE)values(?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -369,10 +371,13 @@ static int AP_report_data_handle(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }  
 
     if(stmt != NULL)
@@ -391,6 +396,7 @@ static int AP_report_dev_handle(payload_t data)
     int number           = 0;
     int rc               = 0;
     int ret              = M1_PROTOCOL_OK;
+    int sql_commit_flag  = 0;
     /*sql*/
     char *errorMsg       = NULL;
     char *sql            = NULL;
@@ -458,6 +464,7 @@ static int AP_report_dev_handle(payload_t data)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
+        sql_commit_flag = 1;
 
         for(i = 0; i< number; i++)
         {
@@ -550,10 +557,13 @@ static int AP_report_dev_handle(payload_t data)
     } 
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt != NULL)
@@ -570,7 +580,11 @@ static int AP_report_ap_handle(payload_t data)
 {
     int rc                 = 0;
     int ret                = M1_PROTOCOL_OK;
+    int sql_commit_flag    = 0;
+    int clientFd           = 0;
     char* sql              = NULL; 
+    char* sql_0_1          = NULL;
+    char* sql_0_2          = NULL;
     char* sql_1            = NULL;
     char* sql_1_1          = NULL;
     char* sql_1_2          = NULL;
@@ -579,6 +593,8 @@ static int AP_report_ap_handle(payload_t data)
     char* errorMsg         = NULL;
     sqlite3* db            = NULL;
     sqlite3_stmt* stmt     = NULL;
+    sqlite3_stmt* stmt_0_1 = NULL;
+    sqlite3_stmt* stmt_0_2 = NULL;
     sqlite3_stmt* stmt_1   = NULL;
     sqlite3_stmt* stmt_1_1 = NULL;
     sqlite3_stmt* stmt_1_2 = NULL;
@@ -624,8 +640,27 @@ static int AP_report_ap_handle(payload_t data)
     
     /*更新conn_info表信息*/
     {
-        sql = "insert or replace into conn_info(AP_ID, CLIENT_FD)values(?,?);";
+        //sql = "insert or replace into conn_info(AP_ID, CLIENT_FD)values(?,?);";
+        sql = "insert into conn_info(AP_ID, CLIENT_FD)values(?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        sql_0_1 = "select CLIENT_FD from conn_info where AP_ID = ?;";
+        M1_LOG_DEBUG("%s\n",sql_0_1);
+        if(sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        sql_0_2 = "update conn_info set CLIENT_FD = ? where AP_ID = ?;";
+        M1_LOG_DEBUG("%s\n",sql_0_2);
+        if(sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL) != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;
@@ -673,16 +708,49 @@ static int AP_report_ap_handle(payload_t data)
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {   
+        sql_commit_flag = 1;
         /*更新conn_info表信息*/
-        sqlite3_bind_text(stmt, 1, apIdJson->valuestring, -1, NULL);
-        sqlite3_bind_int(stmt, 2, data.clientFd);
-
-        rc = sqlite3_step(stmt);   
-        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
-            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
-                exit(0);
+            /*查询是否存在ap_id*/
+            sqlite3_bind_text(stmt_0_1, 1, apIdJson->valuestring, -1, NULL);
+            rc = sqlite3_step(stmt_0_1);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
+
+            if(rc == SQLITE_ROW)
+            {
+                clientFd = sqlite3_column_int(stmt_0_1, 0);
+                if(clientFd != data.clientFd)
+                {
+                    sqlite3_bind_int(stmt_0_2, 1, data.clientFd);
+                    sqlite3_bind_text(stmt_0_2, 2, apIdJson->valuestring, -1, NULL);
+                    rc = sqlite3_step(stmt_0_2);   
+                    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                    {
+                        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        if(rc == SQLITE_CORRUPT)
+                            exit(0);
+                    }
+
+                }   
+            }
+            else
+            {
+                sqlite3_bind_text(stmt, 1, apIdJson->valuestring, -1, NULL);
+                sqlite3_bind_int(stmt, 2, data.clientFd);
+
+                rc = sqlite3_step(stmt);   
+                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                {
+                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    if(rc == SQLITE_CORRUPT)
+                        exit(0);
+                }
+            }         
         }
 
         /*查找all_dev表信息*/
@@ -750,14 +818,21 @@ static int AP_report_ap_handle(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt != NULL)
         sqlite3_finalize(stmt);
+    if(stmt_0_1 != NULL)
+        sqlite3_finalize(stmt_0_1);
+    if(stmt_0_2 != NULL)
+        sqlite3_finalize(stmt_0_2);
     if(stmt_1 != NULL)
         sqlite3_finalize(stmt_1);
     if(stmt_1_1 != NULL)
@@ -1100,6 +1175,7 @@ static int APP_write_handle(payload_t data)
     int number2           = 0;
     int rc                = 0;
     int ret               = M1_PROTOCOL_OK;
+    int sql_commit_flag   = 0;
     /*sql*/
     char* errorMsg        = NULL;
     char* sql             = NULL;
@@ -1141,6 +1217,8 @@ static int APP_write_handle(payload_t data)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
+        sql_commit_flag = 1;
+
         number1 = cJSON_GetArraySize(data.pdu);
         M1_LOG_DEBUG("number1:%d\n",number1);
         for(i = 0; i < number1; i++)
@@ -1223,10 +1301,13 @@ static int APP_write_handle(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt != NULL)
@@ -1243,6 +1324,7 @@ static int APP_echo_dev_info_handle(payload_t data)
     int number_1            = 0;
     int rc                  = 0;
     int ret                 = M1_PROTOCOL_OK;
+    int sql_commit_flag     = 0;
     char* sql               = NULL;
     char* errorMsg          = NULL;
     /*sqlite3*/
@@ -1274,6 +1356,7 @@ static int APP_echo_dev_info_handle(payload_t data)
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
+        sql_commit_flag = 1;
         number = cJSON_GetArraySize(data.pdu);
         M1_LOG_DEBUG("number:%d\n",number);  
         for(i = 0; i < number; i++)
@@ -1346,10 +1429,13 @@ static int APP_echo_dev_info_handle(payload_t data)
     }  
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt != NULL)
@@ -1901,6 +1987,7 @@ static int common_operate(payload_t data)
     int pduType        = TYPE_COMMON_OPERATE;
     int rc             = 0;
     int ret            = M1_PROTOCOL_OK; 
+    int sql_commit_flag= 0;
     int number1        = 0;
     int i              = 0;
     char *scen_name    = NULL;
@@ -1946,6 +2033,8 @@ static int common_operate(payload_t data)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
+        sql_commit_flag = 1;
+
         if(strcmp(typeJson->valuestring, "device") == 0){
             if(strcmp(operateJson->valuestring, "delete") == 0){
                 /*通知到ap*/
@@ -2160,12 +2249,15 @@ static int common_operate(payload_t data)
         sqlite3_free(errorMsg);
     }
 
-    Finish:    
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    Finish: 
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
-    }
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
+    }   
 
     free(sql);
     if(stmt != NULL)
@@ -2180,6 +2272,7 @@ static void check_offline_dev(sqlite3*db)
 {
     M1_LOG_DEBUG("check_offline_dev\n");
     int rc               = 0;
+    int sql_commit_flag  = 0;
     char *time           = NULL;
     int curTime          = 0;
     int sqlTime          = 0;
@@ -2260,6 +2353,8 @@ static void check_offline_dev(sqlite3*db)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN IMMEDIATE:\n");
+        sql_commit_flag = 1;
+
         while(sqlite3_step(stmt) == SQLITE_ROW)
         {
             apId = sqlite3_column_text(stmt, 0);
@@ -2337,11 +2432,13 @@ static void check_offline_dev(sqlite3*db)
     }
 
     Finish:
-
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt)
@@ -2359,14 +2456,15 @@ static void check_offline_dev(sqlite3*db)
 static int ap_heartbeat_handle(payload_t data)
 {
     M1_LOG_DEBUG("ap_heartbeat_handle\n");
-    int rc             = 0;
-    int ret            = M1_PROTOCOL_OK;
-    int valueType      = 0x4014;
-    char* errorMsg     = NULL;
-    char* sql          = NULL;
-    cJSON* apIdJson    = NULL;
-    sqlite3* db        = NULL;
-    sqlite3_stmt* stmt = NULL;
+    int rc              = 0;
+    int ret             = M1_PROTOCOL_OK;
+    int sql_commit_flag = 0;
+    int valueType       = 0x4014;
+    char* errorMsg      = NULL;
+    char* sql           = NULL;
+    cJSON* apIdJson     = NULL;
+    sqlite3* db         = NULL;
+    sqlite3_stmt* stmt  = NULL;
 
     if(data.pdu == NULL){
         M1_LOG_ERROR("data.pdu\n");
@@ -2378,6 +2476,7 @@ static int ap_heartbeat_handle(payload_t data)
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
+        sql_commit_flag = 1;
         sql = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
         M1_LOG_DEBUG("string:%s\n",sql);
 
@@ -2408,10 +2507,13 @@ static int ap_heartbeat_handle(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt != NULL)
@@ -2488,14 +2590,16 @@ static int common_rsp(rsp_data_t data)
 
 void delete_account_conn_info(int clientFd)
 {
-    int rc             = 0;
-    int ret            = M1_PROTOCOL_OK;
-    char *errorMsg     = NULL;
-    char *sql          = NULL;
-    sqlite3_stmt* stmt = NULL;
+    int rc              = 0;
+    int ret             = M1_PROTOCOL_OK;
+    int sql_commit_flag = 0;
+    char *errorMsg      = NULL;
+    char *sql           = NULL;
+    sqlite3_stmt* stmt  = NULL;
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
+        sql_commit_flag = 1;
         {
             sql = "delete from account_info where CLIENT_FD = ?;";
             M1_LOG_DEBUG("string:%s\n",sql);
@@ -2550,10 +2654,13 @@ void delete_account_conn_info(int clientFd)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }
     }
 
     if(stmt)
@@ -2575,6 +2682,7 @@ static int app_change_device_name(payload_t data)
 {
     int rc               = 0; 
     int ret              = M1_PROTOCOL_OK;
+    int sql_commit_flag  = 0;
     char* errorMsg       = NULL;
     char* sql            = NULL;
     sqlite3* db          = NULL;
@@ -2611,6 +2719,7 @@ static int app_change_device_name(payload_t data)
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
         M1_LOG_DEBUG("BEGIN:\n");
+        sql_commit_flag = 1;
 
         sql = "update all_dev set DEV_NAME = ? where DEV_ID = ?;";
         M1_LOG_DEBUG("sql:%s\n",sql);
@@ -2644,11 +2753,15 @@ static int app_change_device_name(payload_t data)
     }
 
     Finish:
-    rc = sql_commit(db);
-    if(rc == SQLITE_OK)
+    if(sql_commit_flag)
     {
-        M1_LOG_DEBUG("COMMIT OK\n");
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
+        {
+            M1_LOG_DEBUG("COMMIT OK\n");
+        }    
     }
+    
     if(stmt)
         sqlite3_finalize(stmt);
 
@@ -2843,14 +2956,14 @@ static int create_sql_table(void)
             // }
         }
         /*account index*/
-        sql = "CREATE UNIQUE INDEX appAcount ON account_info (\"ACCOUNT\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            M1_LOG_WARN("CREATE UNIQUE INDEX appAcount failed: %s\n",errmsg);
-            sqlite3_free(errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX appAcount ON account_info (\"ACCOUNT\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     M1_LOG_WARN("CREATE UNIQUE INDEX appAcount failed: %s\n",errmsg);
+        //     sqlite3_free(errmsg);
+        // }
         /*client_fdindex*/
         // sql = "CREATE UNIQUE INDEX appClient ON account_info (\"CLIENT_FD\" ASC);";
         // M1_LOG_DEBUG("%s:\n",sql);
@@ -2946,14 +3059,14 @@ static int create_sql_table(void)
         }
          
         /*AP_ID index*/
-        sql = "CREATE UNIQUE INDEX apAccount ON conn_info (\"AP_ID\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX apAccount ON conn_info (\"AP_ID\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
+        // }
         /*CLIENT_FD index*/
         // sql = "CREATE UNIQUE INDEX apClient ON conn_info (\"CLIENT_FD\" ASC);";
         // M1_LOG_DEBUG("%s:\n",sql);
