@@ -57,8 +57,6 @@
 #include "m1_protocol.h"
 
 
-#define M1_DBG  1
-
 void SRPC_RxCB(int clientFd);
 void SRPC_ConnectCB(int status);
 
@@ -476,9 +474,9 @@ void client_read(void)
 
 		len = *(uint16_t*)&data[2];
 		len = (uint16_t)(((len << 8) & 0xff00) | ((len >> 8) & 0xff)) & 0xffff;
-		#if M1_DBG
+
 		M1_LOG_INFO( "clientFd: %d read,data[2]:%x,data[3]:%x,len:%05d,data:%s\n", client_block_get_fd(i), data[2], data[3],len,&data[4]);
-		#endif		
+	
 		if((len+4) <= STACK_UNIT){
 			client_read_to_data_handle(data + 4, len, client_block[i].clientFd);
 			goto Finish;

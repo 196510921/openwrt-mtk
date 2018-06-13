@@ -1925,7 +1925,7 @@ static int M1_report_dev_info(payload_t data)
 
     // sql = "select DEV_ID, DEV_NAME, PID from all_dev where AP_ID != DEV_ID and AP_ID = ? and  ACCOUNT in \
     //       (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
-    sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
+    sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.AP_ID = ? and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
     M1_LOG_DEBUG("sql:%s", sql);
 
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
