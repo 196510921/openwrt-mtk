@@ -61,6 +61,7 @@ pthread_mutex_t mutex_lock_sock;
 /*静态局部函数****************************************************************************************/
 static void socket_poll(void);
 
+#if 1
 int main(int argc, char* argv[])
 {
 	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
@@ -148,5 +149,15 @@ static void socket_poll(void)
 	}
 
 }
+
+#else
+extern void uart_485_test(void);
+int main(int argc, char* argv[])
+{
+	uart_485_test();
+
+	return 0;
+}
+#endif
 
 
