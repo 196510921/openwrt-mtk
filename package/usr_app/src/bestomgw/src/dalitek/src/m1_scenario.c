@@ -282,6 +282,7 @@ int scenario_create_handle(payload_t data)
 	int accountNum        = 0;
 	char* accountTmp      = NULL;
 	char* accountBuf[100] = {0};
+	char* sql_0           = NULL;
 	char* sql             = NULL;
 	char* sql_1           = NULL;
 	char* sql_1_1         = NULL;
@@ -307,6 +308,7 @@ int scenario_create_handle(payload_t data)
 	cJSON* statusJson     = NULL;
 	sqlite3* db           = NULL;
 	sqlite3_stmt* stmt    = NULL;
+	sqlite3_stmt* stmt_0  = NULL;
 	sqlite3_stmt* stmt_1  = NULL;
 	sqlite3_stmt* stmt_1_1= NULL;
 	sqlite3_stmt* stmt_1_2= NULL;
@@ -344,7 +346,16 @@ int scenario_create_handle(payload_t data)
     }
 	/*将alarm信息存入alarm表中*/
 	{
-		sql = "insert or replace into scen_alarm_table(SCEN_NAME, HOUR, MINUTES, WEEK, STATUS) values(?,?,?,?,?);";
+		sql_0 = "delete from scen_alarm_table where SCEN_NAME = ?;";
+		M1_LOG_DEBUG("%s\n",sql_0);
+		if(sqlite3_prepare_v2(db, sql_0, strlen(sql_0), &stmt_0, NULL) != SQLITE_OK)
+		{
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    ret = M1_PROTOCOL_FAILED;
+		    goto Finish; 
+		}
+
+		sql = "insert into scen_alarm_table(SCEN_NAME, HOUR, MINUTES, WEEK, STATUS) values(?,?,?,?,?);";
 		M1_LOG_DEBUG("%s\n",sql);
 		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
 		{
@@ -355,7 +366,7 @@ int scenario_create_handle(payload_t data)
 	}
 
 	{
-		sql_1 = "insert or replace into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
+		sql_1 = "insert into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
 		M1_LOG_DEBUG("%s\n",sql_1);
 		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
 		{
@@ -420,6 +431,17 @@ int scenario_create_handle(payload_t data)
 		   	}
 		    M1_LOG_DEBUG("status:%s\n",statusJson->valuestring);
 		
+		    /*删除历史数据*/
+		    sqlite3_bind_text(stmt_0, 1, scenNameJson->valuestring, -1, NULL);
+			rc = sqlite3_step(stmt_0);     
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
+
+		    /*插入新数据*/
 			sqlite3_bind_text(stmt, 1, scenNameJson->valuestring, -1, NULL);
 			sqlite3_bind_int(stmt, 2, hourJson->valueint);
 			sqlite3_bind_int(stmt, 3, minutesJson->valueint);
@@ -622,6 +644,8 @@ int scenario_create_handle(payload_t data)
     		free(accountBuf[k]);
     }
 
+    if(stmt_0)
+    	sqlite3_finalize(stmt_0);
     if(stmt)
     	sqlite3_finalize(stmt);
     if(stmt_1)
@@ -637,17 +661,19 @@ int scenario_create_handle(payload_t data)
 int scenario_alarm_create_handle(payload_t data)
 {
 	M1_LOG_DEBUG("scenario_alarm_create_handle\n");
-	int rc              = 0;
-	int ret             = M1_PROTOCOL_OK;
-	char* errorMsg      = NULL;
-	cJSON* scenNameJson = NULL;
-	cJSON* hourJson     = NULL;
-	cJSON* minutesJson  = NULL;
-	cJSON* weekJson     = NULL;
-	cJSON* statusJson   = NULL;
-	char* sql           = NULL;
-	sqlite3* db         = NULL;
-	sqlite3_stmt* stmt  = NULL;
+	int rc               = 0;
+	int ret              = M1_PROTOCOL_OK;
+	char* errorMsg       = NULL;
+	cJSON* scenNameJson  = NULL;
+	cJSON* hourJson      = NULL;
+	cJSON* minutesJson   = NULL;
+	cJSON* weekJson      = NULL;
+	cJSON* statusJson    = NULL;
+	char* sql            = NULL;
+	char* sql_0          = NULL;
+	sqlite3* db          = NULL;
+	sqlite3_stmt* stmt   = NULL;
+	sqlite3_stmt* stmt_0 = NULL;
 
 	if(data.pdu == NULL)
 	{
@@ -686,7 +712,20 @@ int scenario_alarm_create_handle(payload_t data)
 	}
 	M1_LOG_DEBUG("status:%s\n",statusJson->valuestring);
 
-	sql = "insert or replace into scen_alarm_table(SCEN_NAME, HOUR, MINUTES, WEEK, STATUS) values(?,?,?,?,?);";
+	/*删除历史数据*/
+	sql_0 = "delete from scen_alarm_table where SCEN_NAME = ?;";
+	M1_LOG_DEBUG("%s\n",sql_0);
+	  
+	if(sqlite3_prepare_v2(db, sql_0, strlen(sql_0), &stmt_0, NULL) != SQLITE_OK)
+	{
+		M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		ret = M1_PROTOCOL_FAILED;
+		goto Finish; 
+	}		
+	sqlite3_bind_text(stmt_0, 1, scenNameJson->valuestring, -1, NULL);
+
+	/*插入新数据*/
+	sql = "insert into scen_alarm_table(SCEN_NAME, HOUR, MINUTES, WEEK, STATUS) values(?,?,?,?,?);";
 	M1_LOG_DEBUG("sql:%s\n",sql);
 	  
 	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -704,6 +743,14 @@ int scenario_alarm_create_handle(payload_t data)
 		
 	if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
 	{
+
+		rc = sqlite3_step(stmt_0);     
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
 
 		rc = sqlite3_step(stmt);     
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
@@ -729,6 +776,8 @@ int scenario_alarm_create_handle(payload_t data)
     	ret =  M1_PROTOCOL_FAILED;
 
     Finish:
+    if(stmt_0)
+    	sqlite3_finalize(stmt_0);
     if(stmt)
     	sqlite3_finalize(stmt);
 

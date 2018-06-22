@@ -400,7 +400,6 @@ int app_account_config_handle(payload_t data)
     char *sql_1           = NULL;
     char *sql_2           = NULL;
     char *sql_3           = NULL;
-    char *sql_4           = NULL;
     char *errorMsg        = NULL;
     char *ap_id           = NULL;
     char *dev_id          = NULL;
@@ -432,7 +431,6 @@ int app_account_config_handle(payload_t data)
     sqlite3_stmt *stmt_1  = NULL;
     sqlite3_stmt *stmt_2  = NULL;
     sqlite3_stmt *stmt_3  = NULL;
-    sqlite3_stmt *stmt_4  = NULL;
 
     /*获取数据库*/
     db = data.db;
@@ -467,8 +465,8 @@ int app_account_config_handle(payload_t data)
 
         /*插入到account_table*/
         {   
-            sql = "insert or replace into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(?,?,?,?);";
-            M1_LOG_DEBUG("sql:%s\n",sql);
+            sql = "delete from account_table where ACCOUNT = ?;";
+            M1_LOG_DEBUG("sql_0:%s\n",sql);
 
             if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
             {
@@ -478,9 +476,6 @@ int app_account_config_handle(payload_t data)
             }
 
             sqlite3_bind_text(stmt, 1,  accountJson->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 2,  keyJson->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 3,  keyAuthJson->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 4,  remoteAuthJson->valuestring, -1, NULL);
 
             rc = sqlite3_step(stmt);   
             if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
@@ -494,6 +489,35 @@ int app_account_config_handle(payload_t data)
             {
                 sqlite3_finalize(stmt);
                 stmt = NULL;
+            }
+
+            sql_1 = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(?,?,?,?);";
+            M1_LOG_DEBUG("sql:%s\n",sql_1);
+
+            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+            {
+                ret = M1_PROTOCOL_FAILED;
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                goto Finish; 
+            }
+
+            sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt_1, 2,  keyJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt_1, 3,  keyAuthJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt_1, 4,  remoteAuthJson->valuestring, -1, NULL);
+
+            rc = sqlite3_step(stmt_1);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
+            
+            if(stmt_1)
+            {
+                sqlite3_finalize(stmt_1);
+                stmt_1 = NULL;
             }
         }
 
@@ -515,7 +539,7 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             }
 
-            sql_2 = "insert or replace into district_table(DIS_NAME, DIS_PIC, AP_ID, ACCOUNT)values(?,?,?,?);";
+            sql_2 = "insert into district_table(DIS_NAME, DIS_PIC, AP_ID, ACCOUNT)values(?,?,?,?);";
             M1_LOG_DEBUG("sql:%s\n",sql_2);
 
             if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
@@ -525,22 +549,11 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             }
 
-            /*查询用户历史信息*/
-            sql_3 = "select DISTINCT TIME from district_table where ACCOUNT = ?;";
+            /*删除用户历史信息*/
+            sql_3 = "delete from district_table where ACCOUNT = ?;";
             M1_LOG_DEBUG("%s\n",sql_3);
 
             if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
-            {
-                ret = M1_PROTOCOL_FAILED;
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                goto Finish; 
-            }
-
-            /*删除用户历史信息*/
-            sql_4 = "delete from district_table where ACCOUNT = ? and TIME = ?;";
-            M1_LOG_DEBUG("%s\n",sql_4);
-
-            if(sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL) != SQLITE_OK)
             {
                 ret = M1_PROTOCOL_FAILED;
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -559,7 +572,6 @@ int app_account_config_handle(payload_t data)
                         exit(0);
                 }
 
-                time = sqlite3_column_text(stmt_3, 0);
             }
 
             districtArray = cJSON_GetObjectItem(data.pdu,"district");
@@ -596,21 +608,7 @@ int app_account_config_handle(payload_t data)
                 sqlite3_reset(stmt_1);
                 sqlite3_clear_bindings(stmt_1);
             }
-            /*删除用户历史数据*/
-            if(time != NULL)
-            {
-                sqlite3_bind_text(stmt_4, 1,  accountJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_4, 2,  time, -1, NULL);
-
-                rc = sqlite3_step(stmt_4);
-                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-                {
-                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                    if(rc == SQLITE_CORRUPT)
-                        exit(0);
-                }
-            }
-
+            
             if(stmt_1)
             {
                 sqlite3_finalize(stmt_1);
@@ -625,11 +623,6 @@ int app_account_config_handle(payload_t data)
             {
                 sqlite3_finalize(stmt_3);
                 stmt_3 = NULL;
-            }
-            if(stmt_4)
-            {
-                sqlite3_finalize(stmt_4);
-                stmt_4 = NULL;
             }
         }
 
@@ -646,7 +639,7 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             } 
 
-            sql_1 = "insert or replace into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
+            sql_1 = "insert into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
             M1_LOG_DEBUG("sql_1:%s\n",sql_1);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -654,22 +647,11 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             }
 
-            /*查询用户历史信息*/
-            sql_2 = "select DISTINCT TIME from scenario_table where ACCOUNT = ?;";
+            /*删除用户历史信息*/
+            sql_2 = "delete from scenario_table where ACCOUNT = ?;";
             M1_LOG_DEBUG("%s\n",sql_2);
 
             if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
-            {
-                ret = M1_PROTOCOL_FAILED;
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                goto Finish; 
-            }
-
-            /*删除用户历史信息*/
-            sql_3 = "delete from scenario_table where ACCOUNT = ? and TIME = ?;";
-            M1_LOG_DEBUG("%s\n",sql_3);
-
-            if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
             {
                 ret = M1_PROTOCOL_FAILED;
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -687,8 +669,6 @@ int app_account_config_handle(payload_t data)
                     if(rc == SQLITE_CORRUPT)
                         exit(0);
                 }
-
-                time = sqlite3_column_text(stmt_2, 0);
             }
 
             scenArray = cJSON_GetObjectItem(data.pdu,"scenario");
@@ -738,21 +718,6 @@ int app_account_config_handle(payload_t data)
                 sqlite3_clear_bindings(stmt);
             }
 
-             /*删除用户历史数据*/
-            if(time != NULL)
-            {
-                sqlite3_bind_text(stmt_3, 1,  accountJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_3, 2,  time, -1, NULL);
-
-                rc = sqlite3_step(stmt_3);
-                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-                {
-                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                    if(rc == SQLITE_CORRUPT)
-                        exit(0);
-                }
-            }
-
             if(stmt)
             {
                 sqlite3_finalize(stmt);
@@ -768,12 +733,6 @@ int app_account_config_handle(payload_t data)
                 sqlite3_finalize(stmt_2);
                 stmt_2 = NULL;
             }
-            if(stmt_3)
-            {
-                sqlite3_finalize(stmt_3);
-                stmt_3 = NULL;
-            }
-
         }
 
         /*添加用户设备信息*/
@@ -787,7 +746,7 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             } 
 
-            sql_1 = "insert or replace into all_dev(DEV_ID,DEV_NAME,AP_ID,PID,ADDED,NET,STATUS,ACCOUNT)values(?,?,?,?,?,?,?,?);";
+            sql_1 = "insert into all_dev(DEV_ID,DEV_NAME,AP_ID,PID,ADDED,NET,STATUS,ACCOUNT)values(?,?,?,?,?,?,?,?);";
             M1_LOG_DEBUG("sql_1:%s\n",sql_1);
             if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -795,8 +754,8 @@ int app_account_config_handle(payload_t data)
                 goto Finish; 
             }
 
-            /*查询用户历史信息*/
-            sql_2 = "select DISTINCT TIME from all_dev where ACCOUNT = ?;";
+            /*删除用户历史信息*/
+            sql_2 = "delete from all_dev where ACCOUNT = ?;";
             M1_LOG_DEBUG("%s\n",sql_2);
 
             if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
@@ -807,17 +766,6 @@ int app_account_config_handle(payload_t data)
             }
 
             /*删除用户历史信息*/
-            sql_3 = "delete from all_dev where ACCOUNT = ? and TIME = ?;";
-            M1_LOG_DEBUG("%s\n",sql_3);
-
-            if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
-            {
-                ret = M1_PROTOCOL_FAILED;
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                goto Finish; 
-            }
-
-            /*查询用户历史信息*/
             {
                 sqlite3_bind_text(stmt_2, 1,  accountJson->valuestring, -1, NULL);
 
@@ -828,8 +776,6 @@ int app_account_config_handle(payload_t data)
                     if(rc == SQLITE_CORRUPT)
                         exit(0);
                 }
-
-                time = sqlite3_column_text(stmt_2, 0);
             }
 
             devArray = cJSON_GetObjectItem(data.pdu,"device");
@@ -883,21 +829,6 @@ int app_account_config_handle(payload_t data)
                 sqlite3_clear_bindings(stmt);
             }
 
-             /*删除用户历史数据*/
-            if(time != NULL)
-            {
-                sqlite3_bind_text(stmt_3, 1,  accountJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt_3, 2,  time, -1, NULL);
-
-                rc = sqlite3_step(stmt_3);
-                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-                {
-                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                    if(rc == SQLITE_CORRUPT)
-                        exit(0);
-                }
-            }
-
             if(stmt)
             {
                 sqlite3_finalize(stmt);
@@ -912,11 +843,6 @@ int app_account_config_handle(payload_t data)
             {
                 sqlite3_finalize(stmt_2);
                 stmt_2 = NULL;
-            }
-            if(stmt_3)
-            {
-                sqlite3_finalize(stmt_3);
-                stmt_3 = NULL;
             }
 
         }
@@ -945,8 +871,6 @@ int app_account_config_handle(payload_t data)
         sqlite3_finalize(stmt_2);
     if(stmt_3)
         sqlite3_finalize(stmt_3);
-    if(stmt_4)
-        sqlite3_finalize(stmt_4);
 
     return  ret;
 }
@@ -1673,6 +1597,9 @@ int user_login_handle(payload_t data)
     sqlite3_stmt *stmt_0_2 = NULL;
     sqlite3_stmt *stmt_1   = NULL;
 
+    /*删除用户登录历史数据*/
+    delete_client_db();
+
     accountJson = cJSON_GetObjectItem(data.pdu, "account");
     M1_LOG_DEBUG("account:%s\n",accountJson->valuestring);
     keyJson = cJSON_GetObjectItem(data.pdu, "key");
@@ -1715,18 +1642,10 @@ int user_login_handle(payload_t data)
         stmt = NULL;
     }
 
-    sql_0_1 = "select CLIENT_FD from account_info where ACCOUNT = ?;";
+    //sql_0_1 = "select CLIENT_FD from account_info where ACCOUNT = ?;";
+    sql_0_1 = "delete from account_info where CLIENT_FD = ?;";
     M1_LOG_DEBUG("%s\n",sql_0_1);
     if(sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL) != SQLITE_OK)
-    {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish; 
-    }
-
-    sql_0_2 = "update account_info set CLIENT_FD = ? where ACCOUNT = ?;";
-    M1_LOG_DEBUG("%s\n",sql_0_2);
-    if(sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL) != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         ret = M1_PROTOCOL_FAILED;
@@ -1748,7 +1667,7 @@ int user_login_handle(payload_t data)
     { 
         sql_commit_flag = 1;
 
-        sqlite3_bind_int(stmt_0_1, 2, accountJson->valuestring);
+        sqlite3_bind_int(stmt_0_1, 1, data.clientFd);
         rc = sqlite3_step(stmt_0_1); 
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
@@ -1756,38 +1675,21 @@ int user_login_handle(payload_t data)
             if(rc == SQLITE_CORRUPT)
                 exit(0);
         }
-        if(rc == SQLITE_ROW)
+    
+        sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
+        sqlite3_bind_int(stmt_1, 2, data.clientFd);
+        rc = sqlite3_step(stmt_1); 
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
-            clientFd = sqlite3_column_int(stmt_0_1, 0);
-            if(clientFd != data.clientFd)
-            {
-                sqlite3_bind_int(stmt_0_2, 1, data.clientFd);
-                sqlite3_bind_text(stmt_0_2, 2, accountJson->valuestring, -1, NULL);
-                rc = sqlite3_step(stmt_0_2);   
-                if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-                {
-                    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                    if(rc == SQLITE_CORRUPT)
-                        exit(0);
-                }
-            }   
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
         }
-        else
+        if(rc == SQLITE_ERROR)
         {
-            sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
-            sqlite3_bind_int(stmt_1, 2, data.clientFd);
-            rc = sqlite3_step(stmt_1); 
-            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-            {
-                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                if(rc == SQLITE_CORRUPT)
-                    exit(0);
-            }
-            if(rc == SQLITE_ERROR)
-            {
-                ret = M1_PROTOCOL_FAILED;
-            }
+            ret = M1_PROTOCOL_FAILED;
         }
+        
     }
     else
     {
@@ -1809,8 +1711,6 @@ int user_login_handle(payload_t data)
         sqlite3_finalize(stmt);
     if(stmt_0_1)
         sqlite3_finalize(stmt_0_1);
-    if(stmt_0_2)
-        sqlite3_finalize(stmt_0_2);
     if(stmt_1)
         sqlite3_finalize(stmt_1);
     

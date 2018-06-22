@@ -383,13 +383,17 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
 {
     M1_LOG_DEBUG("app_update_param_table\n");
     
-    int rc               = 0;
-    char* devName        = NULL;
-    char* errorMsg       = NULL;
-    char* sql            = NULL;
-    char* sql_1          = NULL;
-    sqlite3_stmt* stmt   = NULL;
-    sqlite3_stmt* stmt_1 = NULL;
+    int rc                 = 0;
+    char* devName          = NULL;
+    char* errorMsg         = NULL;
+    char* sql              = NULL;
+    char* sql_1            = NULL;
+    char* sql_1_1          = NULL;
+    char* sql_1_2          = NULL;
+    sqlite3_stmt* stmt     = NULL;
+    sqlite3_stmt* stmt_1   = NULL;
+    sqlite3_stmt* stmt_1_1 = NULL;
+    sqlite3_stmt* stmt_1_2 = NULL;
     
     /*更新设备气筒信息*/
     // if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
@@ -414,25 +418,77 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         }
 
         devName = sqlite3_column_text(stmt, 0);
-
-        sql_1 = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE) values (?,?,?,?);";
-        M1_LOG_DEBUG("sql:%s\n",sql_1);
-        
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            goto Finish; 
+
+            {
+                sql_1_1 = "select ID from param_table where DEV_ID = ? and TYPE = ? limit 1;"; 
+                M1_LOG_DEBUG("%s\n",sql_1_1);   
+                if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
+                {
+                    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+                    goto Finish; 
+                }
+            }
+
+            {
+                sql_1_2 = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
+                M1_LOG_DEBUG("%s\n",sql_1_2);
+                if(sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL) != SQLITE_OK)
+                {
+                    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+                    goto Finish; 
+                }
+            }
+
+            sql_1 = "insert into param_table(DEV_NAME,DEV_ID,TYPE,VALUE) values (?,?,?,?);";
+            M1_LOG_DEBUG("sql:%s\n",sql_1);
+            
+            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+            {
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                goto Finish; 
+            }
         }
-        sqlite3_bind_text(stmt_1, 1, devName, -1, NULL);
-        sqlite3_bind_text(stmt_1, 2, data.devId, -1, NULL);
-        sqlite3_bind_int(stmt_1, 3, data.type);
-        sqlite3_bind_int(stmt_1, 4, data.value);
-        rc = sqlite3_step(stmt_1);   
+
+        /*先检查*/
+        sqlite3_bind_text(stmt_1_1, 1, data.devId, -1, NULL);
+        sqlite3_bind_int(stmt_1_1, 2, data.type);
+        rc = sqlite3_step(stmt_1_1);   
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
                 exit(0);
+        }
+                
+        if(rc == SQLITE_ROW)
+        {
+            /*更新*/
+            sqlite3_bind_int(stmt_1_2, 1, data.value);
+            sqlite3_bind_text(stmt_1_2, 2, data.devId, -1, NULL);
+            sqlite3_bind_int(stmt_1_2, 3, data.type);
+            rc = sqlite3_step(stmt_1_2);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
+
+        }
+        else
+        {
+            sqlite3_bind_text(stmt_1, 1, devName, -1, NULL);
+            sqlite3_bind_text(stmt_1, 2, data.devId, -1, NULL);
+            sqlite3_bind_int(stmt_1, 3, data.type);
+            sqlite3_bind_int(stmt_1, 4, data.value);
+            rc = sqlite3_step(stmt_1);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
         }
 
     //     rc = sqlite3_exec(db, "COMMIT", NULL, NULL, &errorMsg);
@@ -463,6 +519,10 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         sqlite3_finalize(stmt);
     if(stmt_1)
         sqlite3_finalize(stmt_1);
+    if(stmt_1_1)
+        sqlite3_finalize(stmt_1_1);
+    if(stmt_1_2)
+        sqlite3_finalize(stmt_1_2);
 }
 
 /*删除AP下子设备联动业务*/

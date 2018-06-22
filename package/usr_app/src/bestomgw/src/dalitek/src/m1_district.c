@@ -65,7 +65,7 @@ int district_create_handle(payload_t data)
     /*获取数据路*/
     db = data.db;
 
-	sql = "insert or replace into district_table(DIS_NAME, DIS_PIC, AP_ID, ACCOUNT) values(?,?,?,?);";
+	sql = "insert into district_table(DIS_NAME, DIS_PIC, AP_ID, ACCOUNT) values(?,?,?,?);";
     M1_LOG_DEBUG("sql:%s\n",sql);
 
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -75,7 +75,7 @@ int district_create_handle(payload_t data)
         goto Finish; 
     }
 
-    /*查询场景历史数据时间*/
+    /*查询区域历史数据时间*/
     {
         sql_1_1 = "select DISTINCT ACCOUNT from district_table where DIS_NAME = ?;";
         M1_LOG_DEBUG("%s\n",sql_1_1);

@@ -41,7 +41,6 @@ static int create_sql_table(void);
 static int app_change_device_name(payload_t data);
 static uint8_t hex_to_uint8(int h);
 static void check_offline_dev(sqlite3*db);
-static void delete_client_db(void);
 /*variable******************************************************************************************************/
 extern pthread_mutex_t mutex_lock;
 sqlite3* db = NULL;
@@ -197,8 +196,6 @@ void data_handle(m1_package_t* package)
     }
     check_offline_dev(db);
 
-    //delete_client_db();
-
     sql_close();
 
     Finish:
@@ -219,26 +216,30 @@ static int common_rsp_handle(payload_t data)
 /*AP report device data to M1*/
 static int AP_report_data_handle(payload_t data)
 {
-    int i                = 0;
-    int j                = 0;
-    int number1          = 0;
-    int number2          = 0;
-    int rc               = 0;
-    int ret              = M1_PROTOCOL_OK;
-    int sql_commit_flag  = 0;
-    char* errorMsg       = NULL;
-    char* sql            = NULL;
+    int i                  = 0;
+    int j                  = 0;
+    int number1            = 0;
+    int number2            = 0;
+    int rc                 = 0;
+    int ret                = M1_PROTOCOL_OK;
+    int sql_commit_flag    = 0;
+    char* errorMsg         = NULL;
+    char* sql              = NULL;
+    char* sql_0_1          = NULL;
+    char* sql_0_2          = NULL;
     /*sqlite3*/
-    sqlite3* db          = NULL;
-    sqlite3_stmt* stmt   = NULL;
+    sqlite3* db            = NULL;
+    sqlite3_stmt* stmt     = NULL;
+    sqlite3_stmt* stmt_0_1 = NULL;
+    sqlite3_stmt* stmt_0_2 = NULL;
     /*Json*/
-    cJSON* devDataJson   = NULL;
-    cJSON* devNameJson   = NULL;
-    cJSON* devIdJson     = NULL;
-    cJSON* paramJson     = NULL;
-    cJSON* paramDataJson = NULL;
-    cJSON* typeJson      = NULL;
-    cJSON* valueJson     = NULL;
+    cJSON* devDataJson     = NULL;
+    cJSON* devNameJson     = NULL;
+    cJSON* devIdJson       = NULL;
+    cJSON* paramJson       = NULL;
+    cJSON* paramDataJson   = NULL;
+    cJSON* typeJson        = NULL;
+    cJSON* valueJson       = NULL;
 
     db = data.db;   
     M1_LOG_DEBUG("AP_report_data_handle\n");
@@ -263,19 +264,44 @@ static int AP_report_data_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
-    /*开启事物*/
-    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
-    {
-        M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
-        sql_commit_flag = 1;
 
-        sql = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE)values(?,?,?,?);";
+    {
+        sql_0_1 = "select ID from param_table where DEV_ID = ? and TYPE = ? limit 1;"; 
+        M1_LOG_DEBUG("%s\n",sql_0_1);   
+        if(sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+    }
+
+    {
+        sql_0_2 = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
+        M1_LOG_DEBUG("%s\n",sql_0_2);
+        if(sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+    }
+
+    {
+        sql = "insert into param_table(DEV_NAME,DEV_ID,TYPE,VALUE)values(?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
+    }
+
+    /*开启事物*/
+    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
+    {
+        M1_LOG_DEBUG("BEGIN IMMEDIATE\n");
+        sql_commit_flag = 1;
 
         number1 = cJSON_GetArraySize(data.pdu);
         M1_LOG_DEBUG("number1:%d\n",number1);
@@ -346,21 +372,56 @@ static int AP_report_data_handle(payload_t data)
                 }
                 M1_LOG_DEBUG("AP data insert\n");
                 
-                /*再插入*/
-                sqlite3_bind_text(stmt, 1,  devNameJson->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt, 2, devIdJson->valuestring, -1, NULL);
-                sqlite3_bind_int(stmt, 3,typeJson->valueint);
-                sqlite3_bind_int(stmt, 4, valueJson->valueint);
-                rc = sqlite3_step(stmt);   
+                /*先检查*/
+                sqlite3_bind_text(stmt_0_1, 1, devIdJson->valuestring, -1, NULL);
+                sqlite3_bind_int(stmt_0_1, 2,typeJson->valueint);
+                rc = sqlite3_step(stmt_0_1);   
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
                         exit(0);
                 }
-                sqlite3_reset(stmt); 
-                sqlite3_clear_bindings(stmt);
+                
+                sqlite3_reset(stmt_0_1); 
+                sqlite3_clear_bindings(stmt_0_1);
+                
+                if(rc == SQLITE_ROW)
+                {
+                    /*更新*/
+                    sqlite3_bind_int(stmt_0_2, 1, valueJson->valueint);
+                    sqlite3_bind_text(stmt_0_2, 2, devIdJson->valuestring, -1, NULL);
+                    sqlite3_bind_int(stmt_0_2, 3,typeJson->valueint);
+                    rc = sqlite3_step(stmt_0_2);   
+                    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                    {
+                        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        if(rc == SQLITE_CORRUPT)
+                            exit(0);
+                    }
 
+                    sqlite3_reset(stmt_0_2); 
+                    sqlite3_clear_bindings(stmt_0_2);
+                }
+                else
+                {
+                    /*再插入*/
+                    sqlite3_bind_text(stmt, 1,  devNameJson->valuestring, -1, NULL);
+                    sqlite3_bind_text(stmt, 2, devIdJson->valuestring, -1, NULL);
+                    sqlite3_bind_int(stmt, 3,typeJson->valueint);
+                    sqlite3_bind_int(stmt, 4, valueJson->valueint);
+                    rc = sqlite3_step(stmt);   
+                    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+                    {
+                        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        if(rc == SQLITE_CORRUPT)
+                            exit(0);
+                    }
+
+                    sqlite3_reset(stmt); 
+                    sqlite3_clear_bindings(stmt);
+
+                }
             }
         }
     }
@@ -382,6 +443,10 @@ static int AP_report_data_handle(payload_t data)
 
     if(stmt != NULL)
         sqlite3_finalize(stmt);  
+    if(stmt_0_1 != NULL)
+        sqlite3_finalize(stmt_0_1);
+    if(stmt_0_2 != NULL)
+        sqlite3_finalize(stmt_0_2);
 
     M1_LOG_DEBUG("AP_report_data_handle end\n");
 
@@ -452,7 +517,7 @@ static int AP_report_dev_handle(payload_t data)
         goto Finish; 
     }
 
-    sql_2 = "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
+    sql_2 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
     if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -589,6 +654,8 @@ static int AP_report_ap_handle(payload_t data)
     char* sql_1_1          = NULL;
     char* sql_1_2          = NULL;
     char* sql_2            = NULL;
+    char* sql_2_1          = NULL;
+    char* sql_2_2          = NULL;
     /*sql*/
     char* errorMsg         = NULL;
     sqlite3* db            = NULL;
@@ -599,6 +666,8 @@ static int AP_report_ap_handle(payload_t data)
     sqlite3_stmt* stmt_1_1 = NULL;
     sqlite3_stmt* stmt_1_2 = NULL;
     sqlite3_stmt* stmt_2   = NULL;
+    sqlite3_stmt* stmt_2_1 = NULL;
+    sqlite3_stmt* stmt_2_2 = NULL;
     /*Json*/
     cJSON* pIdJson         = NULL;
     cJSON* apIdJson        = NULL;
@@ -686,7 +755,7 @@ static int AP_report_ap_handle(payload_t data)
             goto Finish; 
         }
 
-        sql_1_2 = "insert or replace into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
+        sql_1_2 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL) != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -697,12 +766,37 @@ static int AP_report_ap_handle(payload_t data)
 
     /*更新param_table表信息*/
     {
-        sql_2 = "insert or replace into param_table(DEV_ID, DEV_NAME, TYPE, VALUE)values(?,?,?,?);";
-        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            ret = M1_PROTOCOL_FAILED;
-            goto Finish; 
+            sql_2_1 = "select ID from param_table where DEV_ID = ? and TYPE = ? limit 1;"; 
+            M1_LOG_DEBUG("%s\n",sql_2_1);   
+            if(sqlite3_prepare_v2(db, sql_2_1, strlen(sql_2_1), &stmt_2_1, NULL) != SQLITE_OK)
+            {
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
+        }
+
+        {
+            sql_2_2 = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
+            M1_LOG_DEBUG("%s\n",sql_2_2);
+            if(sqlite3_prepare_v2(db, sql_2_2, strlen(sql_2_2), &stmt_2_2, NULL) != SQLITE_OK)
+            {
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
+        }
+
+        {
+            sql_2 = "insert into param_table(DEV_ID, DEV_NAME, TYPE, VALUE)values(?,?,?,?);";
+            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+            {
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                ret = M1_PROTOCOL_FAILED;
+                goto Finish; 
+            }
         }
     }
 
@@ -796,18 +890,47 @@ static int AP_report_ap_handle(payload_t data)
             }
         }
 
-        /*更新param_table表信息*/
-        sqlite3_bind_text(stmt_2, 1,  apIdJson->valuestring, -1, NULL);
-        sqlite3_bind_text(stmt_2, 2,  apNameJson->valuestring, -1, NULL);
-        sqlite3_bind_int(stmt_2, 3, 16404);
-        sqlite3_bind_int(stmt_2, 4, 1);
-    
-        rc = sqlite3_step(stmt_2);   
+        /*先检查*/
+        sqlite3_bind_text(stmt_2_1, 1, apIdJson->valuestring, -1, NULL);
+        sqlite3_bind_int(stmt_2_1, 2, 16404);
+        rc = sqlite3_step(stmt_2_1);   
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
                 exit(0);
+        }
+                
+        if(rc == SQLITE_ROW)
+        {
+            /*更新*/
+            sqlite3_bind_int(stmt_2_2, 1, 1);
+            sqlite3_bind_text(stmt_2_2, 2, apIdJson->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt_2_2, 3, 16404);
+            rc = sqlite3_step(stmt_2_2);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
+
+        }
+        else
+        {
+            /*更新param_table表信息*/
+            sqlite3_bind_text(stmt_2, 1,  apIdJson->valuestring, -1, NULL);
+            sqlite3_bind_text(stmt_2, 2,  apNameJson->valuestring, -1, NULL);
+            sqlite3_bind_int(stmt_2, 3, 16404);
+            sqlite3_bind_int(stmt_2, 4, 1);
+    
+            rc = sqlite3_step(stmt_2);   
+            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+            {
+                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                if(rc == SQLITE_CORRUPT)
+                    exit(0);
+            }
         }
 
     }
@@ -841,6 +964,10 @@ static int AP_report_ap_handle(payload_t data)
         sqlite3_finalize(stmt_1_2);
     if(stmt_2 != NULL)
         sqlite3_finalize(stmt_2);
+    if(stmt_2 != NULL)
+        sqlite3_finalize(stmt_2_1);
+    if(stmt_2 != NULL)
+        sqlite3_finalize(stmt_2_2);
     return ret;  
 }
 
@@ -1204,7 +1331,7 @@ static int APP_write_handle(payload_t data)
     //     goto Finish;  
     // }
 
-    sql = "insert or replace into param_table(DEV_NAME,DEV_ID,TYPE,VALUE)values((select DEV_NAME from all_dev where DEV_ID = ? limit 1),?,?,?);";
+    sql = "insert into param_table(DEV_NAME,DEV_ID,TYPE,VALUE)values((select DEV_NAME from all_dev where DEV_ID = ? limit 1),?,?,?);";
     M1_LOG_DEBUG("%s\n", sql);
 
     if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
@@ -1539,7 +1666,7 @@ static int APP_req_added_dev_info_handle(payload_t data)
         }
     }
     
-    sql_1 = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID  = AP_ID and ACCOUNT = ?;";
+    sql_1 = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID = AP_ID and ACCOUNT = ?;";
     if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
@@ -2592,14 +2719,12 @@ void delete_account_conn_info(int clientFd)
 {
     int rc              = 0;
     int ret             = M1_PROTOCOL_OK;
-    int sql_commit_flag = 0;
     char *errorMsg      = NULL;
     char *sql           = NULL;
     sqlite3_stmt* stmt  = NULL;
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
-        sql_commit_flag = 1;
         {
             sql = "delete from account_info where CLIENT_FD = ?;";
             M1_LOG_DEBUG("string:%s\n",sql);
@@ -2625,26 +2750,10 @@ void delete_account_conn_info(int clientFd)
                 sqlite3_finalize(stmt);
         }
 
+        rc = sql_commit(db);
+        if(rc == SQLITE_OK)
         {
-            sql = "delete from conn_info where CLIENT_FD = ?;";
-            M1_LOG_DEBUG("string:%s\n",sql);
-
-            if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
-            {
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }
-
-            sqlite3_bind_int(stmt, 1, clientFd);
-
-            rc = sqlite3_step(stmt);   
-            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-            {
-                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                if(rc == SQLITE_CORRUPT)
-                    exit(0);
-            }
+            M1_LOG_DEBUG("COMMIT OK\n");
         }
     }
     else
@@ -2654,21 +2763,14 @@ void delete_account_conn_info(int clientFd)
     }
 
     Finish:
-    if(sql_commit_flag)
-    {
-        rc = sql_commit(db);
-        if(rc == SQLITE_OK)
-        {
-            M1_LOG_DEBUG("COMMIT OK\n");
-        }
-    }
 
     if(stmt)
         sqlite3_finalize(stmt);
 
 }
 
-static void delete_client_db(void)
+/*删除用户登录历史数据*/
+void delete_client_db(void)
 {
     int clientFd = 0;
     while(fifo_read(&client_delete_fifo, &clientFd))
@@ -2994,14 +3096,14 @@ static int create_sql_table(void)
         sqlite3_free(errmsg);
 
         /*account index*/
-        sql = "CREATE UNIQUE INDEX userAccount ON account_table (\"ACCOUNT\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
-            sqlite3_free(errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX userAccount ON account_table (\"ACCOUNT\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
+        //     sqlite3_free(errmsg);
+        // }
     }
     /*all_dev*/
     { 
@@ -3027,14 +3129,14 @@ static int create_sql_table(void)
         }
         /*dev_id,account,ap_id index*/
         //sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC,\"AP_ID\" ASC);";
-        sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
-        }              
+        // sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
+        // }              
     }
     /*conn_info*/
     {
@@ -3096,14 +3198,14 @@ static int create_sql_table(void)
         }
         sqlite3_free(errmsg); 
         /*DIS_NAME,AP_ID,ACCOUNT UNION index*/
-        sql = "CREATE UNIQUE INDEX district ON district_table (\"DIS_NAME\" ASC, \"AP_ID\" ASC, \"ACCOUNT\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE INDEX district: %s\n",errmsg);
-        }   
+        // sql = "CREATE UNIQUE INDEX district ON district_table (\"DIS_NAME\" ASC, \"AP_ID\" ASC, \"ACCOUNT\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("CREATE INDEX district: %s\n",errmsg);
+        // }   
     }
     
     /*link_exec_table*/
@@ -3128,15 +3230,15 @@ static int create_sql_table(void)
             M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
         }    
         /*LINK_NAME,DISTRICT,DEV_ID,TYPE UNION index*/
-        sql = " CREATE UNIQUE INDEX linkExec ON link_exec_table \
-               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
-        }
+        // sql = " CREATE UNIQUE INDEX linkExec ON link_exec_table \
+        //        (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
+        // }
     }
     /*link_trigger_table*/
     {
@@ -3162,15 +3264,15 @@ static int create_sql_table(void)
             M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
         }
         /*LINK_NAME,DISTRICT,DEV_ID,TYPE UNION index*/
-        sql = "CREATE UNIQUE INDEX linkTrigger ON link_trigger_table \
-               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX linkTrigger ON link_trigger_table \
+        //        (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
+        // }
     }
     /*linkage_table*/
     {
@@ -3193,15 +3295,15 @@ static int create_sql_table(void)
             M1_LOG_WARN("linkage_table: %s\n",errmsg);
         }
         /*LINK_NAME,DISTRICT,EXEC_TYPE,EXEC_ID index*/
-        sql = "CREATE UNIQUE INDEX linkage ON linkage_table \
-               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"EXEC_TYPE\" ASC,\"EXEC_ID\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("linkage_table: %s\n",errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX linkage ON linkage_table \
+        //        (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"EXEC_TYPE\" ASC,\"EXEC_ID\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("linkage_table: %s\n",errmsg);
+        // }
     }
     /*param_table*/
     {
@@ -3223,14 +3325,14 @@ static int create_sql_table(void)
         }
         /*DEV_ID,DEV_NAME,TYPE UNION index*/
         //sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"DEV_NAME\" ASC,\"TYPE\" ASC);";
-        sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"TYPE\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"TYPE\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
+        // }
     }
     /*scen_alarm_table*/
     {
@@ -3253,14 +3355,14 @@ static int create_sql_table(void)
             M1_LOG_WARN("scen_alarm_table: %s\n",errmsg);
         }
 
-        sql = "CREATE UNIQUE INDEX scenAlarm ON scen_alarm_table (\"SCEN_NAME\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX scenAlarm: %s\n",errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX scenAlarm ON scen_alarm_table (\"SCEN_NAME\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("CREATE UNIQUE INDEX scenAlarm: %s\n",errmsg);
+        // }
     }
     /*scenario_table*/
     {
@@ -3286,15 +3388,15 @@ static int create_sql_table(void)
             M1_LOG_WARN("scenario_table already exit: %s\n",errmsg);
         }
         /*SCEN_NAME, DISTRICT,DEV_ID,TYPE,VALUE,ACCOUNT UNION index*/
-        sql = "CREATE UNIQUE INDEX scenario ON scenario_table \
-               (\"SCEN_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC,\"VALUE\" ASC,\"ACCOUNT\" ASC );";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE INDEX scenario: %s\n",errmsg);
-        }
+        // sql = "CREATE UNIQUE INDEX scenario ON scenario_table \
+        //        (\"SCEN_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC,\"VALUE\" ASC,\"ACCOUNT\" ASC );";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("CREATE INDEX scenario: %s\n",errmsg);
+        // }
     }
     /*project_table*/
     {
@@ -3321,14 +3423,14 @@ static int create_sql_table(void)
             M1_LOG_WARN("project_table already exit: %s\n",errmsg);
         }
         /*P_NUMBER,P_EDITOR UNION index*/
-        sql = "CREATE UNIQUE INDEX project ON project_table (\"P_NUMBER\" ASC,\"P_EDITOR\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX project: %s\n",errmsg);
-        }        
+        // sql = "CREATE UNIQUE INDEX project ON project_table (\"P_NUMBER\" ASC,\"P_EDITOR\" ASC);";
+        // M1_LOG_DEBUG("%s:\n",sql);
+        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        // if(rc != SQLITE_OK)
+        // {
+        //     sqlite3_free(errmsg);
+        //     M1_LOG_WARN("CREATE UNIQUE INDEX project: %s\n",errmsg);
+        // }        
     }
     /*param_detail_table*/
     sql = "CREATE TABLE param_detail_table (                   \
@@ -3348,27 +3450,36 @@ static int create_sql_table(void)
         M1_LOG_WARN("param_detail_table already exit: %s\n",errmsg);
     }
     /*P_NUMBER,P_EDITOR UNION index*/
-    sql = "CREATE UNIQUE INDEX paramDetail ON param_detail_table (\"DEV_ID\" ASC,\"TYPE\" ASC,\"DESCRIP\" ASC);";
-    M1_LOG_DEBUG("%s:\n",sql);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK)
-    {
-        sqlite3_free(errmsg);
-        M1_LOG_WARN("CREATE UNIQUE INDEX paramDetail: %s\n",errmsg);
-    }
+    // sql = "CREATE UNIQUE INDEX paramDetail ON param_detail_table (\"DEV_ID\" ASC,\"TYPE\" ASC,\"DESCRIP\" ASC);";
+    // M1_LOG_DEBUG("%s:\n",sql);
+    // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+    // if(rc != SQLITE_OK)
+    // {
+    //     sqlite3_free(errmsg);
+    //     M1_LOG_WARN("CREATE UNIQUE INDEX paramDetail: %s\n",errmsg);
+    // }
     
     /*插入Dalitek账户*/
-    sql = "insert or replace into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(\"Dalitek\",\"root\",\"on\",\"on\");";
+    sql = "delete from account_table where ACCOUNT = \"Dalitek\";";
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
     if(rc != SQLITE_OK)
     {
         M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
+        sqlite3_free(errmsg);
     }
-    sqlite3_free(errmsg);
+
+    sql = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(\"Dalitek\",\"root\",\"on\",\"on\");";
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+    if(rc != SQLITE_OK)
+    {
+        M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
+        sqlite3_free(errmsg);
+    }
+    
     /*插入项目信息*/
     {
         mac_addr = get_eth0_mac_addr();
-        sql = "insert or replace into project_table(P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT)values(?,?,?,?,?,?,?,?,?,?);";
+        sql = "insert into project_table(P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT)values(?,?,?,?,?,?,?,?,?,?);";
         if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
             ret = M1_PROTOCOL_FAILED;

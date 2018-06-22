@@ -352,7 +352,7 @@ static void delete_socket_clientfd(int clientFd)
 {
 	/*删除数据库记录*/
 	//delete_account_conn_info(clientFd);
-	//fifo_write(&client_delete_fifo, clientFd);
+	fifo_write(&client_delete_fifo, clientFd);
 	/*删除分配资源*/
 	client_block_destory(clientFd);
 	M1_LOG_WARN("delete socket ++\n");

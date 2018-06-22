@@ -187,24 +187,26 @@ int app_confirm_project(payload_t data)
 int app_create_project(payload_t data)
 {
 	M1_LOG_DEBUG("app_create_project\n");
-    int rc               = 0;
-    int ret              = M1_PROTOCOL_OK;
-    char*  account       = NULL;
+    int rc                 = 0;
+    int ret                = M1_PROTOCOL_OK;
+    char*  account         = NULL;
     /*Json*/
-	cJSON* pNameJson     = NULL;
-	cJSON* pNumberJson   = NULL;
-	cJSON* pCreatorJson  = NULL;
-	cJSON* pManagerJson  = NULL;
-	cJSON* pTelJson      = NULL;
-	cJSON* pAddJson      = NULL;
-	cJSON* pBriefJson    = NULL;
+	cJSON* pNameJson       = NULL;
+	cJSON* pNumberJson     = NULL;
+	cJSON* pCreatorJson    = NULL;
+	cJSON* pManagerJson    = NULL;
+	cJSON* pTelJson        = NULL;
+	cJSON* pAddJson        = NULL;
+	cJSON* pBriefJson      = NULL;
     /*sql*/
-    char* sql            = NULL;
-    char* sql_1          = NULL;
-    char* errorMsg       = NULL;
-    sqlite3* db          = NULL;
-    sqlite3_stmt* stmt   = NULL;
-    sqlite3_stmt* stmt_1 = NULL;
+    char* sql              = NULL;
+    char* sql_1            = NULL;
+    char* sql_1_0          = NULL;
+    char* errorMsg         = NULL;
+    sqlite3* db            = NULL;
+    sqlite3_stmt* stmt     = NULL;
+    sqlite3_stmt* stmt_1   = NULL;
+    sqlite3_stmt* stmt_1_0 = NULL;
 
 	pNameJson = cJSON_GetObjectItem(data.pdu, "pName");   
     M1_LOG_DEBUG("pName:%s\n",pNameJson->valuestring);
@@ -249,7 +251,18 @@ int app_create_project(payload_t data)
 
 
     {
-        sql_1 = "insert or replace into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)values(?,?,?,?,?,?,?,?,?,?);";
+        sql_1_0 = "delete from project_table where P_NAME = ? and P_NUMBER = ?;";
+        M1_LOG_DEBUG( "%s\n", sql_1_0);
+        if(sqlite3_prepare_v2(db, sql_1_0, strlen(sql_1_0), &stmt_1_0, NULL) != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }    
+    }
+
+    {
+        sql_1 = "insert into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)values(?,?,?,?,?,?,?,?,?,?);";
         M1_LOG_DEBUG( "%s\n", sql_1);
         if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
         {
@@ -261,6 +274,18 @@ int app_create_project(payload_t data)
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
+        /*删除历史数据*/
+        sqlite3_bind_text(stmt_1_0, 1, pNameJson->valuestring, -1, NULL);
+        sqlite3_bind_text(stmt_1_0, 2, pNumberJson->valuestring, -1, NULL);
+        rc = sqlite3_step(stmt_1_0);     
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                exit(0);
+        }
+
+
         sqlite3_bind_text(stmt_1, 1, pNameJson->valuestring, -1, NULL);
         sqlite3_bind_text(stmt_1, 2, pNumberJson->valuestring, -1, NULL);
         sqlite3_bind_text(stmt_1, 3, pCreatorJson->valuestring, -1, NULL);
@@ -297,6 +322,8 @@ int app_create_project(payload_t data)
  	  sqlite3_finalize(stmt);
     if(stmt_1)
       sqlite3_finalize(stmt_1);
+  if(stmt_1_0)
+      sqlite3_finalize(stmt_1_0);
 
     return ret;	
 }

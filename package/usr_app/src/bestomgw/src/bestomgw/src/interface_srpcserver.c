@@ -177,6 +177,7 @@ int msg_header_check(uint16_t header)
 	int ret = 0;
 	uint16_t TransHeader = 0;
 
+	M1_LOG_INFO("rx header:%x\n",header);
 	TransHeader = (((header >> 8) & 0xff) | ((header<< 8) & 0xff00));
 	M1_LOG_DEBUG("TransHeader:%x\n",TransHeader);
 	if(TransHeader == 0xFEFD){
@@ -225,9 +226,10 @@ void SRPC_RxCB(int clientFd)
 		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
 		return;
 	}
+
 	while(byteToRead > 0)
 	{
-		byteRead = read(clientFd, tcpRxBuf + len, 1024);
+		byteRead = read(clientFd, tcpRxBuf+len, 1024);
 		if(byteRead > 0){
 			/*判断是否是头*/
 			if(msg_header_check(*(uint16_t*)(tcpRxBuf + len)) == 1){
@@ -237,6 +239,7 @@ void SRPC_RxCB(int clientFd)
 					goto Finish;
 				}
 			}else{
+
 				M1_LOG_DEBUG("%x,tcpRxBuf:%x,%x.%x.%x,\n",*(uint16_t*)(tcpRxBuf + len + 2),tcpRxBuf[len],tcpRxBuf[len+1],tcpRxBuf[len+2],tcpRxBuf[len+3]);
 			}
 
@@ -245,16 +248,17 @@ void SRPC_RxCB(int clientFd)
 		}					
 	}
 
-	if(len - 4 < exLen){
+	if(len - 4 < exLen)
+	{
 		M1_LOG_INFO("waiting msg...\n");
 		return;
 	}
-	exLen = 0;
 
 	client_block = client_stack_block_req(clientFd);
 	if(NULL == client_block){
 		M1_LOG_ERROR("client_block null\n");
-		return;
+		//return;
+		goto Finish;
 	}
 	M1_LOG_DEBUG("clientFd:%d,rx len:%05d, rx header:%x,%x,%x,%x, rx data:%s\n",clientFd, \
 		len, tcpRxBuf[0],tcpRxBuf[1],tcpRxBuf[2],tcpRxBuf[3],tcpRxBuf+4);
@@ -264,6 +268,7 @@ void SRPC_RxCB(int clientFd)
 
 	Finish:
 	len = 0;
+	exLen = 0;
 	memset(tcpRxBuf, 0, 1024*60);
 
 	M1_LOG_DEBUG("SRPC_RxCB--\n");
@@ -450,6 +455,7 @@ void client_read(void)
 			}
 			header = *(uint16_t*)data;
 			header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
+			M1_LOG_DEBUG("read header:%x\n",header);
 		}while(header != MSG_HEADER);
 
 
