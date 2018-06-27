@@ -9,6 +9,7 @@
 #include     <fcntl.h>   
 #include     <termios.h>  
 #include     <errno.h>  
+#include <stdbool.h>
 
 #include <time.h>
 
@@ -54,6 +55,9 @@
 
 typedef unsigned char      uint8;
 typedef unsigned short     uint16;
+
+typedef unsigned char      UINT8;
+typedef unsigned short     UINT16;
 
  //long MAXLEN = 10*1024;//10KB
  char sexepath[PATH_MAX];
@@ -144,4 +148,19 @@ int  ConfigGetKey(void *CFG_file, void *section, void *key, void *buf);
 
 //static 
 	void gw_debug(char *declare, unsigned char *data, unsigned int dlen);
+//checksum
+UINT8 app_checksum(UINT8* d, UINT16 len);
+
+/*通用链表*/
+typedef struct _comPNode
+{
+ UINT8* item;
+ struct _comPNode *next;
+}comPNode, *comPQueue;
+
+void Init_comPQueue(comPQueue pQueue);
+void comPush(comPQueue pQueue, UINT8* item);
+bool comPop(comPQueue pQueue, UINT8 *pItem);
+bool comIsEmpty(comPQueue pQueue);
+
 #endif //_UTILS_H_
