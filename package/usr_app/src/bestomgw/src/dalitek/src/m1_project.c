@@ -488,7 +488,6 @@ int app_change_project_config(payload_t data)
     sqlite3_stmt *stmt_1 = NULL;
     sqlite3_stmt *stmt_2 = NULL;
 
-    getNowTime(time);
     pNameJson = cJSON_GetObjectItem(data.pdu, "pName");   
     M1_LOG_DEBUG("pName:%s\n",pNameJson->valuestring);
     pNumberJson = cJSON_GetObjectItem(data.pdu, "pNumber");   
