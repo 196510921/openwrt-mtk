@@ -91,7 +91,7 @@ static int device_exec(char* data, sqlite3* db)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        if(rc == SQLITE_CORRUPT)
-                exit(-1);
+                m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -105,7 +105,7 @@ static int device_exec(char* data, sqlite3* db)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        if(rc == SQLITE_CORRUPT)
-                exit(-1);
+                m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -119,7 +119,7 @@ static int device_exec(char* data, sqlite3* db)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
 	        if(rc == SQLITE_CORRUPT)
-                exit(-1);  
+                m1_error_handle();  
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -133,7 +133,7 @@ static int device_exec(char* data, sqlite3* db)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        if(rc == SQLITE_CORRUPT)
-                exit(-1);  
+                m1_error_handle();  
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -213,7 +213,7 @@ static int device_exec(char* data, sqlite3* db)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(-1);
+                    m1_error_handle();
             }
 	    
 	    	if(rc == SQLITE_ROW)
@@ -338,7 +338,7 @@ int linkage_msg_handle(payload_t data)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
     	    if(rc == SQLITE_CORRUPT)
-                exit(-1);   
+                m1_error_handle();   
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
@@ -353,7 +353,7 @@ int linkage_msg_handle(payload_t data)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
     	    if(rc == SQLITE_CORRUPT)
-                exit(-1);     
+                m1_error_handle();     
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
@@ -368,7 +368,7 @@ int linkage_msg_handle(payload_t data)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
     	    if(rc == SQLITE_CORRUPT)
-                exit(-1);      
+                m1_error_handle();      
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
@@ -383,7 +383,7 @@ int linkage_msg_handle(payload_t data)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
     	    if(rc == SQLITE_CORRUPT)
-                exit(-1);       
+                m1_error_handle();       
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
@@ -397,7 +397,7 @@ int linkage_msg_handle(payload_t data)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
     	    if(rc == SQLITE_CORRUPT)
-                exit(-1);       
+                m1_error_handle();       
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
@@ -411,7 +411,7 @@ int linkage_msg_handle(payload_t data)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
     	    if(rc == SQLITE_CORRUPT)
-                exit(-1);       
+                m1_error_handle();       
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
@@ -434,7 +434,7 @@ int linkage_msg_handle(payload_t data)
 	        {
 	            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 	            if(rc == SQLITE_CORRUPT)
-	                exit(-1);
+	                m1_error_handle();
 	        }
 
 	        /*linkage_trigger_table*/
@@ -446,7 +446,7 @@ int linkage_msg_handle(payload_t data)
 	        {
 	            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 	            if(rc == SQLITE_CORRUPT)
-	                exit(-1);
+	                m1_error_handle();
 	        }      
 
 	        /*linkage_exec_table*/
@@ -458,7 +458,7 @@ int linkage_msg_handle(payload_t data)
 	        {
 	            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 	            if(rc == SQLITE_CORRUPT)
-	                exit(-1);
+	                m1_error_handle();
 	        }  
 	    }
 
@@ -474,7 +474,7 @@ int linkage_msg_handle(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(-1);
+                m1_error_handle();
         }
 
 	    /*link_trigger_table*/
@@ -510,7 +510,7 @@ int linkage_msg_handle(payload_t data)
             	{
             	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             	    if(rc == SQLITE_CORRUPT)
-            	        exit(-1);
+            	        m1_error_handle();
             	}
 		    	
 		    	sqlite3_reset(stmt_1);
@@ -556,7 +556,7 @@ int linkage_msg_handle(payload_t data)
             		{
             		    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             		    if(rc == SQLITE_CORRUPT)
-            		        exit(-1);
+            		        m1_error_handle();
             		}
 		    	
 		    		sqlite3_reset(stmt_2);
@@ -626,7 +626,7 @@ void linkage_task(void)
 		{
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
     	    if(rc == SQLITE_CORRUPT)
-                exit(-1);       
+                m1_error_handle();       
     	    goto Finish; 
     	}
 
@@ -639,7 +639,7 @@ void linkage_task(void)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(-1);
+                    m1_error_handle();
             }
 			if(rc == SQLITE_ROW)
 			{
@@ -714,7 +714,7 @@ static void linkage_check(sqlite3* db, char* link_name)
 	{
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
         if(rc == SQLITE_CORRUPT)
-            exit(-1);       
+            m1_error_handle();       
         goto Finish; 
     }
 
@@ -763,7 +763,7 @@ static void linkage_check(sqlite3* db, char* link_name)
 		    {
 	            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	            if(rc == SQLITE_CORRUPT)
-            		exit(-1);
+            		m1_error_handle();
 	            goto Finish; 
 	        }
 
@@ -774,7 +774,7 @@ static void linkage_check(sqlite3* db, char* link_name)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(-1);
+                    m1_error_handle();
             }
 			
 			if(stmt_1)
@@ -812,7 +812,7 @@ static void linkage_check(sqlite3* db, char* link_name)
 		{
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
     	    if(rc == SQLITE_CORRUPT)
-            	exit(-1);
+            	m1_error_handle();
     	    goto Finish; 
     	}
     	sqlite3_bind_text(stmt_2, 1, link_name, -1, NULL);
@@ -821,7 +821,7 @@ static void linkage_check(sqlite3* db, char* link_name)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(-1);
+                m1_error_handle();
         }
 		
 		if(rc == SQLITE_ROW)
@@ -890,7 +890,7 @@ int trigger_cb_handle(sqlite3* db)
 	    	{
     		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
     		    if(rc == SQLITE_CORRUPT)
-            		exit(-1);  
+            		m1_error_handle();  
     		    goto Finish; 
     		}
 	    }
@@ -903,7 +903,7 @@ int trigger_cb_handle(sqlite3* db)
 	    	{
     		    M1_LOG_ERROR("sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
     		    if(rc == SQLITE_CORRUPT)
-            		exit(-1);  
+            		m1_error_handle();  
     		    goto Finish; 
     		}
 	    }
@@ -916,7 +916,7 @@ int trigger_cb_handle(sqlite3* db)
 	    	{
     		    M1_LOG_ERROR("sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
     		    if(rc == SQLITE_CORRUPT)
-            		exit(-1);    
+            		m1_error_handle();    
     		    goto Finish; 
     		}
 	    }
@@ -929,7 +929,7 @@ int trigger_cb_handle(sqlite3* db)
 	    	{
     		    M1_LOG_ERROR("sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
     		    if(rc == SQLITE_CORRUPT)
-            		exit(-1);    
+            		m1_error_handle();    
     		    goto Finish; 
     		}	
 	    }
@@ -942,7 +942,7 @@ int trigger_cb_handle(sqlite3* db)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(-1);
+                    m1_error_handle();
             }
 			if(rc == SQLITE_ROW)
 			{
@@ -958,7 +958,7 @@ int trigger_cb_handle(sqlite3* db)
             	{
             	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             	    if(rc == SQLITE_CORRUPT)
-            	        exit(-1);
+            	        m1_error_handle();
             	}
 				if(rc == SQLITE_ROW)
 				{		
@@ -988,7 +988,7 @@ int trigger_cb_handle(sqlite3* db)
             						{
             						    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             						    if(rc == SQLITE_CORRUPT)
-            						        exit(-1);
+            						        m1_error_handle();
             						}
 									/*检查是否满足触发条件*/
 									linkage_check(db, link_name);
@@ -1155,7 +1155,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);
+            	m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -1169,7 +1169,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);
+            	m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }	
@@ -1183,7 +1183,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);
+            	m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -1197,7 +1197,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);  
+            	m1_error_handle();  
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -1211,7 +1211,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);   
+            	m1_error_handle();   
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -1225,7 +1225,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);
+            	m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -1239,7 +1239,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);
+            	m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -1253,7 +1253,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1); 
+            	m1_error_handle(); 
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -1267,7 +1267,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);  
+            	m1_error_handle();  
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }	
@@ -1281,7 +1281,7 @@ int app_req_linkage(payload_t data)
 	    {
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        if(rc == SQLITE_CORRUPT)
-            	exit(-1);  
+            	m1_error_handle();  
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
 	    }
@@ -1349,7 +1349,7 @@ int app_req_linkage(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(-1);
+                    m1_error_handle();
             }
 			if(rc == SQLITE_ROW)
 			{
@@ -1365,7 +1365,7 @@ int app_req_linkage(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(-1);
+                    m1_error_handle();
             }
 			if(rc == SQLITE_ROW)
 			{ 
@@ -1452,7 +1452,7 @@ int app_req_linkage(payload_t data)
             	{
             	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             	    if(rc == SQLITE_CORRUPT)
-            	        exit(-1);
+            	        m1_error_handle();
             	} 
 				if(rc == SQLITE_ROW)
 				{
@@ -1500,7 +1500,7 @@ int app_req_linkage(payload_t data)
             	{
             	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             	    if(rc == SQLITE_CORRUPT)
-            	        exit(-1);
+            	        m1_error_handle();
             	}
 				if(rc == SQLITE_ROW)
 				{
@@ -1643,7 +1643,7 @@ int app_linkage_enable(payload_t data)
   	{
 	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
 	    if(rc == SQLITE_CORRUPT)
-            exit(-1);   
+            m1_error_handle();   
 	    ret = M1_PROTOCOL_FAILED;
 	    goto Finish; 
 	}

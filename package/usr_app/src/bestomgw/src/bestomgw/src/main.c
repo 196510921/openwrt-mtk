@@ -154,8 +154,8 @@ static void socket_poll(void)
 extern void uart_485_test(void);
 int main(int argc, char* argv[])
 {
-	uart_485_test();
-	//dev_conditioner_on();
+	//uart_485_test();
+	dev_common_testing();
 	return 0;
 }
 #endif

@@ -456,6 +456,50 @@ devErr app_conditioner_db_handle(void)
 	return ret;
 }
 
+void dev_common_testing(void)
+{
+	int rc = 0;
+	sqlite3* db = NULL;
+
+	appCmd_t cmd_write;
+	appCmd_t cmd_read;
+
+	devInit();
+	
+	{
+		cmd_write.param = 0x31;  //向下控制开关
+		cmd_write.value = 0x01;  //开机
+		cmd_write.dNum  = 0x01;  //设备数量
+		cmd_write.gwAddr= 0x01;  //网关地址
+		cmd_write.devAddr[0] = 0x0203; //设备地址
+		app_conditioner_write(cmd_write);
+	}
+
+	{
+		cmd_read.param = 0x50;  //向下查询空调状态
+		cmd_read.value = 0x01;  //查询1台空调
+		cmd_read.dNum  = 0x01;  //设备数量
+		cmd_read.gwAddr= 0x01;  //网关地址
+		cmd_read.devAddr[0] = 0x0203; //设备地址
+		app_conditioner_read(cmd_read);
+	}
+
+	rc = sqlite3_open("dev_info.db", &db);
+    if( rc != SQLITE_OK){  
+        M1_LOG_ERROR( "Can't open database\n");  
+    }else{  
+        M1_LOG_DEBUG( "Opened database successfully\n");  
+    }
+
+	while(1)
+	{
+		app_conditioner_db_handle();
+		sleep(1);
+	}
+
+	sqlite3_close(db);
+}
+
 
 /************************************************链表**************************************************/
 void Init_comPQueue(comPQueue pQueue)

@@ -100,6 +100,8 @@ int sql_commit(sqlite3* db);
 void delete_client_db(void);
 char* get_account_info(user_account_t data);
 void delete_account_conn_info(int clientFd);
+/*error handle*/
+void m1_error_handle(void);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003

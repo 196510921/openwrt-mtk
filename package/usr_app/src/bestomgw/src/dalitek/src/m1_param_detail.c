@@ -67,7 +67,7 @@ int app_set_param_descrip(payload_t data)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
         if(rc == SQLITE_CORRUPT)
-            exit(-1);  
+            m1_error_handle();  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
