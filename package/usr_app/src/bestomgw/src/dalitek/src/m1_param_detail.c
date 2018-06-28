@@ -62,9 +62,12 @@ int app_set_param_descrip(payload_t data)
 
     sql = "insert or replace into param_detail_table(DEV_ID, TYPE, VALUE, DESCRIP)values(?,?,?,?);";
     M1_LOG_DEBUG("sql:%s\n",sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }

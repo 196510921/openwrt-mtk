@@ -71,10 +71,6 @@ extern sqlite3 *gdb;
 int fdserwrite, fdread; //串口 写,读
 
 
-
-
-
-
 //16 进制字符转 数字
 int htoi(char s[]); 
 
@@ -149,18 +145,7 @@ int  ConfigGetKey(void *CFG_file, void *section, void *key, void *buf);
 //static 
 	void gw_debug(char *declare, unsigned char *data, unsigned int dlen);
 //checksum
-UINT8 app_checksum(UINT8* d, UINT16 len);
+uint8 app_checksum(uint8* d, uint16 len);
 
-/*通用链表*/
-typedef struct _comPNode
-{
- UINT8* item;
- struct _comPNode *next;
-}comPNode, *comPQueue;
-
-void Init_comPQueue(comPQueue pQueue);
-void comPush(comPQueue pQueue, UINT8* item);
-bool comPop(comPQueue pQueue, UINT8 *pItem);
-bool comIsEmpty(comPQueue pQueue);
 
 #endif //_UTILS_H_

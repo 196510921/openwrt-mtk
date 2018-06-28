@@ -267,10 +267,13 @@ static int AP_report_data_handle(payload_t data)
 
     {
         sql_0_1 = "select ID from param_table where DEV_ID = ? and TYPE = ? limit 1;"; 
-        M1_LOG_DEBUG("%s\n",sql_0_1);   
-        if(sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL) != SQLITE_OK)
+        M1_LOG_DEBUG("%s\n",sql_0_1);
+        rc = sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -279,9 +282,12 @@ static int AP_report_data_handle(payload_t data)
     {
         sql_0_2 = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
         M1_LOG_DEBUG("%s\n",sql_0_2);
-        if(sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -289,9 +295,12 @@ static int AP_report_data_handle(payload_t data)
 
     {
         sql = "insert into param_table(DEV_NAME,DEV_ID,TYPE,VALUE)values(?,?,?,?);";
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -380,7 +389,7 @@ static int AP_report_data_handle(payload_t data)
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        exit(-1);
                 }
                 
                 sqlite3_reset(stmt_0_1); 
@@ -397,7 +406,7 @@ static int AP_report_data_handle(payload_t data)
                     {
                         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                         if(rc == SQLITE_CORRUPT)
-                            exit(0);
+                            exit(-1);
                     }
 
                     sqlite3_reset(stmt_0_2); 
@@ -415,7 +424,7 @@ static int AP_report_data_handle(payload_t data)
                     {
                         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                         if(rc == SQLITE_CORRUPT)
-                            exit(0);
+                            exit(-1);
                     }
 
                     sqlite3_reset(stmt); 
@@ -502,25 +511,34 @@ static int AP_report_dev_handle(payload_t data)
     number = cJSON_GetArraySize(devJson); 
 
     sql = "select ID from all_dev where DEV_ID = ? limit 1;";
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
 
     sql_1 = "update all_dev set AP_ID = ?,PID = ?, TIME = datetime('now') where DEV_ID = ?;";
-    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(rc != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
 
     sql_2 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
-    if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+    if(rc != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -572,7 +590,7 @@ static int AP_report_dev_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
             sqlite3_reset(stmt); 
             sqlite3_clear_bindings(stmt);            
@@ -586,7 +604,7 @@ static int AP_report_dev_handle(payload_t data)
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        exit(-1);
                 }
                 sqlite3_reset(stmt_1); 
                 sqlite3_clear_bindings(stmt_1);
@@ -607,7 +625,7 @@ static int AP_report_dev_handle(payload_t data)
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        exit(-1);
                 }
                 sqlite3_reset(stmt_2); 
                 sqlite3_clear_bindings(stmt_2);
@@ -711,27 +729,36 @@ static int AP_report_ap_handle(payload_t data)
     {
         //sql = "insert or replace into conn_info(AP_ID, CLIENT_FD)values(?,?);";
         sql = "insert into conn_info(AP_ID, CLIENT_FD)values(?,?);";
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
 
         sql_0_1 = "select CLIENT_FD from conn_info where AP_ID = ?;";
         M1_LOG_DEBUG("%s\n",sql_0_1);
-        if(sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
 
         sql_0_2 = "update conn_info set CLIENT_FD = ? where AP_ID = ?;";
         M1_LOG_DEBUG("%s\n",sql_0_2);
-        if(sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_0_2, strlen(sql_0_2), &stmt_0_2, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -740,25 +767,34 @@ static int AP_report_ap_handle(payload_t data)
     /*更新all_dev表信息*/
     {
         sql_1 = "select ID from all_dev where DEV_ID = ? limit 1;";
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
 
         sql_1_1 = "update all_dev set PID = ?, TIME = datetime('now') where DEV_ID = ?;";
-        if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            if(rc == SQLITE_CORRUPT)
+                exit(-1); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
 
         sql_1_2 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
-        if(sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            if(rc == SQLITE_CORRUPT)
+                exit(-1); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -770,9 +806,12 @@ static int AP_report_ap_handle(payload_t data)
         {
             sql_2_1 = "select ID from param_table where DEV_ID = ? and TYPE = ? limit 1;"; 
             M1_LOG_DEBUG("%s\n",sql_2_1);   
-            if(sqlite3_prepare_v2(db, sql_2_1, strlen(sql_2_1), &stmt_2_1, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_2_1, strlen(sql_2_1), &stmt_2_1, NULL);
+            if(rc != SQLITE_OK)
             {
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                if(rc == SQLITE_CORRUPT)
+                    exit(-1);
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
             }
@@ -781,9 +820,12 @@ static int AP_report_ap_handle(payload_t data)
         {
             sql_2_2 = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
             M1_LOG_DEBUG("%s\n",sql_2_2);
-            if(sqlite3_prepare_v2(db, sql_2_2, strlen(sql_2_2), &stmt_2_2, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_2_2, strlen(sql_2_2), &stmt_2_2, NULL);
+            if(rc != SQLITE_OK)
             {
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
+                if(rc == SQLITE_CORRUPT)
+                    exit(-1);
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
             }
@@ -791,9 +833,12 @@ static int AP_report_ap_handle(payload_t data)
 
         {
             sql_2 = "insert into param_table(DEV_ID, DEV_NAME, TYPE, VALUE)values(?,?,?,?);";
-            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            if(rc != SQLITE_OK)
             {
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+                if(rc == SQLITE_CORRUPT)
+                    exit(-1); 
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
             }
@@ -812,7 +857,7 @@ static int AP_report_ap_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
 
             if(rc == SQLITE_ROW)
@@ -827,7 +872,7 @@ static int AP_report_ap_handle(payload_t data)
                     {
                         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                         if(rc == SQLITE_CORRUPT)
-                            exit(0);
+                            exit(-1);
                     }
 
                 }   
@@ -842,7 +887,7 @@ static int AP_report_ap_handle(payload_t data)
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        exit(-1);
                 }
             }         
         }
@@ -854,7 +899,7 @@ static int AP_report_ap_handle(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
         if(rc == SQLITE_ROW)
         {
@@ -866,7 +911,7 @@ static int AP_report_ap_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
         }
         else
@@ -886,7 +931,7 @@ static int AP_report_ap_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
         }
 
@@ -898,7 +943,7 @@ static int AP_report_ap_handle(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
                 
         if(rc == SQLITE_ROW)
@@ -912,7 +957,7 @@ static int AP_report_ap_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
 
         }
@@ -929,7 +974,7 @@ static int AP_report_ap_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
         }
 
@@ -1056,8 +1101,12 @@ static int APP_read_handle(payload_t data)
         M1_LOG_DEBUG("%s\n", sql);
 
         /*取出devName,pid*/
-        if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+        if(rc != SQLITE_OK)
+        {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -1066,9 +1115,12 @@ static int APP_read_handle(payload_t data)
     {
         sql_1 = "select VALUE from param_table where DEV_ID = ? and TYPE = ? order by ID desc limit 1;";
         M1_LOG_DEBUG("%s\n", sql_1);
-    
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK){
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
+        if(rc != SQLITE_OK)
+        {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -1105,7 +1157,7 @@ static int APP_read_handle(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
         if(rc == SQLITE_ROW)
         {
@@ -1172,7 +1224,7 @@ static int APP_read_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
             if(rc == SQLITE_ROW)
             {
@@ -1257,9 +1309,12 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     //       order by ID desc limit 1;";
     sql = "select a.CLIENT_FD from conn_info as a, all_dev as b where a.AP_ID = b.AP_ID and b.DEV_ID = ? limit 1;";
     M1_LOG_DEBUG("%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    if(rc != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -1269,7 +1324,7 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     {
         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         if(rc == SQLITE_CORRUPT)
-            exit(0);
+            exit(-1);
     }
     if(rc == SQLITE_ROW)
     {
@@ -1333,10 +1388,12 @@ static int APP_write_handle(payload_t data)
 
     sql = "insert into param_table(DEV_NAME,DEV_ID,TYPE,VALUE)values((select DEV_NAME from all_dev where DEV_ID = ? limit 1),?,?,?);";
     M1_LOG_DEBUG("%s\n", sql);
-
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        if(rc == SQLITE_CORRUPT)
+            exit(-1); 
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -1412,7 +1469,7 @@ static int APP_write_handle(payload_t data)
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        exit(-1);
                 }
 
                 sqlite3_reset(stmt);   
@@ -1474,9 +1531,12 @@ static int APP_echo_dev_info_handle(payload_t data)
     sql = "update all_dev set ADDED = ?, STATUS = ? where DEV_ID = ? and AP_ID = ?;";
     M1_LOG_DEBUG("sql:%s\n",sql);  
     
-    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -1514,7 +1574,7 @@ static int APP_echo_dev_info_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
 
             sqlite3_reset(stmt);   
@@ -1539,7 +1599,7 @@ static int APP_echo_dev_info_handle(payload_t data)
                     {
                         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                         if(rc == SQLITE_CORRUPT)
-                            exit(0);
+                            exit(-1);
                     }
 
                     sqlite3_reset(stmt);   
@@ -1639,9 +1699,12 @@ static int APP_req_added_dev_info_handle(payload_t data)
     /*获取当前账户*/
     sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        if(rc == SQLITE_CORRUPT)
+            exit(-1); 
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -1652,7 +1715,7 @@ static int APP_req_added_dev_info_handle(payload_t data)
     {
         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         if(rc == SQLITE_CORRUPT)
-            exit(0);
+            exit(-1);
     }   
     if(rc == SQLITE_ROW)
     {
@@ -1667,18 +1730,24 @@ static int APP_req_added_dev_info_handle(payload_t data)
     }
     
     sql_1 = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID = AP_ID and ACCOUNT = ?;";
-    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);   
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
 
     sql_2 = "select DEV_ID, DEV_NAME, PID from all_dev where AP_ID = ? and AP_ID != DEV_ID and ACCOUNT = ?;";
     M1_LOG_DEBUG("sql_2:%s\n",sql_2);
-
-    if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2),&stmt_2, NULL) != SQLITE_OK){
+    rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2),&stmt_2, NULL);
+    if(rc != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -1807,8 +1876,12 @@ static int APP_net_control(payload_t data)
 
     sql = "select CLIENT_FD from conn_info where AP_ID = ?;";
     M1_LOG_DEBUG("sql:%s\n",sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK){
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    if(rc != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -1820,7 +1893,7 @@ static int APP_net_control(payload_t data)
     {
         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         if(rc == SQLITE_CORRUPT)
-            exit(0);
+            exit(-1);
     }
     if(rc == SQLITE_ROW){
         clientFd = sqlite3_column_int(stmt,0);
@@ -1941,9 +2014,12 @@ static int M1_report_ap_info(payload_t data)
     //       (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
     sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID = a.AP_ID and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
     M1_LOG_DEBUG( "%s\n", sql);
-
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -2054,10 +2130,12 @@ static int M1_report_dev_info(payload_t data)
     //       (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
     sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.AP_ID = ? and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
     M1_LOG_DEBUG("sql:%s", sql);
-
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -2259,8 +2337,12 @@ static int common_operate(payload_t data)
                 sprintf(sql,"select SCEN_NAME from scenario_table where DISTRICT = \"%s\" order by ID desc limit 1;",idJson->valuestring);
                 M1_LOG_DEBUG("sql:%s\n",sql);
                 
-                if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+                rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+                if(rc != SQLITE_OK)
+                {
                     M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                    if(rc == SQLITE_CORRUPT)
+                        exit(-1);
                     ret = M1_PROTOCOL_FAILED;
                     goto Finish; 
                 }
@@ -2269,7 +2351,7 @@ static int common_operate(payload_t data)
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        exit(-1);
                 }
                 if(rc == SQLITE_ROW){
                     scen_name = sqlite3_column_text(stmt,0);
@@ -2420,45 +2502,60 @@ static void check_offline_dev(sqlite3*db)
     /*获取AP ID*/
     sql = "select AP_ID from all_dev where DEV_ID = AP_ID;";
     M1_LOG_DEBUG("string:%s\n",sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);  
         goto Finish; 
     }
 
     /*查询数据库时间*/
     sql_1 = "select TIME from param_table where DEV_ID = ? and TYPE = 16404 order by ID desc limit 1;";
     M1_LOG_DEBUG("string:%s\n",sql_1);
-            
-    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+    
+    rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);  
         goto Finish; 
     }
     /*当前时间格式化*/
     sql_2 = "select strftime('%s','now');";
     M1_LOG_DEBUG("%s\n",sql_2);
             
-    if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);   
         goto Finish; 
     }
     /*数据库时间格式化*/
     sql_3 = "select strftime('%s',?);";
     M1_LOG_DEBUG("%s\n",sql_3);
             
-    if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+    if(rc != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);   
         goto Finish; 
     }
     /*更新AP在线状态*/
     {
         sql_4 = "update param_table set VALUE = ? where DEV_ID = ? and TYPE = ?;";
-        if(sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);   
             goto Finish; 
         }
     }
@@ -2470,7 +2567,7 @@ static void check_offline_dev(sqlite3*db)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
 
         curTime = sqlite3_column_int(stmt_2, 0);
@@ -2492,7 +2589,7 @@ static void check_offline_dev(sqlite3*db)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
             if(rc != SQLITE_ROW)
             {
@@ -2515,7 +2612,7 @@ static void check_offline_dev(sqlite3*db)
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        exit(-1);
                 }
 
                 sqlTime = sqlite3_column_int(stmt_3, 0);
@@ -2535,7 +2632,7 @@ static void check_offline_dev(sqlite3*db)
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        exit(-1);
                 }
                 if(rc == SQLITE_ERROR)
                 {
@@ -2607,9 +2704,12 @@ static int ap_heartbeat_handle(payload_t data)
         sql = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
         M1_LOG_DEBUG("string:%s\n",sql);
 
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -2624,7 +2724,7 @@ static int ap_heartbeat_handle(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
     }
     else
@@ -2729,9 +2829,12 @@ void delete_account_conn_info(int clientFd)
             sql = "delete from account_info where CLIENT_FD = ?;";
             M1_LOG_DEBUG("string:%s\n",sql);
 
-            if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+            if(rc != SQLITE_OK)
             {
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+                if(rc == SQLITE_CORRUPT)
+                    exit(-1); 
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
             }
@@ -2743,7 +2846,7 @@ void delete_account_conn_info(int clientFd)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    exit(-1);
             }
             
             if(stmt)
@@ -2826,8 +2929,12 @@ static int app_change_device_name(payload_t data)
         sql = "update all_dev set DEV_NAME = ? where DEV_ID = ?;";
         M1_LOG_DEBUG("sql:%s\n",sql);
 
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
+        {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -2840,7 +2947,7 @@ static int app_change_device_name(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
         if(rc == SQLITE_ERROR)
         {
@@ -2951,8 +3058,12 @@ int sql_exec(sqlite3* db, char*sql)
     sqlite3_stmt* stmt = NULL;
     int rc;
     /*get id*/
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL) != SQLITE_OK){
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), & stmt, NULL);
+    if(rc != SQLITE_OK)
+    {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         goto Finish; 
     }
     do{
@@ -3480,8 +3591,12 @@ static int create_sql_table(void)
     {
         mac_addr = get_eth0_mac_addr();
         sql = "insert into project_table(P_NAME, P_NUMBER, P_CREATOR, P_MANAGER, P_EDITOR, P_TEL, P_ADD, P_BRIEF, P_KEY, ACCOUNT)values(?,?,?,?,?,?,?,?,?,?);";
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK){
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s, rc:%d\n", sqlite3_errmsg(db),rc);  
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -3502,7 +3617,7 @@ static int create_sql_table(void)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
         if(rc == SQLITE_ERROR)
         {

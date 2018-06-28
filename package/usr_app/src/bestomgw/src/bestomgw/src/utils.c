@@ -936,10 +936,10 @@ char *random_uuid( char buf[37] )
 }
 
 
-UINT8 app_checksum(UINT8* d, UINT16 len)
+uint8 app_checksum(uint8* d, uint16 len)
 {
-  UINT16 i       = 0;
-  UINT8 checksum = 0;
+  uint16 i       = 0;
+  uint8 checksum = 0;
 
   printf("data: ");
   for(i = 0; i < len; i++)
@@ -950,59 +950,6 @@ UINT8 app_checksum(UINT8* d, UINT16 len)
   printf("\n");
   printf("checksum value:%x\n", checksum);
   return checksum;
-}
-
-/************************************************链表**************************************************/
-void Init_comPQueue(comPQueue pQueue)
-{
-  if (NULL == pQueue)
-  return;
-  printf("Init_PQueue\n");
-  pQueue->next = NULL;
-}
-
-//从堆中申请一个节点的内存空间
-static comPNode* comBuy_Node(UINT8* item)
-{
-  comPNode *pTmp = (comPNode*)malloc(sizeof(comPNode));
-  pTmp->item = item;
-  pTmp->next = NULL;
-  return pTmp;
-}
-
-//入队
-void comPush(comPQueue pQueue, UINT8* item)
-{
-  comPNode *pTmp = comBuy_Node(item);
-  comPNode *pPre = pQueue;
-
-  comPNode *pCur = pQueue->next;
-  while (NULL != pCur)
-  {
-    pPre = pCur;
-    pCur = pCur->next;
-  }
-  pPre->next = pTmp;
-}
-
-//出队，从队首(front)出
-bool comPop(comPQueue pQueue, UINT8 *pItem)
-{
-  if (!comIsEmpty(pQueue))
-  {
-    comPNode *pTmp = pQueue->next;
-    *pItem = pTmp->item;
-    pQueue->next = pTmp->next;
-    free(pTmp);
-    return true;
-  }
-  return false;
-}
-
-//队列为空则返回true
-bool comIsEmpty(comPQueue pQueue)
-{
-  return pQueue->next == NULL;
 }
 
 

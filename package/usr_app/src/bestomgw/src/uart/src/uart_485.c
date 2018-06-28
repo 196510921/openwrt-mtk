@@ -11,7 +11,7 @@
 #include "uart_485.h"
 #include "utils.h"
 //#include "ralink_gpio.h"
-
+//static void gpio_test_write(void);
 /*初始化ttyS2 485串口*/
 
 int open_rs485_port(int fd,int comport) 
@@ -167,33 +167,9 @@ int set_opt(int fd,int nSpeed, int nBits, char nEvent, int nStop)
     return 0; 
 }
 
-
-void uart_write(UINT8* data, UINT16 len)
-{
-	int fd = 0;
-
-	fd = open("/dev/gpio", O_RDONLY);
-    if (fd < 0)
-    {
-        perror("/dev/gpio");
-        return;
-    }
-    /* set gpio direction to output */
-    // if (ioctl(fd, RALINK_GPIO_SET_DIR_OUT, RALINK_GPIO(TTYS2_485_ENABLE_PIN)) < 0)
-    //     goto ioctl_err;
-
-    // /* write 1 byte */
-    // if (ioctl(fd, RALINK_GPIO_WRITE, 1) < 0)
-    //     goto ioctl_err;
-
-    // if (ioctl(fd, RALINK_GPIO_WRITE, 2) < 0)
-    //     goto ioctl_err;
-        
-    close(fd);
-}
-
 void uart_485_test(void)
 {
+  #if 1
 	int rtn             = 0;
 	int rc              = 0;
 	char buf[1024]      = {0};
@@ -219,200 +195,221 @@ void uart_485_test(void)
 		printf("ttyS2Fd config failed !!!\n");	
 	}
 
-	uart_write(NULL, 1);
-
+	uart_write(ttyS2Fd, NULL, 1);
+  #else
+  gpio_test_write();
+  //gpio_set_led();
+  #endif
 }
 
 
+void uart_write(int comFd, UINT8* data, UINT16 len)
+{
+  int fd = 0;
+  char buf[512] = {0};
+  int i = 0;
+
+    //fd = open("/dev/gpio", O_RDONLY);O_RDWR
+  #if 1
+    fd = open("/dev/gpio", O_RDWR);
+    if (fd < 0)
+    {
+        printf("open /dev/gpio error\n");
+        return;
+    }
+    /* set gpio direction to output */
+    if (ioctl(fd, RALINK_GPIO_SET_DIR_OUT, RALINK_GPIO(10)) < 0)
+    {
+        printf("set gpio direction to output error!\n");
+        goto ioctl_err;
+    }
+
+    /* write 1 byte */
+    for(i = 0; i < 5; i++)
+    {
+      if (ioctl(fd, RALINK_GPIO_WRITE, 1) < 0)
+      {
+          printf("write 1 error!\n");
+          goto ioctl_err;
+      }
+      usleep(500000);
+      if (ioctl(fd, RALINK_GPIO_WRITE, 0) < 0)
+      {
+          printf("write 1 error!\n");
+          goto ioctl_err;
+      }
+      usleep(500000);
+
+     }
+    #endif
+      while(1)
+      {
+
+        if (write(comFd, "485 testing", strlen("485 testing")) < 0)
+        {
+            printf("write 485 testing failed!\n");
+            
+        }
+        usleep(500000);
+
+        // if (read(comFd, buf, 512) < 0)
+        // {
+        //     printf("write 485 testing failed!\n");
+            
+        // }
+        // else
+        // {
+        //   printf("read:%x,%x,%x\n",buf[0],buf[1],buf[2]);
+        //   printf("read:%s\n",buf);
+        // }
+        // usleep(500000);
+
+        printf("write onetime finish!\n");
+
+        sleep(1);
+      }
+
+    ioctl_err:
+        
+    close(fd);
+}
 
 #if 0
-/***RS485*****/
-/* Driver-specific ioctls: ...\linux-3.10.x\include\uapi\asm-generic\ioctls.h */
-#define TIOCGRS485      0x542E
-#define TIOCSRS485      0x542F
+#define GPIO_DEV  "/dev/gpio"
 
-static struct termios newtios;
-static struct termios oldtios;
-static int saved_portfd =-1;/*serial port fd */
-
-/* Test GCC version, this structure is consistent in GCC 4.8, thus no need to overwrite */
-#if (__GNUC__ == 4 && __GNUC_MINOR__ == 3)
-
-struct my_serial_rs485
-{
-	unsigned long	                    flags;			       /* RS485 feature flags */
-	#define SER_RS485_ENABLED		    (1 << 0)	           /* If enabled */
-	#define SER_RS485_RTS_ON_SEND		(1 << 1)	           /* Logical level for RTS pin when sending */
-    #define SER_RS485_RTS_AFTER_SEND	(1 << 2)	           /* Logical level for RTS pin after sent*/
-    #define SER_RS485_RX_DURING_TX		(1 << 4)
-	unsigned long	                    delay_rts_before_send; /* Delay before send (milliseconds) */
-	unsigned long	                    delay_rts_after_send;  /* Delay after send (milliseconds) */
-	unsigned long	                    padding[5];		       /* Memory is cheap, new structs are a royal PITA .. */
+enum {
+  gpio_in,
+  gpio_out,
+};
+enum {
+  gpio3100,
+  gpio6332,
+  gpio9564,
 };
 
-#endif
 
-static void reset_tty_atexit(void)
+int gpio_set_dir(int r, int dir)
 {
-	if(saved_portfd != -1)
-	{
-		tcsetattr(saved_portfd,TCSANOW,&oldtios);
-	}
+  int fd, req;
+  printf("gpio_set_dir\n");
+  fd = open(GPIO_DEV, O_RDONLY);
+  if (fd < 0) {
+    perror(GPIO_DEV);
+    return -1;
+  }
+
+  if (r == gpio9564)
+      req = RALINK_GPIO9564_SET_DIR_OUT;
+    else if (r == gpio6332)
+      req = RALINK_GPIO6332_SET_DIR_OUT;
+    else
+      req = RALINK_GPIO_SET_DIR_OUT;
+  
+  if (ioctl(fd, req, 0xffffffff) < 0) {
+    perror("ioctl");
+    close(fd);
+    return -1;
+  }
+  close(fd);
+  return 0;
 }
 
-/*cheanup signal handler */
-static void reset_tty_handler(int signal)
+
+int gpio_write_int(int r, int value)
 {
-	if(saved_portfd != -1)
-	{
-		tcsetattr(saved_portfd,TCSANOW,&oldtios);
-	}
-	_exit(EXIT_FAILURE);
+  int fd, req;
+
+  printf("gpio_write_int\n");
+  fd = open(GPIO_DEV, O_RDONLY);
+  if (fd < 0) {
+    perror(GPIO_DEV);
+    return -1;
+  }
+
+  if (r == gpio9564)
+    req = RALINK_GPIO9564_WRITE;
+  else if (r == gpio6332)
+    req = RALINK_GPIO6332_WRITE;
+  else
+    req = RALINK_GPIO_WRITE;
+  if (ioctl(fd, req, value) < 0) {
+    perror("ioctl");
+    close(fd);
+    return -1;
+  }
+  close(fd);
+  return 0;
 }
 
-int open_rs485_port(char *portname,int nSpeed, int nBits, char nEvent, int nStop)
+static void gpio_test_write(void)
 {
-	struct sigaction sa;
-	int portfd;
-#if (__GNUC__ == 4 && __GNUC_MINOR__ == 3)
-	struct my_serial_rs485 rs485conf;
-	struct my_serial_rs485 rs485conf_bak;
-#else
-	struct serial_rs485 rs485conf;
-	struct serial_rs485 rs485conf_bak;
-#endif
-	printf("opening serial port:%s\n",portname);
-	/*open serial port */
-	if((portfd=open(portname,O_RDWR | O_NOCTTY, 0)) < 0 )
-	{
-   		printf("open serial port %s fail \n ",portname);
-   		return portfd;
-	}
+  int i = 0;
 
-	/*get serial port parnms,save away */
-	tcgetattr(portfd,&newtios);
-	memcpy(&oldtios,&newtios,sizeof newtios);
-	/* configure new values */
-	cfmakeraw(&newtios); /*see man page */
-	newtios.c_iflag |=IGNPAR; /*ignore parity on input */
-	newtios.c_oflag &= ~(OPOST | ONLCR | OLCUC | OCRNL | ONOCR | ONLRET | OFILL);
+  gpio_set_dir(gpio9564, gpio_out);
+  gpio_set_dir(gpio6332, gpio_out);
+  gpio_set_dir(gpio3100, gpio_out);
 
-    newtios.c_cflag |= CLOCAL;
-    newtios.c_cflag |= CREAD;
-    switch( nBits )
-    {
-    case 7:
-      newtios.c_cflag |= CS7;
-      break;
-    case 8:
-      newtios.c_cflag |= CS8;
-      break;
-    }
-    switch( nEvent )
-    {
-    case 'O':
-      newtios.c_cflag |= PARENB;
-      newtios.c_cflag |= PARODD;
-      newtios.c_iflag |= (INPCK | ISTRIP);
-      break;
-    case 'E':
-      newtios.c_iflag |= (INPCK | ISTRIP);
-      newtios.c_cflag |= PARENB;
-      newtios.c_cflag &= ~PARODD;
-      break;
-    case 'N':
-      newtios.c_cflag &= ~PARENB;
-      break;
-    }
-    switch( nEvent ){
-        case 1:
-            newtios.c_cflag &= ~CSTOPB;
-            break;
-        case 2:
-            newtios.c_cflag |= CSTOPB;
-            break;
-    }
+  //turn off LEDs
+  gpio_write_int(gpio9564, 0xffffffff);
+  gpio_write_int(gpio6332, 0xffffffff);
+  gpio_write_int(gpio3100, 0xffffffff);
 
-	newtios.c_cc[VMIN]=16; /* block until 1 char received */
-	newtios.c_cc[VTIME]=1; /*no inter-character timer */
+  sleep(3);
 
-	/* bps */
-    switch( nSpeed )
-    {
-      case 2400:
-        cfsetispeed(&newtios, B2400);
-        cfsetospeed(&newtios, B2400);
-        break;
-      case 4800:
-        cfsetispeed(&newtios, B4800);
-        cfsetospeed(&newtios, B4800);
-        break;
-      case 9600:
-        cfsetispeed(&newtios, B9600);
-        cfsetospeed(&newtios, B9600);
-        break;
-      case 115200:
-        cfsetispeed(&newtios, B115200);
-        cfsetospeed(&newtios, B115200);
-        break;
-      default:
-        cfsetispeed(&newtios, B9600);
-        cfsetospeed(&newtios, B9600);
-        break;
-    }
+  //turn on all LEDs
+  gpio_write_int(gpio9564, 0);
+  gpio_write_int(gpio6332, 0);
+  gpio_write_int(gpio3100, 0);
 
-	/* register cleanup stuff */
-	atexit(reset_tty_atexit);
-	memset(&sa,0,sizeof sa);
-	sa.sa_handler = reset_tty_handler;
-	sigaction(SIGHUP,&sa,NULL);
-	sigaction(SIGINT,&sa,NULL);
-	sigaction(SIGPIPE,&sa,NULL);
-	sigaction(SIGTERM,&sa,NULL);
-	/*apply modified termios */
-	saved_portfd=portfd;
-	tcflush(portfd,TCIFLUSH);
-	tcsetattr(portfd,TCSADRAIN,&newtios);
+}
 
+void gpio_set_led(void)
+{
+  int fd;
+  ralink_gpio_led_info led;
 
-	if (ioctl (portfd, TIOCGRS485, &rs485conf) < 0)
-	{
-		/* Error handling.*/
-		printf("ioctl error:%s\n",strerror(errno));
-	}
-	/* Enable RS485 mode: */
-	rs485conf.flags |= SER_RS485_ENABLED;
-	/* Set logical level for RTS pin equal to 1 when sending: */
-	rs485conf.flags |= SER_RS485_RTS_ON_SEND;
-	//rs485conf.flags &= ~(SER_RS485_RTS_ON_SEND);
-	//rs485conf.flags |= SER_RS485_RTS_AFTER_SEND;
-	rs485conf.flags &= ~(SER_RS485_RTS_AFTER_SEND);
-	/* Set rts delay after send, if needed: */
-	rs485conf.delay_rts_after_send = 0x80;
-	//rs485conf.delay_rts_before_send = ...;
-	//rs485conf.flags | = SER_RS485_RX_DURING_TX;
-	if (ioctl (portfd, TIOCSRS485, &rs485conf) < 0)
-	{
-		/* Error handling.*/
-		printf("ioctl error:%s\n",strerror(errno));
-	}
+  led.gpio = 10;
+  if (led.gpio < 0 || led.gpio >= RALINK_GPIO_NUMBER) {
+    printf("gpio number %d out of range (should be 0 ~ %d)\n", led.gpio, RALINK_GPIO_NUMBER);
+    return;
+  }
+  led.on = 50;
+  if (led.on > RALINK_GPIO_LED_INFINITY) {
+    printf("on interval %d out of range (should be 0 ~ %d)\n", led.on, RALINK_GPIO_LED_INFINITY);
+    return;
+  }
+  led.off = 50;
+  if (led.off > RALINK_GPIO_LED_INFINITY) {
+    printf("off interval %d out of range (should be 0 ~ %d)\n", led.off, RALINK_GPIO_LED_INFINITY);
+    return;
+  }
+  led.blinks = 200;
+  if (led.blinks > RALINK_GPIO_LED_INFINITY) {
+    printf("number of blinking cycles %d out of range (should be 0 ~ %d)\n", led.blinks, RALINK_GPIO_LED_INFINITY);
+    return;
+  }
+  led.rests = 200;
+  if (led.rests > RALINK_GPIO_LED_INFINITY) {
+    printf("number of resting cycles %d out of range (should be 0 ~ %d)\n", led.rests, RALINK_GPIO_LED_INFINITY);
+    return;
+  }
+  led.times = 2000;
+  if (led.times > RALINK_GPIO_LED_INFINITY) {
+    printf("times of blinking %d out of range (should be 0 ~ %d)\n", led.times, RALINK_GPIO_LED_INFINITY);
+    return;
+  }
 
-	if (ioctl (portfd, TIOCGRS485, &rs485conf_bak) < 0)
-	{
-		/* Error handling.*/
-		printf("ioctl error:%s\n",strerror(errno));
-	}
-	else
-	{
-//		printf("rs485conf_bak.flags 0x%x.\n", rs485conf_bak.flags);
-//		printf("rs485conf_bak.delay_rts_before_send 0x%x.\n", rs485conf_bak.delay_rts_before_send);
-//		printf("rs485conf_bak.delay_rts_after_send 0x%x.\n", rs485conf_bak.delay_rts_after_send);
-	}
-
-	return portfd;
+  fd = open(GPIO_DEV, O_RDONLY);
+  if (fd < 0) {
+    perror(GPIO_DEV);
+    return;
+  }
+  if (ioctl(fd, RALINK_GPIO_LED_SET, &led) < 0) {
+    perror("ioctl");
+    close(fd);
+    return;
+  }
+  close(fd);
 }
 
 #endif
-
-
-

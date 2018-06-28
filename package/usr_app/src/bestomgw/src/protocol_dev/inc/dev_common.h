@@ -76,6 +76,18 @@ typedef struct{
 /*checksum*/
 UINT8 app_checksum(UINT8* d, UINT16 len);
 
+/*通用链表*/
+typedef struct _comPNode
+{
+ UINT8* item;
+ struct _comPNode *next;
+}comPNode, *comPQueue;
+
+void Init_comPQueue(comPQueue pQueue);
+void comPush(comPQueue pQueue, uint8* item);
+bool comPop(comPQueue pQueue, uint8 *pItem);
+bool comIsEmpty(comPQueue pQueue);
+
 devErr dev_conditioner_on(void);
 #endif //_DEV_COMMON_H_
 

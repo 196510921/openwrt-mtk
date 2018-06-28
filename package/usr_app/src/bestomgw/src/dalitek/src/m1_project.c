@@ -61,9 +61,12 @@ int app_get_project_info(payload_t data)
     sql = "select P_NUMBER,P_NAME from project_table order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
     
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);    
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -73,7 +76,7 @@ int app_get_project_info(payload_t data)
     {
         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         if(rc == SQLITE_CORRUPT)
-            exit(0);
+            exit(-1);
     }
     if(rc == SQLITE_ERROR)
     {
@@ -147,9 +150,12 @@ int app_confirm_project(payload_t data)
 
     sql = "select P_KEY from project_table where P_NUMBER = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -160,7 +166,7 @@ int app_confirm_project(payload_t data)
     {
         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
         if(rc == SQLITE_CORRUPT)
-            exit(0);
+            exit(-1);
     }
     if(rc != SQLITE_ROW)
     {
@@ -228,9 +234,12 @@ int app_create_project(payload_t data)
     {
         sql = "select ACCOUNT from account_info where CLIENT_FD = ? limit 1;";
         M1_LOG_DEBUG( "%s\n", sql);
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -253,9 +262,12 @@ int app_create_project(payload_t data)
     {
         sql_1_0 = "delete from project_table where P_NAME = ? and P_NUMBER = ?;";
         M1_LOG_DEBUG( "%s\n", sql_1_0);
-        if(sqlite3_prepare_v2(db, sql_1_0, strlen(sql_1_0), &stmt_1_0, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1_0, strlen(sql_1_0), &stmt_1_0, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }    
@@ -264,9 +276,12 @@ int app_create_project(payload_t data)
     {
         sql_1 = "insert into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)values(?,?,?,?,?,?,?,?,?,?);";
         M1_LOG_DEBUG( "%s\n", sql_1);
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }    
@@ -282,7 +297,7 @@ int app_create_project(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
 
 
@@ -302,7 +317,7 @@ int app_create_project(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
 
         rc = sql_commit(db);
@@ -383,9 +398,12 @@ int app_get_project_config(payload_t data)
     /*获取项目信息*/
     sql = "select P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_TEL,P_ADD,P_BRIEF,P_EDITOR,TIME from project_table order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);    
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -493,9 +511,12 @@ int app_change_project_config(payload_t data)
     {
         sql = "select P_KEY from project_table order by ID desc limit 1;";
         M1_LOG_DEBUG("sql:%s\n", sql);
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+            if(rc == SQLITE_CORRUPT)
+                exit(-1);
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -505,7 +526,7 @@ int app_change_project_config(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
         pKey = sqlite3_column_text(stmt, 0);
         if(pKey == NULL)
@@ -519,9 +540,12 @@ int app_change_project_config(payload_t data)
     {
         sql_1 = "select ACCOUNT from account_info where CLIENT_FD = ?;";
         M1_LOG_DEBUG("sql:%s\n", sql_1);
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            if(rc == SQLITE_CORRUPT)
+                exit(-1); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -531,7 +555,7 @@ int app_change_project_config(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
         account = sqlite3_column_text(stmt_1, 0);
         if(account == NULL)
@@ -546,9 +570,12 @@ int app_change_project_config(payload_t data)
         sql_2 = "insert into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)\
         values(?,?,?,?,?,?,?,?,?,?);";
         M1_LOG_DEBUG("sql:%s\n", sql_2);
-        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            if(rc == SQLITE_CORRUPT)
+                exit(-1); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -572,7 +599,7 @@ int app_change_project_config(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
 
         rc = sql_commit(db);
@@ -645,9 +672,12 @@ int app_change_project_key(payload_t data)
     /*获取账户信息*/
     sql = "select P_KEY,ID from project_table order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -678,9 +708,12 @@ int app_change_project_key(payload_t data)
 
     sql_1 = "update project_table set P_KEY = ? where ID = ?;";
     M1_LOG_DEBUG("sql_1:%s\n", sql_1);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            exit(-1);  
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -694,7 +727,7 @@ int app_change_project_key(payload_t data)
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             if(rc == SQLITE_CORRUPT)
-                exit(0);
+                exit(-1);
         }
 
         rc = sql_commit(db);
@@ -713,6 +746,8 @@ int app_change_project_key(payload_t data)
     Finish:
     if(stmt)
  	  sqlite3_finalize(stmt);
+    if(stmt_1)
+      sqlite3_finalize(stmt_1);
 
     return ret;	
 }
