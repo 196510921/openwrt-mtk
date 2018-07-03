@@ -33,11 +33,21 @@ static devErr dev_uart_test_write(UINT8* data, UINT16 len)
 static devErr dev_uart_test_read(UINT8* data, UINT16* len)
 {
 
-	UINT8 testFrame[25] = {0x01,0x50,0x0F,0x02,0x01,0x03,0x01,0x14,0x02,0x01,0x20,0x00,0x00,\
-		0x00,0x02,0x02,0x00,0x14,0x04,0x01,0x23,0x00,0x00,0x00,0xDE};
-	memcpy(data, testFrame, 25);
+	static uint8 i = 0;
 
-	len = 25;
+	if(i == 0)
+	{
+
+	}
+	else
+	{
+		UINT8 testFrame[25] = {0x01,0x50,0x0F,0x02,0x01,0x03,0x01,0x14,0x02,0x01,0x20,0x00,0x00,\
+		0x00,0x02,0x02,0x00,0x14,0x04,0x01,0x23,0x00,0x00,0x00,0xDE};
+		memcpy(data, testFrame, 25);
+
+		len = 25;	
+	}
+	
 
 	return DEV_OK;
 }
@@ -216,9 +226,10 @@ devErr app_conditioner_read(appCmd_t cmd)
 
 devErr app_conditioner_db_handle(void)
 {
-	M1_LOG_DEBUG("app_conditioner_db_handle\n");
+	printf("app_conditioner_db_handle\n");
 
 	ZHuRxData_t* userData  = NULL;
+	UINT8* _userData        = NULL;
 	int num                = 0;
 	int rc                 = 0;
 	char dAddr[7]          = {0};
@@ -233,215 +244,230 @@ devErr app_conditioner_db_handle(void)
 	sqlite3_stmt* stmt_1_1 = NULL;            
 	sqlite3_stmt* stmt_2_1 = NULL;
 	sqlite3_stmt* stmt_2_2 = NULL;            
-	sqlite3_stmt* stmt_3   = NULL;        
+	sqlite3_stmt* stmt_3   = NULL;     
 	sqlite3* db            = NULL;
 	char* errorMsg         = NULL;
 	int ret                = DEV_OK;    
 	int i                  = 0;
 	int j                  = 0;
 
-
 	if(!comIsEmpty(&head_485))
 	{
+		rc = sqlite3_open("dev_info.db", &db);
+    	if( rc != SQLITE_OK){  
+    	    printf( "Can't open database\n");  
+    	}else{  
+    	    printf( "Opened database successfully\n");  
+    	}
+
 		if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)!=SQLITE_OK)
 	    {
-	    	M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+	    	printf("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
         	sqlite3_free(errorMsg);
 	    	return;
 	    }
-	}
 
-	sql_1 = "select ID from all_dev where DEV_ID = ?;";
-	if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
-    {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = DEV_ERROR;
-        goto Finish; 
-    }
-    sql_1_1 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
-	if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
-    {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = DEV_ERROR;
-        goto Finish; 
-    }
-	sql_2_1 = "insert into param_table(DEV_ID, DEV_NAME, TYPE, VALUE)values(?,?,?,?);";
-	if(sqlite3_prepare_v2(db, sql_2_1, strlen(sql_2_1), &stmt_2_1, NULL) != SQLITE_OK)
-    {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = DEV_ERROR;
-        goto Finish; 
-    }
-	sql_2_2 = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
-	if(sqlite3_prepare_v2(db, sql_2_2, strlen(sql_2_2), &stmt_2_2, NULL) != SQLITE_OK)
-    {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-        ret = DEV_ERROR;
-        goto Finish; 
-    }
+		sql_1 = "select ID from all_dev where DEV_ID = ?;";
+		printf("%s\n",sql_1);
+		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+	    {
+	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        ret = DEV_ERROR;
+	        goto Finish; 
+	    }
+	    sql_1_1 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
+		printf("%s\n",sql_1_1);
+		if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
+	    {
+	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        ret = DEV_ERROR;
+	        goto Finish; 
+	    }
+		sql_2_1 = "insert into param_table(DEV_ID, DEV_NAME, TYPE, VALUE)values(?,?,?,?);";
+		printf("%s\n",sql_2_1);
+		if(sqlite3_prepare_v2(db, sql_2_1, strlen(sql_2_1), &stmt_2_1, NULL) != SQLITE_OK)
+	    {
+	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        ret = DEV_ERROR;
+	        goto Finish; 
+	    }
+		sql_2_2 = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
+		printf("%s\n",sql_2_2);
+		if(sqlite3_prepare_v2(db, sql_2_2, strlen(sql_2_2), &stmt_2_2, NULL) != SQLITE_OK)
+	    {
+	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        ret = DEV_ERROR;
+	        goto Finish; 
+	    }
 
-	while(comPop(&head_485, (UINT8*)userData))
-	{
-		printf("gwAddr:%d Fn:%d value:%d num:%d \n",\
-			userData->header.gwAddr, userData->header.Fn,\
-			userData->header.value, userData->header.num);
-		
-		for(i = 0; i < num; i++)
+		while(comPop(&head_485, &_userData))
 		{
-			printf("dAddr[%d]外机:%x 内机:%x 开关:%x 温度:%x 模式:%x 风速:%x 房间温度:%x 故障代码:%x\n",\
-			 i,userData->info[i].outAddr, userData->info[i].inAddr,userData->info[i].status,\
-			 userData->info[i].temperature,userData->info[i].mode,userData->info[i].speed,\
-			 userData->info[i].roomTemp,userData->info[i].errNum);
-			/*485空调网关地址*/
-			gwId[0] = 0x01;
-			gwId[1] = (userData->header.gwAddr / 16) + '0';
-			gwId[2] = (userData->header.gwAddr % 16) + '0';
-			gwId[3] = 0;
-			/*485空调地址*/
-			dAddr[0] = (userData->header.gwAddr / 16) + '0';
-			dAddr[1] = (userData->header.gwAddr % 16) + '0';
-			dAddr[2] = userData->info[i].outAddr / 16 + '0';
-			dAddr[3] = userData->info[i].outAddr % 16 + '0';
-			dAddr[4] = userData->info[i].inAddr / 16 + '0';
-			dAddr[5] = userData->info[i].inAddr % 16 + '0';
-			dAddr[6] = 0;
-			/*查询设备是否存在*/
-			{
-			    sqlite3_bind_text(stmt_1, 1, dAddr, -1, NULL);
-
-				rc = sqlite3_step(stmt_1);   
-		        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-		        {
-		            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-		            if(rc == SQLITE_CORRUPT)
-		                exit(0);
-		        }
-
-		        sqlite3_reset(stmt_1); 
-                sqlite3_clear_bindings(stmt_1);
-	        }
-
-			if(userData->header.value == 0x02)  //所有设备的在线状态
-			{
-				if(rc != SQLITE_ROW)
-				{
-					/*插入新设备到all_dev*/
-					sqlite3_bind_text(stmt_1_1, 1, dAddr, -1, NULL);//用设备地址做设备名
-					sqlite3_bind_text(stmt_1_1, 2, gwId, -1, NULL);
-					sqlite3_bind_text(stmt_1_1, 3, dAddr, -1, NULL);
-					sqlite3_bind_int(stmt_1_1, 4, pId);
-					sqlite3_bind_int(stmt_1_1, 5, 0);
-	                sqlite3_bind_int(stmt_1_1, 6, 1);
-	                sqlite3_bind_text(stmt_1_1, 7,"ON", -1, NULL);
-	                sqlite3_bind_text(stmt_1_1, 8, "Dalitek", -1, NULL);
-
-					rc = sqlite3_step(stmt_1_1);   
-		        	if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-		        	{
-		        	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-		        	    if(rc == SQLITE_CORRUPT)
-		        	        exit(0);
-		        	}
-
-		        	sqlite3_reset(stmt_1_1); 
-                	sqlite3_clear_bindings(stmt_1_1);
-		        }
-					
-			}
-			else //单个设备参数值
-			{
-				if(rc != SQLITE_ROW)
-				{
-					for(j = 0; j < 4; j++)
-					{
-						/*插入新设备参数到param_table*/
-						sqlite3_bind_text(stmt_2_1, 1, dAddr, -1, NULL);
-						sqlite3_bind_text(stmt_2_1, 2, dAddr, -1, NULL);//用485设备地址作为485设备名
-						switch(j)
-						{
-							case 1:
-								sqlite3_bind_int(stmt_2_1, 3, 0x200D);//空调开关类型
-								sqlite3_bind_int(stmt_2_1, 4, userData->info[i].status);//开关
-							break;
-							case 2:
-								sqlite3_bind_int(stmt_2_1, 3, 0x8023);//空调温度类型
-								sqlite3_bind_int(stmt_2_1, 4, userData->info[i].temperature);//温度值
-							break;
-							case 3:
-								sqlite3_bind_int(stmt_2_1, 3, 0x801B);//空调模式类型
-								sqlite3_bind_int(stmt_2_1, 4, userData->info[i].mode);//模式
-							break;
-							case 4:
-								sqlite3_bind_int(stmt_2_1, 3, 0x801C);//空调风速类型
-								sqlite3_bind_int(stmt_2_1, 4, userData->info[i].speed);//风速值
-							break;
-							default:
-							break;
-						}
-
-						rc = sqlite3_step(stmt_2_1);   
-				        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-				        {
-				            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-				            if(rc == SQLITE_CORRUPT)
-				                exit(0);
-				        }
-
-				        sqlite3_reset(stmt_2_1); 
-		                sqlite3_clear_bindings(stmt_2_1);
-	            	}
-				}
-				else
-				{
-					/*更新设备参数到param_table*/	
-					for(j = 0; j < 4; j++)
-					{
-						/*插入新设备参数到param_table*/
-						sqlite3_bind_text(stmt_2_2, 2, dAddr, -1, NULL);//485设备地址
-						switch(j)
-						{
-							case 1:
-								sqlite3_bind_int(stmt_2_2, 3, 0x200D);//空调开关类型
-								sqlite3_bind_int(stmt_2_2, 1, userData->info[i].status);//开关
-							break;
-							case 2:
-								sqlite3_bind_int(stmt_2_2, 3, 0x8023);//空调温度类型
-								sqlite3_bind_int(stmt_2_2, 1, userData->info[i].temperature);//温度值
-							break;
-							case 3:
-								sqlite3_bind_int(stmt_2_2, 3, 0x801B);//空调模式类型
-								sqlite3_bind_int(stmt_2_2, 1, userData->info[i].mode);//模式
-							break;
-							case 4:
-								sqlite3_bind_int(stmt_2_2, 3, 0x801C);//空调风速类型
-								sqlite3_bind_int(stmt_2_2, 1, userData->info[i].speed);//风速值
-							break;
-							default:
-							break;
-						}
-
-						rc = sqlite3_step(stmt_2_2);   
-				        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-				        {
-				            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-				            if(rc == SQLITE_CORRUPT)
-				                exit(0);
-				        }
-
-				        sqlite3_reset(stmt_2_2); 
-		                sqlite3_clear_bindings(stmt_2_2);
-	            	}
-				}
-	        }
-		}
+			userData = (ZHuRxData_t*)_userData;
+			if(_userData == NULL)
+				printf("userData NULL\n");
+			printf("1:%x,%x\n",_userData[0],_userData[1]);
+			printf("gwAddr:%x Fn:%x value:%x num:%x \n",\
+				userData->header.gwAddr, userData->header.Fn,\
+				userData->header.value, userData->header.num);
 			
-	}
+			num = userData->header.num;
+			for(i = 0; i < num; i++)
+			{
+				printf("dAddr[%d]外机:%x 内机:%x 开关:%x 温度:%x 模式:%x 风速:%x 房间温度:%x 故障代码:%x\n",\
+				 i,userData->info[i].outAddr, userData->info[i].inAddr,userData->info[i].status,\
+				 userData->info[i].temperature,userData->info[i].mode,userData->info[i].speed,\
+				 userData->info[i].roomTemp,userData->info[i].errNum);
+				/*485空调网关地址*/
+				gwId[0] = 0x01;
+				gwId[1] = (userData->header.gwAddr / 16) + '0';
+				gwId[2] = (userData->header.gwAddr % 16) + '0';
+				gwId[3] = 0;
+				/*485空调地址*/
+				dAddr[0] = (userData->header.gwAddr / 16) + '0';
+				dAddr[1] = (userData->header.gwAddr % 16) + '0';
+				dAddr[2] = userData->info[i].outAddr / 16 + '0';
+				dAddr[3] = userData->info[i].outAddr % 16 + '0';
+				dAddr[4] = userData->info[i].inAddr / 16 + '0';
+				dAddr[5] = userData->info[i].inAddr % 16 + '0';
+				dAddr[6] = 0;
+				/*查询设备是否存在*/
+				{
+				    sqlite3_bind_text(stmt_1, 1, dAddr, -1, NULL);
 
-	rc = sql_commit(db);
-    if(rc == SQLITE_OK)
-    {
-        M1_LOG_DEBUG("COMMIT OK\n");
-    }
+					rc = sqlite3_step(stmt_1);   
+			        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+			        {
+			            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+			            if(rc == SQLITE_CORRUPT)
+			                exit(0);
+			        }
+
+			        sqlite3_reset(stmt_1); 
+	                sqlite3_clear_bindings(stmt_1);
+		        }
+
+				if(userData->header.value == 0x02)  //所有设备的在线状态
+				{
+					if(rc != SQLITE_ROW)
+					{
+						/*插入新设备到all_dev*/
+						sqlite3_bind_text(stmt_1_1, 1, dAddr, -1, NULL);//用设备地址做设备名
+						sqlite3_bind_text(stmt_1_1, 2, gwId, -1, NULL);
+						sqlite3_bind_text(stmt_1_1, 3, dAddr, -1, NULL);
+						sqlite3_bind_int(stmt_1_1, 4, pId);
+						sqlite3_bind_int(stmt_1_1, 5, 0);
+		                sqlite3_bind_int(stmt_1_1, 6, 1);
+		                sqlite3_bind_text(stmt_1_1, 7,"ON", -1, NULL);
+		                sqlite3_bind_text(stmt_1_1, 8, "Dalitek", -1, NULL);
+
+						rc = sqlite3_step(stmt_1_1);   
+			        	if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+			        	{
+			        	    printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+			        	    if(rc == SQLITE_CORRUPT)
+			        	        exit(0);
+			        	}
+
+			        	sqlite3_reset(stmt_1_1); 
+	                	sqlite3_clear_bindings(stmt_1_1);
+			        }
+						
+				}
+				else //单个设备参数值
+				{
+					if(rc != SQLITE_ROW)
+					{
+						for(j = 0; j < 4; j++)
+						{
+							/*插入新设备参数到param_table*/
+							sqlite3_bind_text(stmt_2_1, 1, dAddr, -1, NULL);
+							sqlite3_bind_text(stmt_2_1, 2, dAddr, -1, NULL);//用485设备地址作为485设备名
+							switch(j)
+							{
+								case 0:
+									sqlite3_bind_int(stmt_2_1, 3, 0x200D);//空调开关类型
+									sqlite3_bind_int(stmt_2_1, 4, userData->info[i].status);//开关
+								break;
+								case 1:
+									sqlite3_bind_int(stmt_2_1, 3, 0x8023);//空调温度类型
+									sqlite3_bind_int(stmt_2_1, 4, userData->info[i].temperature);//温度值
+								break;
+								case 2:
+									sqlite3_bind_int(stmt_2_1, 3, 0x801B);//空调模式类型
+									sqlite3_bind_int(stmt_2_1, 4, userData->info[i].mode);//模式
+								break;
+								case 3:
+									sqlite3_bind_int(stmt_2_1, 3, 0x801C);//空调风速类型
+									sqlite3_bind_int(stmt_2_1, 4, userData->info[i].speed);//风速值
+								break;
+								default:
+								break;
+							}
+
+							rc = sqlite3_step(stmt_2_1);   
+					        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+					        {
+					            printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+					            if(rc == SQLITE_CORRUPT)
+					                exit(0);
+					        }
+
+					        sqlite3_reset(stmt_2_1); 
+			                sqlite3_clear_bindings(stmt_2_1);
+		            	}
+					}
+					else
+					{
+						/*更新设备参数到param_table*/	
+						for(j = 0; j < 4; j++)
+						{
+							/*插入新设备参数到param_table*/
+							sqlite3_bind_text(stmt_2_2, 2, dAddr, -1, NULL);//485设备地址
+							switch(j)
+							{
+								case 0:
+									sqlite3_bind_int(stmt_2_2, 3, 0x200D);//空调开关类型
+									sqlite3_bind_int(stmt_2_2, 1, userData->info[i].status);//开关
+								break;
+								case 1:
+									sqlite3_bind_int(stmt_2_2, 3, 0x8023);//空调温度类型
+									sqlite3_bind_int(stmt_2_2, 1, userData->info[i].temperature);//温度值
+								break;
+								case 2:
+									sqlite3_bind_int(stmt_2_2, 3, 0x801B);//空调模式类型
+									sqlite3_bind_int(stmt_2_2, 1, userData->info[i].mode);//模式
+								break;
+								case 3:
+									sqlite3_bind_int(stmt_2_2, 3, 0x801C);//空调风速类型
+									sqlite3_bind_int(stmt_2_2, 1, userData->info[i].speed);//风速值
+								break;
+								default:
+								break;
+							}
+
+							rc = sqlite3_step(stmt_2_2);   
+					        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+					        {
+					            printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+					            if(rc == SQLITE_CORRUPT)
+					                exit(0);
+					        }
+
+					        sqlite3_reset(stmt_2_2); 
+			                sqlite3_clear_bindings(stmt_2_2);
+		            	}
+					}
+		        }
+			}
+				
+		}
+
+		rc = sql_commit(db);
+	    if(rc == SQLITE_OK)
+	    {
+	        printf("COMMIT OK\n");
+	    }
+	}
 
     Finish:
     if(stmt_1 != NULL)
@@ -453,6 +479,10 @@ devErr app_conditioner_db_handle(void)
     if(stmt_2_2 != NULL)
         sqlite3_finalize(stmt_2_2);
 	
+    if(_userData)
+    	free(_userData);
+
+	sqlite3_close(db);
 	return ret;
 }
 
@@ -466,6 +496,16 @@ void dev_common_testing(void)
 
 	devInit();
 	
+	/*查询设备在线状态*/
+	{
+		cmd_write.param = 0x50;  //向下查询空调状态
+		cmd_write.value = 0x02;  //查询多台在线状态
+		cmd_write.dNum  = 0xFF;  //所有设备
+		cmd_write.gwAddr= 0x01;  //网关地址
+		cmd_write.devAddr[0] = 0xFFFF; //所有设备地址
+		app_conditioner_read(cmd_write);	
+	}
+
 	{
 		cmd_write.param = 0x31;  //向下控制开关
 		cmd_write.value = 0x01;  //开机
@@ -484,12 +524,7 @@ void dev_common_testing(void)
 		app_conditioner_read(cmd_read);
 	}
 
-	rc = sqlite3_open("dev_info.db", &db);
-    if( rc != SQLITE_OK){  
-        M1_LOG_ERROR( "Can't open database\n");  
-    }else{  
-        M1_LOG_DEBUG( "Opened database successfully\n");  
-    }
+	
 
 	while(1)
 	{
@@ -497,7 +532,6 @@ void dev_common_testing(void)
 		sleep(1);
 	}
 
-	sqlite3_close(db);
 }
 
 
@@ -505,7 +539,7 @@ void dev_common_testing(void)
 void Init_comPQueue(comPQueue pQueue)
 {
   if (NULL == pQueue)
-  return;
+  	return;
   printf("Init_PQueue\n");
   pQueue->next = NULL;
 }
@@ -535,14 +569,16 @@ void comPush(comPQueue pQueue, uint8* item)
 }
 
 //出队，从队首(front)出
-bool comPop(comPQueue pQueue, uint8 *pItem)
+bool comPop(comPQueue pQueue, uint8 **pItem)
 {
   if (!comIsEmpty(pQueue))
   {
     comPNode *pTmp = pQueue->next;
+    if(pTmp->item == NULL)
+    	printf("pTmp->item NULL\n");
     *pItem = pTmp->item;
     pQueue->next = pTmp->next;
-    free(pTmp);
+    //free(pTmp);
     return true;
   }
   return false;

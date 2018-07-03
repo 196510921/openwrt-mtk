@@ -75,13 +75,13 @@ static devErr ZHRead(void* pUser, void* pFrame, UINT16* pusLen)
 		printf("\n ");
 
 		printf("gwAddr:%d Fn:%d value:%d num:%d \n",\
-					  ZHFrameData->header.gwAddr, ZHFrameData->header.Fn,\
-					  ZHFrameData->header.value, ZHFrameData->header.num);
+					  ZHUserData->header.gwAddr, ZHUserData->header.Fn,\
+					  ZHUserData->header.value, ZHUserData->header.num);
 		for(i = 0; i < num; i++)
 			printf("dAddr[%d]外机:%x 内机:%x 开关:%x 温度:%x 模式:%x 风速:%x 房间温度:%x 故障代码:%x\n",\
-			 i,ZHFrameData->info[i].outAddr, ZHFrameData->info[i].inAddr,ZHFrameData->info[i].status,\
-			 ZHFrameData->info[i].temperature,ZHFrameData->info[i].mode,ZHFrameData->info[i].speed,\
-			 ZHFrameData->info[i].roomTemp,ZHFrameData->info[i].errNum);
+			 i,ZHUserData->info[i].outAddr, ZHUserData->info[i].inAddr,ZHUserData->info[i].status,\
+			 ZHUserData->info[i].temperature,ZHUserData->info[i].mode,ZHUserData->info[i].speed,\
+			 ZHUserData->info[i].roomTemp,ZHUserData->info[i].errNum);
 
 		printf("pusLen:%d\n",*pusLen);		
 	}

@@ -85,7 +85,8 @@ typedef struct _comPNode
 
 void Init_comPQueue(comPQueue pQueue);
 void comPush(comPQueue pQueue, uint8* item);
-bool comPop(comPQueue pQueue, uint8 *pItem);
+//bool comPop(comPQueue pQueue, uint8 *pItem);
+bool comPop(comPQueue pQueue, uint8 **pItem);
 bool comIsEmpty(comPQueue pQueue);
 
 devErr dev_conditioner_on(void);
