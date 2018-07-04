@@ -152,7 +152,7 @@ static void socket_poll(void)
 
 #else
 extern void uart_485_test(void);
-int main(int argc, char* argv[])
+int main(int argc, char* arg)
 {
 	//uart_485_test();
 	dev_common_testing();

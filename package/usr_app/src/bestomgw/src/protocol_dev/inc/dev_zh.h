@@ -6,6 +6,7 @@
 #define ZH_DEV_ADDR_LEN        2
 #define ZH_CHECKSUM_LEN        1
 #define ZH_DEV_INFO_LEN        10
+#define ZH_PKG_ONLINE_LEN      7
 
 /**********从弱电集成控制器到网关*********/
 #define DEV_PARAM_TYPE_SWITCH   0x0001
@@ -41,6 +42,7 @@ typedef struct{
 
 /************从网关到弱电集成控制器*********/
 /*用户侧数据*/
+/*参数状态*/
 typedef struct{
   UINT8 outAddr;          //空调外机地址
   UINT8 inAddr;           //空调内机地址
@@ -52,17 +54,29 @@ typedef struct{
   UINT8 errNum;           //故障代码
   UINT8 remain1;          //备用1
   UINT8 remain2;          //备用2
+}RxInfoStatus_t;
+/*在线状态*/
+typedef struct{
+  UINT8 outAddr;          //空调外机地址
+  UINT8 inAddr;           //空调内机地址
+  UINT8 Online;           //空调在线状态
+}RxInfoOnline_t;
+
+/*app对设备操作*/
+typedef union{
+  RxInfoStatus_t infoStatus[1];
+  RxInfoOnline_t infoOnline[1];
 }RxInfo;
 
 typedef struct{
 	ZHHeader_t header;
-	RxInfo     info[1];
+	RxInfo     info;
 }ZHuRxData_t;
 /*帧侧数据*/
 #pragma pack(1)
 typedef struct{
 	ZHHeader_t header;
-	RxInfo    info[1];
+	RxInfo    info;
 }ZHfRxData_t;
 #pragma pack()
 

@@ -38,32 +38,41 @@ static devErr ZHRead(void* pUser, void* pFrame, UINT16* pusLen)
 			num = 0x01;
 		}
 		/*info 部分*/
-		for(i = 0; i < num; i++)
+		if(ZHUserData->header.value == 0x02)//多台设备的在线状态
 		{
-			ZHUserData->info[i].outAddr     = ZHFrameData->info[i].outAddr;
-			ZHUserData->info[i].inAddr      = ZHFrameData->info[i].inAddr;
-			ZHUserData->info[i].status      = ZHFrameData->info[i].status;
-			ZHUserData->info[i].temperature = ZHFrameData->info[i].temperature;	
-			ZHUserData->info[i].mode        = ZHFrameData->info[i].mode;
-			ZHUserData->info[i].speed       = ZHFrameData->info[i].speed;
-			ZHUserData->info[i].roomTemp    = ZHFrameData->info[i].roomTemp;
-			ZHUserData->info[i].errNum      = ZHFrameData->info[i].errNum;
-			ZHUserData->info[i].remain1     = ZHFrameData->info[i].remain1;
-			ZHUserData->info[i].remain2     = ZHFrameData->info[i].remain2;
+			for(i = 0; i < num; i++)
+			{
+				ZHUserData->info.infoOnline[i].outAddr     = ZHFrameData->info.infoOnline[i].outAddr;
+				ZHUserData->info.infoOnline[i].inAddr      = ZHFrameData->info.infoOnline[i].inAddr;
+				ZHUserData->info.infoOnline[i].Online      = ZHFrameData->info.infoOnline[i].Online;	
+			}
 		}
+		else//设备的参数状态
+		{
+			for(i = 0; i < num; i++)
+			{
+				ZHUserData->info.infoStatus[i].outAddr     = ZHFrameData->info.infoStatus[i].outAddr;
+				ZHUserData->info.infoStatus[i].inAddr      = ZHFrameData->info.infoStatus[i].inAddr;
+				ZHUserData->info.infoStatus[i].status      = ZHFrameData->info.infoStatus[i].status;
+				ZHUserData->info.infoStatus[i].temperature = ZHFrameData->info.infoStatus[i].temperature;	
+				ZHUserData->info.infoStatus[i].mode        = ZHFrameData->info.infoStatus[i].mode;
+				ZHUserData->info.infoStatus[i].speed       = ZHFrameData->info.infoStatus[i].speed;
+				ZHUserData->info.infoStatus[i].roomTemp    = ZHFrameData->info.infoStatus[i].roomTemp;
+				ZHUserData->info.infoStatus[i].errNum      = ZHFrameData->info.infoStatus[i].errNum;
+				ZHUserData->info.infoStatus[i].remain1     = ZHFrameData->info.infoStatus[i].remain1;
+				ZHUserData->info.infoStatus[i].remain2     = ZHFrameData->info.infoStatus[i].remain2;
+			}
+		} 
+		
 	}
 
-	printf("pusLen:%x\n",*pusLen);
-	printf("gwAddr:%d Fn:%d value:%d num:%d \n",\
-					  ZHUserData->header.gwAddr, ZHUserData->header.Fn, \
-					  ZHUserData->header.value, ZHUserData->header.num);
 	/*检查checksum*/
     checksum = app_checksum((UINT8*)&pFrame[0], *pusLen - 1);
 	*pusLen -= ZH_CHECKSUM_LEN;
-    printf("checksum:%d checksumFrame:%d\n",checksum, *checksumFrame);
+    printf("checksum:%x checksumFrame:%x\n",checksum, *checksumFrame);
     if(checksum != *checksumFrame)
     {
-    	M1_LOG_WARN("checksum not match!");
+    	printf("checksum not match!");
     	return DEV_ERROR;
     }
 
@@ -77,12 +86,27 @@ static devErr ZHRead(void* pUser, void* pFrame, UINT16* pusLen)
 		printf("gwAddr:%d Fn:%d value:%d num:%d \n",\
 					  ZHUserData->header.gwAddr, ZHUserData->header.Fn,\
 					  ZHUserData->header.value, ZHUserData->header.num);
-		for(i = 0; i < num; i++)
-			printf("dAddr[%d]外机:%x 内机:%x 开关:%x 温度:%x 模式:%x 风速:%x 房间温度:%x 故障代码:%x\n",\
-			 i,ZHUserData->info[i].outAddr, ZHUserData->info[i].inAddr,ZHUserData->info[i].status,\
-			 ZHUserData->info[i].temperature,ZHUserData->info[i].mode,ZHUserData->info[i].speed,\
-			 ZHUserData->info[i].roomTemp,ZHUserData->info[i].errNum);
-
+		if(ZHUserData->header.value == 0x02)//多台设备的在线状态
+		{
+			for(i = 0; i < num; i++)
+				printf("dAddr[%d]外机:%x 内机:%x 在线状态:%x \n",\
+				 i,ZHUserData->info.infoOnline[i].outAddr, \
+				 ZHUserData->info.infoOnline[i].inAddr,\
+				 ZHUserData->info.infoOnline[i].Online);
+		}
+		else
+		{
+			for(i = 0; i < num; i++)
+				printf("dAddr[%d]外机:%x 内机:%x 开关:%x 温度:%x 模式:%x 风速:%x 房间温度:%x 故障代码:%x\n",\
+				 i,ZHUserData->info.infoStatus[i].outAddr, \
+				 ZHUserData->info.infoStatus[i].inAddr,\
+				 ZHUserData->info.infoStatus[i].status,\
+				 ZHUserData->info.infoStatus[i].temperature,\
+				 ZHUserData->info.infoStatus[i].mode,\
+				 ZHUserData->info.infoStatus[i].speed,\
+				 ZHUserData->info.infoStatus[i].roomTemp,\
+				 ZHUserData->info.infoStatus[i].errNum);
+		}
 		printf("pusLen:%d\n",*pusLen);		
 	}
 
@@ -96,10 +120,7 @@ static devErr ZHWrite(void* pUser, void* pFrame, UINT16* pusLen)
 	ZHuTxData_t* ZHUserData  = (ZHuTxData_t*)pUser;
 	ZHfTxData_t* ZHFrameData = (ZHfTxData_t*)pFrame;
 	UINT8* checksum          = (UINT8*)&pFrame[*pusLen];
-	printf("pusLen:%x\n",*pusLen);
-	printf("gwAddr:%d Fn:%d value:%d num:%d \n",\
-					  ZHUserData->header.gwAddr, ZHUserData->header.Fn, \
-					  ZHUserData->header.value, ZHUserData->header.num);
+
 	{
 		/*header部分*/
 		ZHFrameData->header.gwAddr = ZHUserData->header.gwAddr;
