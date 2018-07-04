@@ -9,10 +9,26 @@
 #define ZH_PKG_ONLINE_LEN      7
 
 /**********从弱电集成控制器到网关*********/
-#define DEV_PARAM_TYPE_SWITCH   0x0001
-#define DEV_PARAM_TYPE_TEMP     0x0002
-#define DEV_PARAM_TYPE_MODE     0x0003
-#define DEV_PARAM_TYPE_SPEED    0x0004
+/*空调控制命令*/
+#define DEV_ZH_ON_OFF      0x31   //向下控制开关
+#define DEV_ZH_TEMP        0x32   //向下控制温度
+#define DEV_ZH_MODE        0x33   //向下控制模式
+#define DEV_ZH_SPEED       0x34   //向下空值风速
+#define DEV_ZH_STATUS      0x50   //向下查询空调状态
+/*空调控制值*/
+#define ZH_ON              0x01   //开机
+#define ZH_OFF             0x02   //关机
+#define ZH_TEMP_TH_BOTTOM  0x10   //温度下限16℃
+#define ZH_TEMP_TH_TOP     0x1E   //温度上限30℃
+#define ZH_MODE_COLD       0x01   //制冷
+#define ZH_MODE_WARM       0x08   //制热
+#define ZH_MODE_WIND       0x04   //送风
+#define ZH_MODE_AREFACTION 0x02   //除湿
+#define ZH_SPEED_HIGH      0x01   //高速
+#define ZH_SPEED_MID       0x02   //中速
+#define ZH_SPEED_LOW       0x04   //低速
+#define ZH_DEV_1_STATUS    0x01   //1台空调的状态值
+#define ZH_ALL_ON_OFF      0x02   //查询多台设备在线状态
 
 /*用户侧数据*/
 typedef struct{

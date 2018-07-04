@@ -15,6 +15,7 @@
 #include "sql_backup.h"
 #include "m1_common_log.h"
 #include "m1_device.h"
+#include "dev_common.h"
 
 /*Macro**********************************************************************************************************/
 #define SQL_HISTORY_DEL      1
@@ -141,48 +142,48 @@ void data_handle(m1_package_t* package)
     M1_LOG_DEBUG("pduType:%x\n",pduType);
 
     switch(pduType){
-        case TYPE_DEV_READ: APP_read_handle(pdu); break;
-        case TYPE_REQ_ADDED_INFO: APP_req_added_dev_info_handle(pdu); break;
-        case TYPE_DEV_NET_CONTROL: rc = APP_net_control(pdu); break;
-        case TYPE_REQ_AP_INFO: M1_report_ap_info(pdu); break;
-        case TYPE_REQ_DEV_INFO: M1_report_dev_info(pdu); break;
-        case TYPE_COMMON_RSP: common_rsp_handle(pdu);rc = M1_PROTOCOL_NO_RSP;break;
-        case TYPE_REQ_SCEN_INFO: rc = app_req_scenario(pdu);break;
-        case TYPE_REQ_LINK_INFO: rc = app_req_linkage(pdu);break;
-        case TYPE_REQ_DISTRICT_INFO: rc = app_req_district(pdu); break;
-        case TYPE_REQ_SCEN_NAME_INFO: rc = app_req_scenario_name(pdu);break;
-        case TYPE_REQ_ACCOUNT_INFO: rc = app_req_account_info_handle(pdu);break;
-        case TYPE_REQ_ACCOUNT_CONFIG_INFO: rc = app_req_account_config_handle(pdu);break;
-        case TYPE_GET_PORJECT_NUMBER: rc = app_get_project_info(pdu); break;
-        case TYPE_REQ_DIS_SCEN_NAME: rc = app_req_dis_scen_name(pdu); break;
-        case TYPE_REQ_DIS_NAME: rc = app_req_dis_name(pdu); break;
-        case TYPE_REQ_DIS_DEV: rc = app_req_dis_dev(pdu); break;
-        case TYPE_GET_PROJECT_INFO: rc = app_get_project_config(pdu);break;
-        case TYPE_APP_CONFIRM_PROJECT: rc = app_confirm_project(pdu);break;
-        case TYPE_APP_EXEC_SCEN: rc = app_exec_scenario(pdu);break;
-        case TYPE_DEBUG_INFO: debug_switch(pduDataJson->valuestring);break;
+        case TYPE_DEV_READ:                 APP_read_handle(pdu); break;
+        case TYPE_REQ_ADDED_INFO:           APP_req_added_dev_info_handle(pdu); break;
+        case TYPE_DEV_NET_CONTROL:          rc = APP_net_control(pdu); break;
+        case TYPE_REQ_AP_INFO:              M1_report_ap_info(pdu); break;
+        case TYPE_REQ_DEV_INFO:             M1_report_dev_info(pdu); break;
+        case TYPE_COMMON_RSP:               common_rsp_handle(pdu);rc = M1_PROTOCOL_NO_RSP;break;
+        case TYPE_REQ_SCEN_INFO:            rc = app_req_scenario(pdu);break;
+        case TYPE_REQ_LINK_INFO:            rc = app_req_linkage(pdu);break;
+        case TYPE_REQ_DISTRICT_INFO:        rc = app_req_district(pdu); break;
+        case TYPE_REQ_SCEN_NAME_INFO:       rc = app_req_scenario_name(pdu);break;
+        case TYPE_REQ_ACCOUNT_INFO:         rc = app_req_account_info_handle(pdu);break;
+        case TYPE_REQ_ACCOUNT_CONFIG_INFO:  rc = app_req_account_config_handle(pdu);break;
+        case TYPE_GET_PORJECT_NUMBER:       rc = app_get_project_info(pdu); break;
+        case TYPE_REQ_DIS_SCEN_NAME:        rc = app_req_dis_scen_name(pdu); break;
+        case TYPE_REQ_DIS_NAME:             rc = app_req_dis_name(pdu); break;
+        case TYPE_REQ_DIS_DEV:              rc = app_req_dis_dev(pdu); break;
+        case TYPE_GET_PROJECT_INFO:         rc = app_get_project_config(pdu);break;
+        case TYPE_APP_CONFIRM_PROJECT:      rc = app_confirm_project(pdu);break;
+        case TYPE_APP_EXEC_SCEN:            rc = app_exec_scenario(pdu);break;
+        case TYPE_DEBUG_INFO:               debug_switch(pduDataJson->valuestring);break;
         /*write*/
-        case TYPE_REPORT_DATA: rc = AP_report_data_handle(pdu); break;
-        case TYPE_DEV_WRITE: rc = M1_write_to_AP(rootJson, db);/*APP_write_handle(pdu);*/break;
-        case TYPE_ECHO_DEV_INFO: rc = APP_echo_dev_info_handle(pdu); break;
-        case TYPE_AP_REPORT_DEV_INFO: rc = AP_report_dev_handle(pdu); break;
-        case TYPE_AP_REPORT_AP_INFO: rc = AP_report_ap_handle(pdu); break;
-        case TYPE_CREATE_LINKAGE: rc = linkage_msg_handle(pdu);break;
-        case TYPE_CREATE_SCENARIO: rc = scenario_create_handle(pdu);break;
-        case TYPE_CREATE_DISTRICT: rc = district_create_handle(pdu);break;
-        case TYPE_SCENARIO_ALARM: rc = scenario_alarm_create_handle(pdu);break;
-        case TYPE_COMMON_OPERATE: rc = common_operate(pdu);break;
-        case TYPE_AP_HEARTBEAT_INFO: rc = ap_heartbeat_handle(pdu);break;
-        case TYPE_LINK_ENABLE_SET: rc = app_linkage_enable(pdu);break;
-        case TYPE_APP_LOGIN: rc = user_login_handle(pdu);break;
+        case TYPE_REPORT_DATA:              rc = AP_report_data_handle(pdu); break;
+        case TYPE_DEV_WRITE:                rc = M1_write_to_AP(rootJson, db);/*APP_write_handle(pdu);*/break;
+        case TYPE_ECHO_DEV_INFO:            rc = APP_echo_dev_info_handle(pdu); break;
+        case TYPE_AP_REPORT_DEV_INFO:       rc = AP_report_dev_handle(pdu); break;
+        case TYPE_AP_REPORT_AP_INFO:        rc = AP_report_ap_handle(pdu); break;
+        case TYPE_CREATE_LINKAGE:           rc = linkage_msg_handle(pdu);break;
+        case TYPE_CREATE_SCENARIO:          rc = scenario_create_handle(pdu);break;
+        case TYPE_CREATE_DISTRICT:          rc = district_create_handle(pdu);break;
+        case TYPE_SCENARIO_ALARM:           rc = scenario_alarm_create_handle(pdu);break;
+        case TYPE_COMMON_OPERATE:           rc = common_operate(pdu);break;
+        case TYPE_AP_HEARTBEAT_INFO:        rc = ap_heartbeat_handle(pdu);break;
+        case TYPE_LINK_ENABLE_SET:          rc = app_linkage_enable(pdu);break;
+        case TYPE_APP_LOGIN:                rc = user_login_handle(pdu);break;
         case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
-        case TYPE_APP_CREATE_PROJECT: rc = app_create_project(pdu);break;
-        case TYPE_PROJECT_KEY_CHANGE: rc = app_change_project_key(pdu);break;
-        case TYPE_PROJECT_INFO_CHANGE:rc = app_change_project_config(pdu);break;
-        case TYPE_APP_CHANGE_DEV_NAME: rc = app_change_device_name(pdu);break;
-        case TYPE_APP_USER_KEY_CHANGE: rc = app_change_user_key(pdu);break;
+        case TYPE_APP_CREATE_PROJECT:       rc = app_create_project(pdu);break;
+        case TYPE_PROJECT_KEY_CHANGE:       rc = app_change_project_key(pdu);break;
+        case TYPE_PROJECT_INFO_CHANGE:      rc = app_change_project_config(pdu);break;
+        case TYPE_APP_CHANGE_DEV_NAME:      rc = app_change_device_name(pdu);break;
+        case TYPE_APP_USER_KEY_CHANGE:      rc = app_change_user_key(pdu);break;
         case TYPE_APP_DOWNLOAD_TESTING_INFO: rc = app_download_testing_to_ap(rootJson,db); break;
-        case TYPE_AP_UPLOAD_TESTING_INFO: rc = ap_upload_testing_to_app(rootJson,db);break;
+        case TYPE_AP_UPLOAD_TESTING_INFO:    rc = ap_upload_testing_to_app(rootJson,db);break;
 
         default: M1_LOG_ERROR("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -195,6 +196,8 @@ void data_handle(m1_package_t* package)
         common_rsp(rspData);
     }
     check_offline_dev(db);
+    /*485设备操作*/
+    app_conditioner_db_handle();
 
     sql_close();
 
@@ -1048,6 +1051,7 @@ static int APP_read_handle(payload_t data)
     sqlite3* db              = NULL;
     sqlite3_stmt* stmt       = NULL;
     sqlite3_stmt* stmt_1     = NULL;
+    dev485Opt_t dev485cmd;    
 
     M1_LOG_DEBUG("APP_read_handle\n");
     if(data.pdu == NULL){
@@ -1135,6 +1139,13 @@ static int APP_read_handle(payload_t data)
         paramTypeJson = cJSON_GetObjectItem(devDataJson, "paramType");
         number2 = cJSON_GetArraySize(paramTypeJson);
         M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
+
+        /*485设备参数读取*/
+        {     
+            dev485cmd.devId   = dev_id;
+            dev485cmd.cmdType = DEV_READ_STATUS;
+            dev_485_operate(dev485cmd);
+        }
 
         {
             devDataObject = cJSON_CreateObject();
@@ -1269,19 +1280,20 @@ static int APP_read_handle(payload_t data)
 static int M1_write_to_AP(cJSON* data, sqlite3* db)
 {
     M1_LOG_DEBUG("M1_write_to_AP\n");
-    int sn               = 2;
-    int clientFd         = 0;
-    int rc               = 0;
-    int ret              = M1_PROTOCOL_OK;
+    int sn                = 2;
+    int clientFd          = 0;
+    int rc                = 0;
+    int ret               = M1_PROTOCOL_OK;
     /*sql*/
-    char *sql            = NULL;
-    sqlite3_stmt *stmt   = NULL;
+    char *sql             = NULL;
+    sqlite3_stmt *stmt    = NULL;
     /*Json*/
-    cJSON* snJson        = NULL;
-    cJSON* pduJson       = NULL;
-    cJSON* devDataJson   = NULL;
-    cJSON* dataArrayJson = NULL;
-    cJSON* devIdJson     = NULL;
+    cJSON* snJson         = NULL;
+    cJSON* pduJson        = NULL;
+    cJSON* devDataJson    = NULL;
+    cJSON* dataArrayJson  = NULL;
+    cJSON* devIdJson      = NULL;
+    dev485Opt_t dev485cmd;
     
     if(data == NULL){
         M1_LOG_ERROR("data NULL");
@@ -1303,10 +1315,16 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     dataArrayJson = cJSON_GetArrayItem(devDataJson, 0);
     devIdJson     = cJSON_GetObjectItem(dataArrayJson, "devId");
     M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
-
-    // sql = "select CLIENT_FD from conn_info where AP_ID in \
-    //       (select AP_ID from all_dev where DEV_ID = ? order by ID desc limit 1) \
-    //       order by ID desc limit 1;";
+    /*485写入检查*/
+    {
+        dev485cmd.devId     = devIdJson->valuestring;
+        dev485cmd.cmdType   = DEV_WRITE;
+        dev485cmd.paramJson = dataArrayJson;
+        rc = dev_485_operate(dev485cmd);
+        if(rc == M1_PROTOCOL_OK)
+            return;
+    }
+    
     sql = "select a.CLIENT_FD from conn_info as a, all_dev as b where a.AP_ID = b.AP_ID and b.DEV_ID = ? limit 1;";
     M1_LOG_DEBUG("%s\n", sql);
     rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
@@ -1850,6 +1868,7 @@ static int APP_net_control(payload_t data)
     cJSON *apIdJson      = NULL;
     cJSON *valueJson     = NULL;
     cJSON *pduJsonObject = NULL;
+    dev485Opt_t dev485cmd;
 
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -1874,6 +1893,14 @@ static int APP_net_control(payload_t data)
     }
     M1_LOG_DEBUG("value:%d\n",valueJson->valueint);  
 
+    /*搜索485空调设备在线状态*/
+    {
+        dev485cmd.devId   = apIdJson->valuestring;
+        dev485cmd.cmdType = DEV_READ_ONLINE;
+        rc = dev_485_operate(dev485cmd);
+        if(rc == M1_PROTOCOL_OK)
+            return;
+    }
     sql = "select CLIENT_FD from conn_info where AP_ID = ?;";
     M1_LOG_DEBUG("sql:%s\n",sql);
     rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
@@ -2090,6 +2117,7 @@ static int M1_report_dev_info(payload_t data)
 
     db = data.db;
     apId = data.pdu->valuestring;
+
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {

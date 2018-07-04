@@ -49,6 +49,7 @@
 #include "m1_protocol.h"
 #include "socket_server.h"
 #include "m1_common_log.h"
+#include "dev_common.h"
 #include "interface_srpcserver.h"
 
 #define MAX_DB_FILENAMR_LEN 255
@@ -61,12 +62,12 @@ pthread_mutex_t mutex_lock_sock;
 /*静态局部函数****************************************************************************************/
 static void socket_poll(void);
 
-#if 0
+#if 1
 int main(int argc, char* argv[])
 {
 	M1_LOG_INFO("%s -- %s %s\n", argv[0], __DATE__, __TIME__);
 	int retval = 0;
-	pthread_t t1,t2,t3,t4,t5;
+	pthread_t t1,t2,t3,t4,t5,t6;
 
 	M1_LOG_ERROR("error log testing!!!");
 	SRPC_Init();
@@ -74,6 +75,8 @@ int main(int argc, char* argv[])
 	tcp_client_connect();
 #endif
 	m1_protocol_init();
+	/*485设备、数据库初始化*/
+	dev485Init();
 
 	pthread_mutex_init(&mutex_lock, NULL);
 	pthread_mutex_init(&mutex_lock_sock, NULL);
@@ -84,6 +87,7 @@ int main(int argc, char* argv[])
 #if TCP_CLIENT_ENABLE
 	pthread_create(&t5,NULL,socket_client_poll,NULL);
 #endif
+	//pthread_create(&t6,NULL,dev_485_thread,NULL);
 
 	pthread_join(t1,NULL);
 	pthread_join(t2,NULL);
@@ -92,6 +96,7 @@ int main(int argc, char* argv[])
 #if TCP_CLIENT_ENABLE
 	pthread_join(t5, NULL);
 #endif
+	//pthread_join(t6, NULL);
 	
 	pthread_mutex_destroy(&mutex_lock);
 	pthread_mutex_destroy(&mutex_lock_sock);

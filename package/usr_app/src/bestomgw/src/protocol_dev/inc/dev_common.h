@@ -2,6 +2,8 @@
 #define _DEV_COMMON_H_
 #include "utils.h"
 #include "dev_zh.h"
+#include "cJSON.h"
+
 /*返回状态*/
 typedef enum{
 	DEV_OK         = 0,
@@ -82,6 +84,35 @@ typedef struct _comPNode
  UINT8* item;
  struct _comPNode *next;
 }comPNode, *comPQueue;
+
+
+/*对上层数据类型与接口*/
+/*设备命令类型*/
+typedef enum{
+ DEV_READ_ONLINE        = 0x01,
+ DEV_READ_STATUS        = 0x02,
+ DEV_WRITE              = 0x03,
+ DEV_TYPE_MAX
+}devCmdType_t;
+
+typedef struct{
+	char*        devId;
+	cJSON*       paramJson;
+	devCmdType_t cmdType;
+}dev485Opt_t;
+
+typedef struct{
+	cJSON*  paramJson;
+	UINT8   Fn;
+	UINT8   value; 
+}dev485WriteParam_t;
+
+/*485线程*/
+void dev_485_thread(void);
+devErr dev485Init(void);
+/*读取485空调设备参数状态*/
+int dev_485_operate(dev485Opt_t cmd);
+
 
 void Init_comPQueue(comPQueue pQueue);
 void comPush(comPQueue pQueue, uint8* item);

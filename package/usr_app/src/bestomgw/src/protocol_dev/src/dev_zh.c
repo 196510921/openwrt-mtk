@@ -14,7 +14,7 @@ devFunc func_dev_ZH = {
 
 static devErr ZHInit(void* pUser, void* pFrame, UINT16* pusLen)
 {
-
+	
 }
 
 static devErr ZHRead(void* pUser, void* pFrame, UINT16* pusLen)

@@ -147,5 +147,7 @@ int  ConfigGetKey(void *CFG_file, void *section, void *key, void *buf);
 //checksum
 uint8 app_checksum(uint8* d, uint16 len);
 
+char a2x(char ch);
+
 
 #endif //_UTILS_H_
