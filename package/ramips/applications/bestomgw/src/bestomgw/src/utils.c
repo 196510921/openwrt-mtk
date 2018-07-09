@@ -32,21 +32,11 @@ static uint32 hex2int(uint8 *data, uint32 dlen)
 	return value;
 }
 
-
-
-
-
-
-
-
-
 static void send_data_to_client(unsigned char *data, int dlen)
 {
 	int i;
 
 }
-
-
 
 #if 1
 void prt_debug(char *declare, unsigned char *data, unsigned int dlen)
@@ -360,16 +350,6 @@ unsigned int GetTimeStampByStr( const char* pDate )
  
 } 
 
-
-
-
-
-
-
-
-
-
-
 //十六进制字符串转换为字节流  
 void HexStrToByte(const char* source, unsigned char* dest, int sourceLen)
 {  
@@ -653,12 +633,12 @@ void WriteLog(char *filname, char *str)
 {
 	char buf[512];
 
-	time_t timep; 
+	//time_t timep; 
 	FILE *fp = NULL;
-	struct tm *p; 
+	//struct tm *p; 
  
-	time(&timep); 
-	p = localtime(&timep); 
+	//time(&timep); 
+	//p = localtime(&timep); 
 	memset(buf,0,sizeof(buf));
 	#if 0  //PRINT_DEBUG
 		sprintf(buf,"%d-%d-%d %d:%d:%d : ",(1900+p->tm_year),(1+p->tm_mon),\
@@ -956,7 +936,68 @@ char *random_uuid( char buf[37] )
 }
 
 
+uint8 app_checksum(uint8* d, uint16 len)
+{
+  uint16 i       = 0;
+  uint8 checksum = 0;
 
+  printf("data: ");
+  for(i = 0; i < len; i++)
+  {
+    printf("%x ",d[i]);
+    checksum += d[i];   
+  }
+  printf("\n");
+  printf("checksum value:%x\n", checksum);
+  return checksum;
+}
+
+char a2x(char ch)
+{
+    switch(ch)
+    {
+    case '1':
+        return 1;
+    case '2':
+        return 2;
+    case '3':
+        return 3;
+    case '4':
+        return 4;
+    case '5':
+        return 5;
+    case '6':
+        return 6;
+    case '7':
+        return 7;
+    case '8':
+        return 8;
+    case '9':
+        return 9;
+    case 'A':
+    case 'a':
+        return 10;
+    case 'B':
+    case 'b':
+        return 11;
+    case 'C':
+    case 'c':
+        return 12;
+    case 'D':
+    case 'd':
+        return 13;
+    case 'E':
+    case 'e':
+        return 14;
+    case 'F':
+    case 'f':
+        return 15;
+    default:
+        break;;
+    }
+ 
+    return 0;
+}
 
 
 

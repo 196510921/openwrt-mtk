@@ -96,7 +96,7 @@ int stack_push(stack_mem_t* d, char* data, uint16_t len, uint16_t distance)
 	int exp_count = 0;
 	int remain_count = 0;
 
-	M1_LOG_INFO( "push begin: d->unitCount:%d\n", d->unitCount);
+	//M1_LOG_INFO( "push begin: d->unitCount:%d\n", d->unitCount);
 	if(NULL == d){
 		M1_LOG_ERROR("NULL == d\n");
 		ret = BUF_MANAGE_FAILED;
@@ -153,7 +153,7 @@ int stack_push(stack_mem_t* d, char* data, uint16_t len, uint16_t distance)
 	}
 
 	Finish:
-	M1_LOG_INFO( "push end: d->unitCount:%d\n", d->unitCount);
+	//M1_LOG_INFO( "push end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
 
@@ -175,10 +175,10 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	}
 
 	count = (len / STACK_UNIT);
-	printf("count:%d\n",count);
+	M1_LOG_DEBUG("count:%d\n",count);
 	for(i = 0; i < count; i++)
 	{
-		printf("POP :d->unitCount:%d\n",d->unitCount);
+		M1_LOG_DEBUG("POP :d->unitCount:%d\n",d->unitCount);
 		if(d->unitCount == 0){
 			ret = BUF_MANAGE_FAILED;
 			goto Finish;
@@ -193,7 +193,7 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	}
 
 	count = len % STACK_UNIT;
-	printf("count:%d\n",count);
+	M1_LOG_DEBUG("count:%d\n",count);
 	for(j = 0; j < count; j++)
 	{
 		if(d->rPtr >= d->end)
@@ -209,7 +209,7 @@ int stack_pop(stack_mem_t* d, char* data, int len)
 	if(ret != BUF_MANAGE_SUCCESS)
 		d->unitCount = d->unitCount + i + j;
 	else
-		printf("d->rPtr:%05d\n",d->rPtr);
+		M1_LOG_DEBUG("d->rPtr:%05d\n",d->rPtr);
 	//M1_LOG_INFO( "pop end: d->unitCount:%d\n", d->unitCount);
 	return ret;
 }
@@ -225,7 +225,7 @@ char* mem_poll_malloc(uint32_t len)
 	}else{
 			wptr += len;
 	}
-	printf("wptr:%05d\n",wptr);
+	M1_LOG_DEBUG("wptr:%05d\n",wptr);
 	return wptr;
 }
 

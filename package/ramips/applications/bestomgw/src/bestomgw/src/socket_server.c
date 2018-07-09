@@ -479,7 +479,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	memcpy(send_buf, &header, 2);
 	memcpy((send_buf+2), &msg_len, 2);
 	memcpy((send_buf+4), buf, len);
-	
+
 	ptr = send_buf;
 	bytes_left = len + 4;
 	while(bytes_left > 0){

@@ -95,10 +95,13 @@ void delay_send(cJSON* d, int delay, int clientFd);
 /*数据库*/
 int sql_open(void);
 int sql_close(void);
-int thread_sqlite3_step(sqlite3_stmt** stmt, sqlite3* db);
+int sql_commit(sqlite3* db);
 /*用户信息*/
+void delete_client_db(void);
 char* get_account_info(user_account_t data);
 void delete_account_conn_info(int clientFd);
+/*error handle*/
+void m1_error_handle(void);
 /*Download*********************************************************************/
 /*APP request AP information*/
 #define TYPE_REQ_AP_INFO                         0x0003
@@ -224,6 +227,35 @@ void delete_account_conn_info(int clientFd);
 #define TYPE_COMMON_RSP							 0x8004
 /*debug*/
 #define TYPE_DEBUG_INFO                          0x5555
+
+/*******************************************自定义参数表相关定义***************************************************/
+#define DEV_ONLINE                               0x4014   //设备在线状态
+#define DEV_ON_OFF                               0x200D   //设备开/关
+/*在线离线值*/
+#define ONLINE_OFF                               0x00     //在线
+#define ONLINE_ON                                0x01     //离线
+/*开关值*/
+#define ON_OFF_OFF                               0x00     //开
+#define ON_OFF_ON                                0x01     //关
+#define ON_OFF_RETURN                            0x02     //翻转
+/*空调执行器S10*/
+#define DEV_POWER_EXEC_S10                       0xA0C0   //(常供电、执行类)空调执行器S10
+#define DEV_CONDITIONER_MODE                     0x801B   //空调模式(制冷、制暖、通风、切换)
+#define DEV_CONDITIONER_SPEED_1                  0x801C   //风速档类型1(低、中、高)
+#define DEV_CONDITIONER_SPEED_2                  0x801E   //风速档类型2(无极变速)
+#define DEV_CONDITIONER_SPEED_3                  0x801D   //风速档类型3(风速值、风速+、风速-)
+#define DEV_CONDITIONER_TEMP                     0x8023   //温度(温度值、温度+、温度-)
+/*空调执行器S10参数值*/
+#define CONDITIONER_MODE_COLD                    0x00     //制冷
+#define CONDITIONER_MODE_WARM                    0x01     //制暖
+#define CONDITIONER_MODE_WIND                    0x02     //通风
+#define CONDITIONER_MODE_RETURN                  0x03     //切换
+#define CONDITIONER_MODE_AREFACTION              0x04     //除湿
+#define CONDITIONER_SPEED_LOW                    0x00     //低
+#define CONDITIONER_SPEED_MID                    0x01     //中
+#define CONDITIONER_SPEED_HIGH                   0x02     //高
+#define CONDITIONER_SPEED_RETURN                 0x03     //切换
+
 
 
 /*self define*/
