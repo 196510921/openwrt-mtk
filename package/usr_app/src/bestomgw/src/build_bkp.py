@@ -41,36 +41,36 @@ cmd4 = '../../'
 print cmd4
 os.chdir(cmd4)
 
-cmd5 = 'cp -r dalitek/ ~/share/openwrt_m1/package/ralink/applications/bestomgw/src/'
+cmd5 = 'cp -r dalitek/ ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
 print cmd5
 os.system(cmd5)
 
-cmd5_1 = 'cp -r bestomgw/ ~/share/openwrt_m1/package/ralink/applications/bestomgw/src/'
+cmd5_1 = 'cp -r bestomgw/ ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
 print cmd5_1
 os.system(cmd5_1)
 
-cmd5_2 = 'cp Makefile ~/share/openwrt_m1/package/ralink/applications/bestomgw/src/'
+cmd5_2 = 'cp Makefile ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
 print cmd5_2
 os.system(cmd5_2)
 
 
-cmd5_5 = 'cp -r tcp_client/ ~/share/openwrt_m1/package/ralink/applications/bestomgw/src/'
+cmd5_5 = 'cp -r tcp_client/ ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
 print cmd5_5
 os.system(cmd5_5)
 
-cmd5_6 = 'cp -r uart/ ~/share/openwrt_m1/package/ralink/applications/bestomgw/src/'
+cmd5_6 = 'cp -r uart/ ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
 print cmd5_6
 os.system(cmd5_6)
 
-cmd5_7 = 'cp -r protocol_dev/ ~/share/openwrt_m1/package/ralink/applications/bestomgw/src/'
+cmd5_7 = 'cp -r protocol_dev/ ~/share/openwrt-mtk/package/ramips/applications/bestomgw/src/'
 print cmd5_7
 os.system(cmd5_7)
 
-cmd6 = '/home/ubuntu/share/openwrt_m1'
+cmd6 = '../../../../../'
 print cmd6
 os.chdir(cmd6)
 
-cmd7 = 'make package/ralink/applications/bestomgw/compile V=s'
+cmd7 = 'make package/ramips/applications/bestomgw/compile V=s'
 print cmd7
 output = os.popen(cmd7)
 print output.read()
