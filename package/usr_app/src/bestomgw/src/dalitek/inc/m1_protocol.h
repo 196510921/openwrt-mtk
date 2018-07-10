@@ -100,6 +100,11 @@ int sql_commit(sqlite3* db);
 void delete_client_db(void);
 char* get_account_info(user_account_t data);
 void delete_account_conn_info(int clientFd);
+/*设备升级*/
+int m1_ap_update(cJSON* devData);
+int m1_ap_version_read(payload_t data);
+int ap_report_version_handle(payload_t data);
+int m1_update_check(void);
 /*error handle*/
 void m1_error_handle(void);
 /*Download*********************************************************************/
@@ -171,6 +176,10 @@ void m1_error_handle(void);
 #define TYPE_APP_DOWNLOAD_TESTING_INFO           0x0026
 /*网络参数设置*/
 #define TYPE_NET_PARAM_CONFIG                    0x0027
+/*device update*/
+#define TYPE_DEV_UPDATE_CONFIG                   0x0029
+/*device version read*/
+#define TYPE_DEV_VERSION_READ_CONFIG             0x0030
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
@@ -211,6 +220,8 @@ void m1_error_handle(void);
 #define TYPE_M1_REPORT_DIS_DEV	       	 		 0x1013
 /*AP上传设备测试信息*/
 #define TYPE_AP_UPLOAD_TESTING_INFO	       	     0x1014
+/*AP与M1上报应用程序版本信息*/
+#define TYPE_REPORT_VERSION_INFO	       	     0x1015
 
 /*write added device information */
 #define TYPE_ECHO_DEV_INFO                       0x4005

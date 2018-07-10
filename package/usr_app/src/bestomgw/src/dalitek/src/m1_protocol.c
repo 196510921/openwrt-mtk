@@ -162,6 +162,7 @@ void data_handle(m1_package_t* package)
         case TYPE_APP_CONFIRM_PROJECT:      rc = app_confirm_project(pdu);break;
         case TYPE_APP_EXEC_SCEN:            rc = app_exec_scenario(pdu);break;
         case TYPE_DEBUG_INFO:               debug_switch(pduDataJson->valuestring);break;
+        case TYPE_DEV_VERSION_READ_CONFIG:  m1_ap_version_read(pdu);rc = M1_PROTOCOL_NO_RSP;break;
         /*write*/
         case TYPE_REPORT_DATA:              rc = AP_report_data_handle(pdu); break;
         case TYPE_DEV_WRITE:                rc = M1_write_to_AP(rootJson, db);/*APP_write_handle(pdu);*/break;
@@ -184,6 +185,8 @@ void data_handle(m1_package_t* package)
         case TYPE_APP_USER_KEY_CHANGE:      rc = app_change_user_key(pdu);break;
         case TYPE_APP_DOWNLOAD_TESTING_INFO: rc = app_download_testing_to_ap(rootJson,db); break;
         case TYPE_AP_UPLOAD_TESTING_INFO:    rc = ap_upload_testing_to_app(rootJson,db);break;
+        case TYPE_DEV_UPDATE_CONFIG:         rc = m1_ap_update(rootJson);break;
+        case TYPE_REPORT_VERSION_INFO:       rc = ap_report_version_handle(pdu);break;
 
         default: M1_LOG_ERROR("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -200,6 +203,8 @@ void data_handle(m1_package_t* package)
     app_conditioner_db_handle();
 
     sql_close();
+    /*检查是否要更新应用程序*/
+    m1_update_check();
 
     Finish:
     cJSON_Delete(rootJson);
@@ -3649,6 +3654,22 @@ static int create_sql_table(void)
     //     M1_LOG_WARN("CREATE UNIQUE INDEX paramDetail: %s\n",errmsg);
     // }
     
+    /*version_table*/
+    sql = "CREATE TABLE version_table (                        \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                DEV_ID    TEXT,                                \
+                VERSION   TEXT,                                \
+                TIME      TIME    NOT NULL                     \
+                                  DEFAULT CURRENT_TIMESTAMP    \
+            );";
+    M1_LOG_DEBUG("%s:\n",sql);        
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+    if(rc != SQLITE_OK)
+    {
+        sqlite3_free(errmsg);
+        M1_LOG_WARN("param_detail_table already exit: %s\n",errmsg);
+    }
+
     /*插入Dalitek账户*/
     sql = "delete from account_table where ACCOUNT = \"Dalitek\";";
     rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);

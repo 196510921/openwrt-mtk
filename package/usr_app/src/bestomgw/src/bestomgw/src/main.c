@@ -159,8 +159,9 @@ static void socket_poll(void)
 extern void uart_485_test(void);
 int main(int argc, char* arg)
 {
-	//uart_485_test();
-	dev_common_testing();
+	uart_485_test();
+	//dev_common_testing();
+	//test_http_client();
 	return 0;
 }
 #endif

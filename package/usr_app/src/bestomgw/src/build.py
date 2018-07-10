@@ -36,6 +36,12 @@ cmd3_3 = 'rm *.o'
 print cmd3_3
 os.system(cmd3_3)
 
+cmd2_4 = '../../http_client/src'
+print cmd2_4
+os.chdir(cmd2_4)
+cmd3_4 = 'rm *.o'
+print cmd3_4
+os.system(cmd3_4)
 
 cmd4 = '../../'
 print cmd4
@@ -63,6 +69,10 @@ print cmd5_6
 os.system(cmd5_6)
 
 cmd5_7 = 'cp -r protocol_dev/ ~/share/openwrt_m1/package/ralink/applications/bestomgw/src/'
+print cmd5_7
+os.system(cmd5_7)
+
+cmd5_7 = 'cp -r http_client/ ~/share/openwrt_m1/package/ralink/applications/bestomgw/src/'
 print cmd5_7
 os.system(cmd5_7)
 

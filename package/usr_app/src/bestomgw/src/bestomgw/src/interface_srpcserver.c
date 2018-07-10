@@ -406,6 +406,32 @@ int client_write(stack_mem_t* d, char* data, int len)
 	uint16_t header = 0;
 	uint16_t distance = 0;
 
+	while(len > 0)
+	{
+		header = *(uint16_t*)data;
+		header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
+		if(header == MSG_HEADER)
+		{
+			distance = (*(uint16_t*)(data + BLOCK_LEN_OFFSET)) & 0xFFFF;
+			distance = (((distance << 8) & 0xff00) | ((distance >> 8) & 0xff)) & 0xffff;
+		}
+		else
+		{
+			//distance = 0;
+			return -1;
+		}
+
+		M1_LOG_DEBUG("len:%05d, distance:%05d\n",distance + 4, distance);
+		rc = stack_push(d, data, distance + 4 ,distance);
+		if(rc != TCP_SERVER_SUCCESS)
+			M1_LOG_WARN( "client write failed\n");	
+	
+		data = data + distance + 4;
+		len = len - distance - 4;	
+	}
+	
+
+#if 0
 	header = *(uint16_t*)data;
 	header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
 	if(header == MSG_HEADER){
@@ -417,7 +443,7 @@ int client_write(stack_mem_t* d, char* data, int len)
 	rc = stack_push(d, data, len ,distance);
 	if(rc != TCP_SERVER_SUCCESS)
 		M1_LOG_WARN( "client write failed\n");
-	
+#endif	
 	M1_LOG_DEBUG("write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	//pthread_mutex_unlock(&mutex_lock_sock);
 	return rc;

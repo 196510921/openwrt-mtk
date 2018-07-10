@@ -999,5 +999,37 @@ char a2x(char ch)
     return 0;
 }
 
+#if 0
+int curl_app_md5_sum(const char *file,unsigned char *out_md5)
+{
+  int i;
+  unsigned char md5[16];
+  unsigned char ptr[33]={'\0'};
+  unsigned char tmp[3]={0};
+  FILE *f;
+    int len;
+    char *data;
+    f=fopen(file,"r");
+    if(!f) {
+        return -1;
+    }
+    fseek(f,0,SEEK_END);
+    len=ftell(f);
+    fseek(f,0,SEEK_SET);
+    data=(char*)malloc(len+1);
+    fread(data,1,len,f);
+    fclose(f);
+    data[len]='\0';
+  
+  mbedtls_md5(data,len,md5);
+  free(data);
+    for(i=0;i<16;i++){
+        sprintf(tmp,"%02x",md5[i]);
+        strncat(ptr,tmp,2);
+    }
+  strncpy(out_md5,ptr,33);
+  return 0;
+}
+#endif
 
 
