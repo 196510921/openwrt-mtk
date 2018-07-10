@@ -5,7 +5,7 @@
 
 extern sqlite3* db;
 static int m1_update_flag = 0;
-const char* m1Version = "V1.10.15";
+const char* m1Version = "V1.10.16";
 const char* url = "http://www.dalitek.top:18010/io/file/io/dom100_update.tar.gz";
 const char* savefile = "dom100_update.tar.gz";
 
