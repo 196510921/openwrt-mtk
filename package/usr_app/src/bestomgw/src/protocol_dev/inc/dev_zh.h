@@ -6,7 +6,7 @@
 #define ZH_DEV_ADDR_LEN        2
 #define ZH_CHECKSUM_LEN        1
 #define ZH_DEV_INFO_LEN        10
-#define ZH_PKG_ONLINE_LEN      7
+#define ZH_PKG_ONLINE_LEN      6
 
 /**********从弱电集成控制器到网关*********/
 /*空调控制命令*/

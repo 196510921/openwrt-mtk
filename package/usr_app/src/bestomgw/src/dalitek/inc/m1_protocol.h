@@ -246,8 +246,8 @@ void m1_error_handle(void);
 #define ONLINE_OFF                               0x00     //在线
 #define ONLINE_ON                                0x01     //离线
 /*开关值*/
-#define ON_OFF_OFF                               0x00     //开
-#define ON_OFF_ON                                0x01     //关
+#define ON_OFF_OFF                               0x00     //关
+#define ON_OFF_ON                                0x01     //开
 #define ON_OFF_RETURN                            0x02     //翻转
 /*空调执行器S10*/
 #define DEV_POWER_EXEC_S10                       0xA0C0   //(常供电、执行类)空调执行器S10

@@ -2,7 +2,7 @@
 #include "dev_common.h"
 #include "m1_common_log.h"
 
-static devErr ZHInit(void* pUser, void* pFrame, UINT16* pusLen);
+static devErr ZHInit(char* uart, void* pFrame, UINT16* pusLen);
 static devErr ZHRead(void* pUser, void* pFrame, UINT16* pusLen);
 static devErr ZHWrite(void* pUser, void* pFrame, UINT16* pusLen); 
 
@@ -12,7 +12,7 @@ devFunc func_dev_ZH = {
 	ZHWrite  
 };
 
-static devErr ZHInit(void* pUser, void* pFrame, UINT16* pusLen)
+static devErr ZHInit(char* uart, void* pFrame, UINT16* pusLen)
 {
 	
 }

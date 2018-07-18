@@ -4,6 +4,8 @@
 #include "dev_zh.h"
 #include "cJSON.h"
 
+#define UART_DEV_NUM   1
+
 /*返回状态*/
 typedef enum{
 	DEV_OK         = 0,
@@ -32,7 +34,7 @@ typedef enum{
 }devId;
 /********************************设备控制接口********************************/
 typedef struct {
-	devErr (*devInit)(void* pUser, void* pFrame, UINT16* pusLen);        //设备初始化
+	devErr (*devInit)(char* uart, void* pFrame, UINT16* pusLen);        //设备初始化
 	devErr (*devRead)(void* pUser, void* pFrame, UINT16* pusLen);        //设备读取
 	devErr (*devWrite)(void* pUser, void* pFrame, UINT16* pusLen);       //设备写入
 }devFunc;

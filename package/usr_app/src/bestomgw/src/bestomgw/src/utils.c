@@ -999,6 +999,25 @@ char a2x(char ch)
     return 0;
 }
 
+char x2a(char hex)
+{
+    if(hex >= 0 && hex < 0x0a)
+    {
+      return hex + '0';
+    }
+    else if(hex >= 0x0a && hex <= 0x0f )
+    {
+      return (hex - 0x0a + 'a');
+    }
+    else if(hex >= 0x0A && hex <= 0x0F )
+    {
+      return (hex - 0x0F + 'A');
+    }
+
+    return 0;
+}
+
+
 #if 0
 int curl_app_md5_sum(const char *file,unsigned char *out_md5)
 {

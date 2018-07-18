@@ -1,24 +1,16 @@
 #ifndef _UART_485_H_
 #define _UART_485_H_
-
-#define RALINK_GPIO(x)			    (1 << x)
-
-#define	RALINK_GPIO_READ		    0x02
-#define	RALINK_GPIO_WRITE		    0x03
-#define RALINK_GPIO_SET_DIR_IN      0x11
-#define RALINK_GPIO_SET_DIR_OUT		0x12
-
-#define RALINK_GPIO_DIR_IN		0
-#define RALINK_GPIO_DIR_OUT		1
-
-#define RALINK_GPIO6332_SET_DIR_OUT	0x14
-#define RALINK_GPIO9564_SET_DIR_OUT	0x16
-#define	RALINK_GPIO9564_WRITE		0x63
-#define	RALINK_GPIO6332_WRITE		0x53
-
-#define RALINK_GPIO_LED_SET		0x41
-
-#define TTYS2_485_ENABLE_PIN        0x0A   //GPIO_10
+#include "utils.h"
 
 
+typedef struct
+{
+	int uartFd;
+	UINT8* d;
+	int len;
+}uart_data_t;
+
+int uart_485_init(char* uart);
+int uart_write(uart_data_t data);
+int uart_read(uart_data_t* data);
 #endif //_UART_485_H_

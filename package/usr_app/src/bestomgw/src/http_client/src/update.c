@@ -21,7 +21,7 @@ static int my_progress_func(char *progress_data,
                      double ultotal,  
                      double ulnow)  
 {  
-  printf("%s %g / %g (%g %%)\n", progress_data, d, t, d*100.0/t);  
+  M1_LOG_DEBUG("%s %g / %g (%g %%)\n", progress_data, d, t, d*100.0/t);  
   return 0;  
 } 
 
@@ -64,10 +64,10 @@ static int m1_update_on(void)
 static int m1_update(void)
 {
 	if(curl_download_app(url, savefile, 0) < 0)
-		printf("http request file failed\n");
+		M1_LOG_WARN("http request file failed\n");
 
 	m1_update_flag_set(1);
-	printf("m1_update begin!");
+	M1_LOG_INFO("m1_update begin!");
 
 	return M1_PROTOCOL_OK;
 }
@@ -139,7 +139,7 @@ static int ap_update(char* devId, cJSON* devData)
 
 int m1_ap_update(cJSON* devData)
 {
-	printf("m1_ap_update\n");
+	M1_LOG_DEBUG("m1_ap_update\n");
     int clientFd       = 0;
     int ret            = M1_PROTOCOL_OK;
     const char* M1Id   = "DOA100";
@@ -210,7 +210,7 @@ static int ap_version_read(char* v, char* devId)
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-    printf("%s\n",sql);
+    M1_LOG_DEBUG("%s\n",sql);
     sqlite3_bind_text(stmt, 1, devId, -1, NULL);
     rc = sqlite3_step(stmt);   
     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
@@ -222,13 +222,13 @@ static int ap_version_read(char* v, char* devId)
     if(rc == SQLITE_ROW )
     {
     	version = sqlite3_column_text(stmt, 0);	
-    	printf("version:%s\n",version);
+    	M1_LOG_DEBUG("version:%s\n",version);
     	strcpy(v,version);
     }
     else
     {
     	ret = M1_PROTOCOL_FAILED;
-    	printf("ap version does not exsit!\n");
+    	M1_LOG_WARN("ap version does not exsit!\n");
     }
 
     Finish:
@@ -240,7 +240,7 @@ static int ap_version_read(char* v, char* devId)
 
 int m1_ap_version_read(payload_t data)
 {
-	printf("m1_ap_version_read\n");
+	M1_LOG_DEBUG("m1_ap_version_read\n");
 	int ret               = M1_PROTOCOL_OK;
     int pduType           = TYPE_REPORT_VERSION_INFO;
 	char* version         = (char*)malloc(30);
@@ -250,7 +250,7 @@ int m1_ap_version_read(payload_t data)
     cJSON * devDataObject = NULL;
 
 	devIdJson = cJSON_GetObjectItem(data.pdu,"devId");
-    printf("devId:%s\n",devIdJson->valuestring);
+    M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
 
     if(strcmp(devIdJson->valuestring, "DOA100") == 0 )
     {
@@ -260,7 +260,7 @@ int m1_ap_version_read(payload_t data)
     {
     	if(ap_version_read(version, devIdJson->valuestring) != M1_PROTOCOL_OK)
     	{
-    		printf("version get failed\n");
+    		M1_LOG_WARN("version get failed\n");
     		ret = M1_PROTOCOL_FAILED;
         	goto Finish;
     	}
@@ -326,7 +326,7 @@ int m1_ap_version_read(payload_t data)
 
 int ap_report_version_handle(payload_t data)
 {
-	printf("ap_report_version_handle\n");
+	M1_LOG_DEBUG("ap_report_version_handle\n");
 	int rc               = 0;
 	int ret              = M1_PROTOCOL_OK;
 	char*  version       = NULL;
@@ -340,17 +340,17 @@ int ap_report_version_handle(payload_t data)
 	sqlite3_stmt* stmt_2 = NULL;
 
 	devIdJson = cJSON_GetObjectItem(data.pdu,"devId");
-    printf("devId:%s\n",devIdJson->valuestring);
+    M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
     if(devIdJson == NULL)
     {
-    	printf("devIdJson NULL\n");
+    	M1_LOG_WARN("devIdJson NULL\n");
     	return M1_PROTOCOL_FAILED;
     }
     verJson = cJSON_GetObjectItem(data.pdu,"version");
-    printf("version:%s\n",verJson->valuestring);
+    M1_LOG_DEBUG("version:%s\n",verJson->valuestring);
     if(verJson == NULL)
     {
-    	printf("verJson NULL\n");
+    	M1_LOG_WARN("verJson NULL\n");
     	return M1_PROTOCOL_FAILED;
     }
     /*查询该版本是否存在*/
@@ -364,7 +364,7 @@ int ap_report_version_handle(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
-    printf("%s\n",sql);
+    M1_LOG_DEBUG("%s\n",sql);
     sqlite3_bind_text(stmt, 1, devIdJson->valuestring, -1, NULL);
     rc = sqlite3_step(stmt);   
     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
@@ -376,7 +376,7 @@ int ap_report_version_handle(payload_t data)
     if(rc == SQLITE_ROW )
     {
     	version = sqlite3_column_text(stmt, 0);	
-    	printf("version:%s\n",version);
+    	M1_LOG_DEBUG("version:%s\n",version);
     	if(strcmp(version, verJson->valuestring) != 0)
     	{
     		/*更新版本*/
@@ -390,7 +390,7 @@ int ap_report_version_handle(payload_t data)
     		    ret = M1_PROTOCOL_FAILED;
     		    goto Finish; 
     		}
-    		printf("%s\n",sql_1);
+    		M1_LOG_DEBUG("%s\n",sql_1);
     		sqlite3_bind_text(stmt_1, 1, verJson->valuestring, -1, NULL);
     		sqlite3_bind_text(stmt_1, 2, devIdJson->valuestring, -1, NULL);
     		rc = sqlite3_step(stmt_1);   
@@ -416,7 +416,7 @@ int ap_report_version_handle(payload_t data)
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
-    	printf("%s\n",sql_2);
+    	M1_LOG_DEBUG("%s\n",sql_2);
     	sqlite3_bind_text(stmt_2, 1, verJson->valuestring, -1, NULL);
     	sqlite3_bind_text(stmt_2, 2, devIdJson->valuestring, -1, NULL);
     	rc = sqlite3_step(stmt_2);   
