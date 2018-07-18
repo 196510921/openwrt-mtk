@@ -2042,6 +2042,10 @@ static int M1_report_ap_info(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
+    /*搜索485设备*/
+    ret = app_gw_search();
+    printf("app_gw_search :%d\n",ret);
+
     // sql = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID = AP_ID and ACCOUNT in \
     //       (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
     sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID = a.AP_ID and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";

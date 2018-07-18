@@ -69,27 +69,27 @@ static devErr ZHRead(void* pUser, void* pFrame, UINT16* pusLen)
 	/*检查checksum*/
     checksum = app_checksum((UINT8*)&pFrame[0], *pusLen - 1);
 	*pusLen -= ZH_CHECKSUM_LEN;
-    printf("checksum:%x checksumFrame:%x\n",checksum, *checksumFrame);
+    M1_LOG_INFO("checksum:%x checksumFrame:%x\n",checksum, *checksumFrame);
     if(checksum != *checksumFrame)
     {
-    	printf("checksum not match!");
+    	M1_LOG_WARN("checksum not match!");
     	return DEV_ERROR;
     }
 
 	/*debug info*/
 	{	
-		printf("Frame Data:");
+		M1_LOG_INFO("Frame Data:");
 		for(i = 0; i < *pusLen; i++)
-			printf("%x ",*(UINT8*)&pFrame[i]);
-		printf("\n ");
+			M1_LOG_INFO("%x ",*(UINT8*)&pFrame[i]);
+		M1_LOG_INFO("\n ");
 
-		printf("gwAddr:%d Fn:%d value:%d num:%d \n",\
+		M1_LOG_INFO("gwAddr:%d Fn:%d value:%d num:%d \n",\
 					  ZHUserData->header.gwAddr, ZHUserData->header.Fn,\
 					  ZHUserData->header.value, ZHUserData->header.num);
 		if(ZHUserData->header.value == 0x02)//多台设备的在线状态
 		{
 			for(i = 0; i < num; i++)
-				printf("dAddr[%d]外机:%x 内机:%x 在线状态:%x \n",\
+				M1_LOG_INFO("dAddr[%d]外机:%x 内机:%x 在线状态:%x \n",\
 				 i,ZHUserData->info.infoOnline[i].outAddr, \
 				 ZHUserData->info.infoOnline[i].inAddr,\
 				 ZHUserData->info.infoOnline[i].Online);
@@ -97,7 +97,7 @@ static devErr ZHRead(void* pUser, void* pFrame, UINT16* pusLen)
 		else
 		{
 			for(i = 0; i < num; i++)
-				printf("dAddr[%d]外机:%x 内机:%x 开关:%x 温度:%x 模式:%x 风速:%x 房间温度:%x 故障代码:%x\n",\
+				M1_LOG_INFO("dAddr[%d]外机:%x 内机:%x 开关:%x 温度:%x 模式:%x 风速:%x 房间温度:%x 故障代码:%x\n",\
 				 i,ZHUserData->info.infoStatus[i].outAddr, \
 				 ZHUserData->info.infoStatus[i].inAddr,\
 				 ZHUserData->info.infoStatus[i].status,\
@@ -107,7 +107,7 @@ static devErr ZHRead(void* pUser, void* pFrame, UINT16* pusLen)
 				 ZHUserData->info.infoStatus[i].roomTemp,\
 				 ZHUserData->info.infoStatus[i].errNum);
 		}
-		printf("pusLen:%d\n",*pusLen);		
+		M1_LOG_INFO("pusLen:%d\n",*pusLen);		
 	}
 
 	return DEV_OK;
@@ -144,19 +144,19 @@ static devErr ZHWrite(void* pUser, void* pFrame, UINT16* pusLen)
 	*pusLen += ZH_CHECKSUM_LEN; //帧结构数据长度
 	/*debug info*/
 	{
-		printf("gwAddr:%d Fn:%d value:%d num:%d \n",\
+		M1_LOG_INFO("gwAddr:%d Fn:%d value:%d num:%d \n",\
 					  ZHFrameData->header.gwAddr, ZHFrameData->header.Fn, \
 					  ZHFrameData->header.value, ZHFrameData->header.num);
 		for(i = 0; i < num; i++)
-			printf("dAddr[%x]外机:%x 内机:%x \n", \
+			M1_LOG_INFO("dAddr[%x]外机:%x 内机:%x \n", \
 				          i, ZHFrameData->dAddr[i].outAddr, ZHFrameData->dAddr[i].inAddr);
 
-		printf("checksum:%x\n",*checksum);
-		printf("pusLen:%x\n",*pusLen);
-		printf("Frame Data:");
+		M1_LOG_INFO("checksum:%x\n",*checksum);
+		M1_LOG_INFO("pusLen:%x\n",*pusLen);
+		M1_LOG_INFO("Frame Data:");
 		for(i = 0; i < *pusLen; i++)
-			printf("%x ",*(UINT8*)&pFrame[i]);
-		printf("\n ");
+			M1_LOG_INFO("%x ",*(UINT8*)&pFrame[i]);
+		M1_LOG_INFO("\n ");
 	}
 
 	return DEV_OK;

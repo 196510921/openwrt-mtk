@@ -112,6 +112,7 @@ typedef struct{
 /*485线程*/
 void dev_485_thread(void);
 devErr dev485Init(void);
+devErr app_gw_search(void);
 /*读取485空调设备参数状态*/
 int dev_485_operate(dev485Opt_t cmd);
 

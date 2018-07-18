@@ -23,40 +23,6 @@ const devInfo mDevInfo[UART_DEV_NUM] =
 };
 /*串口读写数据*/
 static uart_data_t uartData[U_MAX];
-/*测试接口*/
-static devErr dev_uart_test_write(UINT8* data, UINT16 len)
-{
-	int i = 0;
-	printf("串口写入：");
-	for(i = 0; i < len; i++)
-		printf("%x ",data[i]);
-	printf("\n");
-	return DEV_OK;
-}
-
-static devErr dev_uart_test_read(UINT8* data, UINT16* len, UINT8 type)
-{
-	printf("串口读取：\n");
-	static uint8 i = 0;
-
-	if(type == 0x02)
-	{
-		UINT8 testFrame[25] = {0x01,0x50,0x02, 0x02, 0x02,0x01,0x01, 0x03,0x01,0x01, 0x5E};
-		memcpy(data, testFrame, 11);
-		*len = 11;
-		i++;
-	}
-	else
-	{
-		UINT8 testFrame[25] = {0x01,0x50,0x0F,0x02,0x01,0x03,0x01,0x14,0x02,0x01,0x20,0x00,0x00,\
-		0x00,0x02,0x01,0x00,0x14,0x04,0x01,0x23,0x00,0x00,0x00,0xDD};
-		memcpy(data, testFrame, 25);
-
-		*len = 25;	
-	}
-	
-	return DEV_OK;
-}
 
 /*设备初始化*/
 devErr dev485Init(void)
@@ -70,7 +36,7 @@ devErr dev485Init(void)
 
     while(i < UART_DEV_NUM)
     {
-    	printf("init uart %d\n", i);
+    	M1_LOG_INFO("init uart %d\n", i);
  		switch(mDevInfo[i].uart)
 	    {
 	    	case U_ttyS2:
@@ -89,7 +55,7 @@ devErr dev485Init(void)
 	    		goto Finish;
 	    	break;
 	    	default:
-	    		printf("uart type not match\n");
+	    		M1_LOG_WARN("uart type not match\n");
 	    		continue;
 	    	break;
 	    }
@@ -98,14 +64,14 @@ devErr dev485Init(void)
 	    uartData[mDevInfo[i].uart].uartFd = uart_485_init(uart);
 	    if(ret == DEV_ERROR)
 	    {
-	    	printf(":%s init error\n",uart);
+	    	M1_LOG_WARN(":%s init error\n",uart);
 	    	return;
 	    }
     	i++;
     }
 
     Finish:
-    dev_485_db_init();
+    //dev_485_db_init();
 
     return ret;
 }
@@ -122,12 +88,11 @@ static devErr devRead(devRead_t data)
 
 	ret = getdevFunc(data.cmd.devId, &getDevInfo);
 
-	//dev_uart_test_read(pFrame, &pusLen, data.cmd.d.ZHuTxData.header.value);
 	uartData[getDevInfo.uart].d = pFrame;
 	pusLen = uart_read(&uartData[getDevInfo.uart]);
 	if(pusLen <= 0)
 	{
-		printf("read len:%x\n",pusLen);
+		M1_LOG_WARN("read len:%x\n",pusLen);
 		ret = DEV_ERROR;
 		goto Finish;
 	}
@@ -186,7 +151,6 @@ static devErr devWrite(devWrite_t data)
 	uartData[getDevInfo.uart].d = pFrame;
 	uartData[getDevInfo.uart].len = pusLen;
 
-	//dev_uart_test_write(pFrame, pusLen);
 	uart_write(uartData[getDevInfo.uart]);
 
 	free(pFrame);
@@ -216,6 +180,66 @@ static devErr getdevFunc(UINT16 devId, devInfo* devInfo)
     }
 
     return DEV_ERROR;
+}
+
+devErr app_gw_search(void)
+{
+	int i           = 0;
+	int ret         = DEV_OK;
+	int num         = 0;
+	UINT8* userData = (UINT8*)malloc(512);
+	char* sql       = NULL;
+
+
+	devRead_t rxData;
+
+	/*ZHONGHONG*/
+	rxData.cmd.devId = 0x01;                              //网关地址
+	rxData.cmd.d.ZHuTxData.header.gwAddr = 0x01;          
+	rxData.cmd.d.ZHuTxData.header.Fn     = DEV_ZH_STATUS; //向下查询空调状态
+	rxData.cmd.d.ZHuTxData.header.value  = ZH_ALL_ON_OFF; //查询多台在线状态
+	rxData.cmd.d.ZHuTxData.header.num    = 0xFF;          //所有设备
+	num                                  = 0xFF;
+
+	/*广播类型*/
+	if(num == 0xFF)
+	{
+		num = 1;
+		rxData.cmd.len = ZH_PKG_ONLINE_LEN;
+	}
+	else
+	{
+		rxData.cmd.len = ZH_DEV_HEADER_LEN + num * ZH_DEV_ADDR_LEN;
+	}
+
+	for(i = 0; i < num; i++)
+	{
+		rxData.cmd.d.ZHuTxData.dAddr[i].outAddr = 0xFF;
+		rxData.cmd.d.ZHuTxData.dAddr[i].inAddr = 0xFF;
+	}
+
+	M1_LOG_INFO("gwAddr:%x Fn:%x value:%x num:%x \n",\
+					  rxData.cmd.d.ZHuTxData.header.gwAddr, rxData.cmd.d.ZHuTxData.header.Fn, \
+					  rxData.cmd.d.ZHuTxData.header.value, rxData.cmd.d.ZHuTxData.header.num);
+	for(i = 0; i < num; i++)
+		M1_LOG_INFO("dAddr[%x]外机:%x 内机:%x \n", \
+				      i, rxData.cmd.d.ZHuTxData.dAddr[i].outAddr, rxData.cmd.d.ZHuTxData.dAddr[i].inAddr);
+
+
+	rxData.userData = userData;
+
+	ret = devRead(rxData);
+	if(ret != DEV_OK)
+	{
+		ret = DEV_ERROR;
+		goto Finish;
+	}
+
+	dev_485_db_init();
+	
+	Finish:
+	free(userData);
+	return ret;
 }
 
 devErr app_conditioner_write(appCmd_t cmd)
@@ -249,11 +273,11 @@ devErr app_conditioner_write(appCmd_t cmd)
 		txData.d.ZHuTxData.dAddr[i].inAddr = cmd.devAddr[i] & 0xFF;
 	}
 
-	printf("gwAddr:%x Fn:%x value:%x num:%x \n",\
+	M1_LOG_INFO("gwAddr:%x Fn:%x value:%x num:%x \n",\
 					  txData.devId, txData.d.ZHuTxData.header.Fn, \
 					  txData.d.ZHuTxData.header.value, txData.d.ZHuTxData.header.num);
 	for(i = 0; i < num; i++)
-		printf("dAddr[%x]外机:%x 内机:%x \n", \
+		M1_LOG_INFO("dAddr[%x]外机:%x 内机:%x \n", \
 				      i, txData.d.ZHuTxData.dAddr[i].outAddr, txData.d.ZHuTxData.dAddr[i].inAddr);
 
 	ret = devWrite(txData);
@@ -297,11 +321,11 @@ devErr app_conditioner_read(appCmd_t cmd)
 		rxData.cmd.d.ZHuTxData.dAddr[i].inAddr = cmd.devAddr[i] & 0xFF;
 	}
 
-	printf("gwAddr:%x Fn:%x value:%x num:%x \n",\
+	M1_LOG_INFO("gwAddr:%x Fn:%x value:%x num:%x \n",\
 					  rxData.cmd.d.ZHuTxData.header.gwAddr, rxData.cmd.d.ZHuTxData.header.Fn, \
 					  rxData.cmd.d.ZHuTxData.header.value, rxData.cmd.d.ZHuTxData.header.num);
 	for(i = 0; i < num; i++)
-		printf("dAddr[%x]外机:%x 内机:%x \n", \
+		M1_LOG_INFO("dAddr[%x]外机:%x 内机:%x \n", \
 				      i, rxData.cmd.d.ZHuTxData.dAddr[i].outAddr, rxData.cmd.d.ZHuTxData.dAddr[i].inAddr);
 
 
@@ -349,19 +373,19 @@ devErr app_conditioner_db_handle(void)
 
 	if(!comIsEmpty(&head_485))
 	{
-		printf("app_conditioner_db_handle\n");
+		M1_LOG_DEBUG("app_conditioner_db_handle\n");
 
 		sql_1 = "select ID from all_dev where DEV_ID = ? limit 1;";
 		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
 	    {
-	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        ret = DEV_ERROR;
 	        goto Finish; 
 	    }
 	    sql_1_1 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
 		if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
 	    {
-	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        ret = DEV_ERROR;
 	        goto Finish; 
 	    }
@@ -369,28 +393,28 @@ devErr app_conditioner_db_handle(void)
 	    sql_2 = "select ID from param_table where DEV_ID = ? limit 1;";
 		if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
 	    {
-	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        ret = DEV_ERROR;
 	        goto Finish; 
 	    }
 		sql_2_1 = "insert into param_table(DEV_ID, DEV_NAME, TYPE, VALUE)values(?,?,?,?);";
 		if(sqlite3_prepare_v2(db, sql_2_1, strlen(sql_2_1), &stmt_2_1, NULL) != SQLITE_OK)
 	    {
-	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        ret = DEV_ERROR;
 	        goto Finish; 
 	    }
 		sql_2_2 = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
 		if(sqlite3_prepare_v2(db, sql_2_2, strlen(sql_2_2), &stmt_2_2, NULL) != SQLITE_OK)
 	    {
-	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        ret = DEV_ERROR;
 	        goto Finish; 
 	    }
 
 	    if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)!=SQLITE_OK)
 	    {
-	    	printf("BEGIN IMMEDIATE errorMsg:%s\n",errorMsg);
+	    	M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s\n",errorMsg);
         	sqlite3_free(errorMsg);
 	    	return;
 	    }
@@ -399,9 +423,8 @@ devErr app_conditioner_db_handle(void)
 		{
 			userData = (ZHuRxData_t*)_userData;
 			if(_userData == NULL)
-				printf("userData NULL\n");
-			printf("1:%x,%x\n",_userData[0],_userData[1]);
-			printf("gwAddr:%x Fn:%x value:%x num:%x \n",\
+				M1_LOG_WARN("userData NULL\n");
+			M1_LOG_DEBUG("gwAddr:%x Fn:%x value:%x num:%x \n",\
 				userData->header.gwAddr, userData->header.Fn,\
 				userData->header.value, userData->header.num);
 			
@@ -431,13 +454,13 @@ devErr app_conditioner_db_handle(void)
 
 					/*查询设备是否存在*/
 					{
-						printf("%s\n",sql_1);
+						M1_LOG_DEBUG("%s\n",sql_1);
 					    sqlite3_bind_text(stmt_1, 1, dAddr, -1, NULL);
 
 						rc = sqlite3_step(stmt_1);   
 				        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 				        {
-				            printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+				            M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 				            if(rc == SQLITE_CORRUPT)
 				                exit(0);
 				        }
@@ -448,7 +471,7 @@ devErr app_conditioner_db_handle(void)
 
 					if(rc != SQLITE_ROW)
 					{
-						printf("%s\n",sql_1_1);
+						M1_LOG_WARN("%s\n",sql_1_1);
 						/*插入新设备到all_dev*/
 						sqlite3_bind_text(stmt_1_1, 1, dAddr, -1, NULL);//用设备地址做设备名
 						sqlite3_bind_text(stmt_1_1, 2, dAddr, -1, NULL);
@@ -462,7 +485,7 @@ devErr app_conditioner_db_handle(void)
 						rc = sqlite3_step(stmt_1_1);   
 			        	if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 			        	{
-			        	    printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+			        	    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 			        	    if(rc == SQLITE_CORRUPT)
 			        	        exit(0);
 			        	}
@@ -482,13 +505,13 @@ devErr app_conditioner_db_handle(void)
 					dAddr[6] = 0;
 					/*查询设备是否存在*/
 					{
-						printf("%s\n",sql_2);
+						M1_LOG_DEBUG("%s\n",sql_2);
 					    sqlite3_bind_text(stmt_2, 1, dAddr, -1, NULL);
 
 						rc = sqlite3_step(stmt_2);   
 				        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 				        {
-				            printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+				            M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 				            if(rc == SQLITE_CORRUPT)
 				                exit(0);
 				        }
@@ -499,7 +522,7 @@ devErr app_conditioner_db_handle(void)
 
 					if(rc != SQLITE_ROW)
 					{
-						printf("%s\n",sql_2_1);
+						M1_LOG_WARN("%s\n",sql_2_1);
 						for(j = 0; j < 4; j++)
 						{
 							/*插入新设备参数到param_table*/
@@ -545,7 +568,7 @@ devErr app_conditioner_db_handle(void)
 							rc = sqlite3_step(stmt_2_1);   
 					        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 					        {
-					            printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+					            M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 					            if(rc == SQLITE_CORRUPT)
 					                exit(0);
 					        }
@@ -556,7 +579,7 @@ devErr app_conditioner_db_handle(void)
 					}
 					else
 					{
-						printf("%s\n",sql_2_2);
+						M1_LOG_DEBUG("%s\n",sql_2_2);
 						/*更新设备参数到param_table*/	
 						for(j = 0; j < 4; j++)
 						{
@@ -602,7 +625,7 @@ devErr app_conditioner_db_handle(void)
 							rc = sqlite3_step(stmt_2_2);   
 					        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 					        {
-					            printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+					            M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 					            if(rc == SQLITE_CORRUPT)
 					                exit(0);
 					        }
@@ -619,7 +642,7 @@ devErr app_conditioner_db_handle(void)
 		rc = sql_commit(db);
 	    if(rc == SQLITE_OK)
 	    {
-	        printf("COMMIT OK\n");
+	        M1_LOG_DEBUG("COMMIT OK\n");
 	    }
 	}
 
@@ -668,16 +691,16 @@ static void dev_485_db_init(void)
 	sqlite3_stmt* stmt_1_1 = NULL;            
 	sqlite3_stmt* stmt_2_1 = NULL; 
 
-	rc = sqlite3_open("/bin/dev_info.db", &db);
-    if( rc != SQLITE_OK){  
-        printf( "Can't open database\n");  
-    }else{  
-        printf( "Opened database successfully\n");  
-    }
+	// rc = sqlite3_open("/bin/dev_info.db", &db);
+ //    if( rc != SQLITE_OK){  
+ //        printf( "Can't open database\n");  
+ //    }else{  
+ //        printf( "Opened database successfully\n");  
+ //    }
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg) != SQLITE_OK)
 	{
-		printf("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
+		M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
     	sqlite3_free(errorMsg);
 		return;
 	}
@@ -686,17 +709,17 @@ static void dev_485_db_init(void)
 		sql_1 = "select ID from all_dev where DEV_ID = ? limit 1;";
 		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
 		{
-		    printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = DEV_ERROR;
 		    goto Finish; 
 		}
-		printf("%s\n",sql_1);
+		M1_LOG_DEBUG("%s\n",sql_1);
 		sqlite3_bind_text(stmt_1, 1, gwId, -1, NULL);
 
 		rc = sqlite3_step(stmt_1);   
 		if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 		{
-		    printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+		    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 		    if(rc == SQLITE_CORRUPT)
 		        exit(0);
 		}
@@ -710,11 +733,11 @@ static void dev_485_db_init(void)
 		sql_1_1 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
 		if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
 		{
-		    printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = DEV_ERROR;
 		    goto Finish; 
 		}
-		printf("%s\n",sql_1_1);				
+		M1_LOG_DEBUG("%s\n",sql_1_1);				
 		sqlite3_bind_text(stmt_1_1, 1, gwId, -1, NULL);//用设备地址做设备名
 		sqlite3_bind_text(stmt_1_1, 2, gwId, -1, NULL);
 		sqlite3_bind_text(stmt_1_1, 3, gwId, -1, NULL);
@@ -727,7 +750,7 @@ static void dev_485_db_init(void)
 		rc = sqlite3_step(stmt_1_1);   
 		if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 		{
-		    printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+		    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 		    if(rc == SQLITE_CORRUPT)
 		        exit(0);
 		}
@@ -739,11 +762,11 @@ static void dev_485_db_init(void)
 		sql_1_1 = "insert into all_dev(DEV_NAME, DEV_ID, AP_ID, PID, ADDED, NET, STATUS, ACCOUNT)values(?,?,?,?,?,?,?,?);";
 		if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
 		{
-		    printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = DEV_ERROR;
 		    goto Finish; 
 		}
-		printf("%s\n",sql_1_1);				
+		M1_LOG_DEBUG("%s\n",sql_1_1);				
 		sqlite3_bind_text(stmt_1_1, 1, dAddr, -1, NULL);//用设备地址做设备名
 		sqlite3_bind_text(stmt_1_1, 2, dAddr, -1, NULL);
 		sqlite3_bind_text(stmt_1_1, 3, gwId, -1, NULL);
@@ -756,7 +779,7 @@ static void dev_485_db_init(void)
 		rc = sqlite3_step(stmt_1_1);   
 		if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 		{
-		    printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+		    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 		    if(rc == SQLITE_CORRUPT)
 		        exit(0);
 		}
@@ -766,7 +789,7 @@ static void dev_485_db_init(void)
 		sql_2_1 = "insert into param_table(DEV_ID, DEV_NAME, TYPE, VALUE)values(?,?,?,?);";
 		if(sqlite3_prepare_v2(db, sql_2_1, strlen(sql_2_1), &stmt_2_1, NULL) != SQLITE_OK)
 		{
-		    printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 		    ret = DEV_ERROR;
 		    goto Finish; 
 		}
@@ -805,7 +828,7 @@ static void dev_485_db_init(void)
 			rc = sqlite3_step(stmt_2_1);   
 			if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 			{
-			    printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+			    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 			    if(rc == SQLITE_CORRUPT)
 			        exit(0);
 			}
@@ -820,7 +843,7 @@ static void dev_485_db_init(void)
 	rc = sql_commit(db);
 	if(rc == SQLITE_OK)
 	{
-	    printf("COMMIT OK\n");
+	    M1_LOG_DEBUG("COMMIT OK\n");
 	}
 
 	if(stmt_1 != NULL)
@@ -830,7 +853,7 @@ static void dev_485_db_init(void)
     if(stmt_2_1 != NULL)
         sqlite3_finalize(stmt_2_1);
 
-    sqlite3_close(db);
+    // sqlite3_close(db);
 }
 
 static int dev_485_write(dev485WriteParam_t* param)
@@ -844,39 +867,39 @@ static int dev_485_write(dev485WriteParam_t* param)
 	paramDataJson = cJSON_GetObjectItem(param->paramJson, "param");
     if(paramDataJson == NULL)
     {
-        printf("paramDataJson NULL \n");
+        M1_LOG_WARN("paramDataJson NULL \n");
         ret = DEV_ERROR;
         goto Finish;
     }
     paramArrayJson = cJSON_GetArrayItem(paramDataJson, 0);
     if(paramArrayJson == NULL)
     {
-        printf("paramArrayJson NULL \n");
+        M1_LOG_WARN("paramArrayJson NULL \n");
         ret = DEV_ERROR;
         goto Finish;
     }
     valueTypeJson = cJSON_GetObjectItem(paramArrayJson, "type");
     if(valueTypeJson == NULL)
     {
-        printf("valueTypeJson NULL \n");
+        M1_LOG_WARN("valueTypeJson NULL \n");
         ret = DEV_ERROR;
         goto Finish;
     }
-    printf("type%d:%d\n",valueTypeJson->valueint);
+    M1_LOG_DEBUG("type%d:%d\n",valueTypeJson->valueint);
     valueJson = cJSON_GetObjectItem(paramArrayJson, "value");
     if(valueJson == NULL)
     {
-        printf("valueJson NULL \n");
+        M1_LOG_WARN("valueJson NULL \n");
         ret = DEV_ERROR;
         goto Finish;
     }
-    printf("value%d:%d\n",valueJson->valueint);
+    M1_LOG_DEBUG("value%d:%d\n",valueJson->valueint);
 
     switch(valueTypeJson->valueint)
     {
     	case DEV_ON_OFF://开关
     	{
-    		printf("命令类型：开关\n");
+    		M1_LOG_INFO("命令类型：开关\n");
 	    	param->Fn = DEV_ZH_ON_OFF;
 	    	if(valueJson->valueint == ON_OFF_ON)
 	    		param->value = ZH_ON;
@@ -886,7 +909,7 @@ static int dev_485_write(dev485WriteParam_t* param)
     	break;
     	case DEV_CONDITIONER_TEMP://温度
     	{
-    		printf("命令类型：温度\n");
+    		M1_LOG_INFO("命令类型：温度\n");
 	    	param->Fn = DEV_ZH_TEMP;
 	    	if(valueJson->valueint < ZH_TEMP_TH_BOTTOM)
 	    		param->value = ZH_TEMP_TH_BOTTOM;
@@ -898,7 +921,7 @@ static int dev_485_write(dev485WriteParam_t* param)
     	break;
     	case DEV_CONDITIONER_MODE://模式
 		{
-			printf("命令类型：模式\n");
+			M1_LOG_INFO("命令类型：模式\n");
 			param->Fn = DEV_ZH_MODE;
 	    	if(valueJson->valueint == CONDITIONER_MODE_COLD)
 	    		param->value = ZH_MODE_COLD;
@@ -912,7 +935,7 @@ static int dev_485_write(dev485WriteParam_t* param)
     	break;
     	case DEV_CONDITIONER_SPEED_1://风速
     	{
-    		printf("命令类型：风速\n");
+    		M1_LOG_INFO("命令类型：风速\n");
     		param->Fn = DEV_ZH_SPEED;
     		if(valueJson->valueint == CONDITIONER_SPEED_HIGH)
 	    		param->value = ZH_SPEED_HIGH;
@@ -923,7 +946,7 @@ static int dev_485_write(dev485WriteParam_t* param)
     	}
     	break;
     	default:
-    		printf("dev_485_write not match\n");
+    		M1_LOG_WARN("dev_485_write not match\n");
     	break;
     }
 
@@ -947,16 +970,16 @@ int dev_485_operate(dev485Opt_t cmd)
 		sql = "select PID from all_dev where DEV_ID = ? limit 1;";
 		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
 	    {
-	        printf( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	        M1_LOG_WARN( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
 	        sqlite3_finalize(stmt);
 	        return DEV_ERROR; 
 	    }
-	    printf("%s\n",sql);
+	    M1_LOG_DEBUG("%s\n",sql);
 	    sqlite3_bind_text(stmt, 1, cmd.devId, -1, NULL);
 	    rc = sqlite3_step(stmt);   
 		if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
 		{
-		    printf("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+		    M1_LOG_WARN("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
 		    if(rc == SQLITE_CORRUPT)
 		        exit(0);
 		}
@@ -967,18 +990,18 @@ int dev_485_operate(dev485Opt_t cmd)
 			sqlite3_finalize(stmt);
 			return DEV_ERROR;
 		}
-		printf("PID类型为空调\n");
+		M1_LOG_INFO("PID类型为空调\n");
 
 		sqlite3_finalize(stmt);
 
-		printf("devId:%s",cmd.devId);
+		M1_LOG_INFO("devId:%s",cmd.devId);
 	}
 
 	switch(cmd.cmdType)
 	{
 		case DEV_READ_ONLINE:
 			/*查询设备在线状态*/
-			printf("查询设备在线状态\n");
+			M1_LOG_INFO("查询设备在线状态\n");
 			{
 				appCmd_t cmd_read;
 				cmd_read.param      = DEV_ZH_STATUS;      //向下查询空调状态
@@ -986,13 +1009,13 @@ int dev_485_operate(dev485Opt_t cmd)
 				cmd_read.dNum       = 0xFF;               //所有设备
 				cmd_read.gwAddr     = cmd.devId[1] - '0'; //网关地址
 				cmd_read.devAddr[0] = 0xFFFF;             //所有设备地址
-				printf("devId:%x,gwAddr:%x\n",cmd.devId[1], cmd_read.gwAddr);
+				M1_LOG_INFO("devId:%x,gwAddr:%x\n",cmd.devId[1], cmd_read.gwAddr);
 				app_conditioner_read(cmd_read);
 			}
 		break;
 		case DEV_READ_STATUS:
 			/*查询设备参数状态*/
-			printf("查询设备参数状态\n");
+			M1_LOG_INFO("查询设备参数状态\n");
 			{
 				appCmd_t cmd_read;
 				cmd_read.param      = DEV_ZH_STATUS;      //向下查询空调状态
@@ -1003,14 +1026,14 @@ int dev_485_operate(dev485Opt_t cmd)
 				                       (((UINT16)a2x(cmd.devId[3]) << 8) & 0x0F00) |  \
 				                       ((a2x(cmd.devId[4]) << 4) & 0x00F0) |          \
 				                       a2x(cmd.devId[5]);//设备地址
-				printf("gwId:%x,gwAddr:%x,devId:%x%x%x%x,devAddr:%x\n",\
+				M1_LOG_DEBUG("gwId:%x,gwAddr:%x,devId:%x%x%x%x,devAddr:%x\n",\
 					cmd.devId[1], cmd_read.gwAddr,cmd.devId[2],cmd.devId[3],\
 					cmd.devId[4],cmd.devId[5],cmd_read.devAddr[0]);
 				app_conditioner_read(cmd_read);
 			}
 		break;
 		case DEV_WRITE:
-			printf("设备写入\n");
+			M1_LOG_INFO("设备写入\n");
 			{
 				appCmd_t cmd_write;
 				dev485WriteParam_t param;
@@ -1033,7 +1056,7 @@ int dev_485_operate(dev485Opt_t cmd)
 				{
 					cmd_write.dNum       = 0x01;               //设备数量
 				}
-				printf("gwId:%x,gwAddr:%x,devId:%x%x%x%x,devAddr:%x\n",\
+				M1_LOG_DEBUG("gwId:%x,gwAddr:%x,devId:%x%x%x%x,devAddr:%x\n",\
 					cmd.devId[1], cmd_write.gwAddr,cmd.devId[2],cmd.devId[3],\
 					cmd.devId[4],cmd.devId[5],cmd_write.devAddr[0]);
 				app_conditioner_write(cmd_write);
@@ -1041,10 +1064,10 @@ int dev_485_operate(dev485Opt_t cmd)
 			}
 		break;
 		case DEV_TYPE_MAX:
-			printf("DEV_ID_MAX, cmd out off cmd type range\n");
+			M1_LOG_INFO("DEV_ID_MAX, cmd out off cmd type range\n");
 		break;
 		default:
-			printf("cmd type not match\n");
+			M1_LOG_INFO("cmd type not match\n");
 		break;
 	}
 	
@@ -1057,7 +1080,7 @@ void Init_comPQueue(comPQueue pQueue)
 {
   if (NULL == pQueue)
   	return;
-  printf("Init_PQueue\n");
+  M1_LOG_DEBUG("Init_PQueue\n");
   pQueue->next = NULL;
 }
 
@@ -1092,7 +1115,7 @@ bool comPop(comPQueue pQueue, uint8 **pItem)
   {
     comPNode *pTmp = pQueue->next;
     if(pTmp->item == NULL)
-    	printf("pTmp->item NULL\n");
+    	M1_LOG_DEBUG("pTmp->item NULL\n");
     *pItem = pTmp->item;
     pQueue->next = pTmp->next;
     //free(pTmp);
