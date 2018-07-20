@@ -157,6 +157,7 @@ void data_handle(m1_package_t* package)
         case TYPE_GET_PORJECT_NUMBER:       rc = app_get_project_info(pdu); break;
         case TYPE_REQ_DIS_SCEN_NAME:        rc = app_req_dis_scen_name(pdu); break;
         case TYPE_REQ_DIS_NAME:             rc = app_req_dis_name(pdu); break;
+        case TYPE_APP_REQ_USER_DIS:         rc = app_req_user_dis(pdu); break;
         case TYPE_REQ_DIS_DEV:              rc = app_req_dis_dev(pdu); break;
         case TYPE_GET_PROJECT_INFO:         rc = app_get_project_config(pdu);break;
         case TYPE_APP_CONFIRM_PROJECT:      rc = app_confirm_project(pdu);break;

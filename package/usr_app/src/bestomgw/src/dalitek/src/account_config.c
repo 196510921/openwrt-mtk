@@ -928,6 +928,177 @@ int app_account_config_handle(payload_t data)
     return  ret;
 }
 
+/*请求用户下区域名称*/
+int app_req_user_dis(payload_t data)
+{
+    M1_LOG_DEBUG("app_req_user_dis\n"); 
+    int pdu_type            = TYPE_M1_REPORT_DIS_NAME;
+    int rc                  = 0;
+    int ret                 = M1_PROTOCOL_OK;
+    char *district          = NULL;
+    char *dis_pic           = NULL;
+    char *account           = NULL;
+    char *sql_1             = NULL;
+    char *sql_2             = NULL;
+    cJSON *accountJson      = NULL;
+    cJSON *pJsonRoot        = NULL; 
+    cJSON *pduJsonObject    = NULL;
+    cJSON *devDataObject    = NULL;
+    cJSON *districtObject   = NULL;
+    cJSON *devDataJsonArray = NULL;
+    sqlite3 *db             = NULL;
+    sqlite3_stmt *stmt_1    = NULL;
+    sqlite3_stmt *stmt_2    = NULL;
+
+    db = data.db;
+    /*get account*/
+    accountJson = data.pdu;
+    account = accountJson->valuestring;
+    if(account == NULL)
+    {
+        M1_LOG_WARN("account NULL\n");
+        return M1_PROTOCOL_FAILED;
+    }
+    M1_LOG_DEBUG("account:%s\n",account);
+    /*get sql data json*/
+    pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        M1_LOG_ERROR("pJsonRoot NULL\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
+    cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
+    cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1); 
+    /*create pdu object*/
+    pduJsonObject = cJSON_CreateObject();
+    if(NULL == pduJsonObject)
+    {
+        // create object faild, exit
+        cJSON_Delete(pduJsonObject);
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*add pdu to root*/
+    cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
+    /*add pdu type to pdu object*/
+    cJSON_AddNumberToObject(pduJsonObject, "pduType", pdu_type);
+    /*添加devData*/
+    devDataJsonArray = cJSON_CreateArray();
+    if(NULL == devDataJsonArray)
+    {
+        cJSON_Delete(devDataJsonArray);
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*add devData array to pdu pbject*/
+    cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
+
+    /*获取项目信息*/
+    {
+        sql_1 = "select distinct DIS_NAME from district_table where ACCOUNT = ?;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_1);
+
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT)
+                m1_error_handle(); 
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+    }
+    /*获取区域名称*/
+    {
+        sql_2 = "select DIS_PIC from district_table where DIS_NAME = ? order by ID desc limit 1;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_2);
+
+        rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            if(rc == SQLITE_CORRUPT)
+                m1_error_handle();  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+    }
+
+    sqlite3_bind_text(stmt_1, 1, account, -1, NULL);
+    while(sqlite3_step(stmt_1) == SQLITE_ROW)
+    {
+        districtObject = cJSON_CreateObject();
+        if(NULL == districtObject)
+        {
+            // create object faild, exit
+            cJSON_Delete(districtObject);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+
+        /*获取区域名称*/
+        district = sqlite3_column_text(stmt_1, 0);
+        if(district == NULL){
+            M1_LOG_ERROR( "%s\n", district);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+        M1_LOG_DEBUG("district:%s\n", district);
+        cJSON_AddStringToObject(districtObject, "disName", district);
+       
+        sqlite3_bind_text(stmt_2, 1, district, -1, NULL);
+        rc = sqlite3_step(stmt_2); 
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                m1_error_handle();
+        }
+        if(rc != SQLITE_ROW){
+            sqlite3_reset(stmt_2);
+            sqlite3_clear_bindings(stmt_2);
+            continue;
+        }
+        dis_pic = sqlite3_column_text(stmt_2, 0);
+        if(dis_pic == NULL){
+            sqlite3_reset(stmt_2);
+            sqlite3_clear_bindings(stmt_2);
+            continue;
+        }
+        M1_LOG_DEBUG("dis_pic:%s\n", dis_pic);
+        cJSON_AddStringToObject(districtObject, "disPic", dis_pic);
+        //districtObject = cJSON_CreateString(district);
+        cJSON_AddItemToArray(devDataJsonArray, districtObject);
+
+        sqlite3_reset(stmt_2);
+        sqlite3_clear_bindings(stmt_2);
+    }
+
+    char* p = cJSON_PrintUnformatted(pJsonRoot);
+    
+    if(NULL == p)
+    {    
+        cJSON_Delete(pJsonRoot);
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+
+    M1_LOG_DEBUG("string:%s\n",p);
+    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+    Finish:
+    if(stmt_1)
+        sqlite3_finalize(stmt_1);
+    if(stmt_2)
+        sqlite3_finalize(stmt_2);
+    
+    cJSON_Delete(pJsonRoot);
+
+    return  ret;
+}
+/*请求区域名称*/
 int app_req_dis_name(payload_t data)
 {
     M1_LOG_DEBUG("app_req_dis_name\n"); 

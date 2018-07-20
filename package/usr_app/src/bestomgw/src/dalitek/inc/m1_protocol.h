@@ -180,6 +180,8 @@ void m1_error_handle(void);
 #define TYPE_DEV_UPDATE_CONFIG                   0x0029
 /*device version read*/
 #define TYPE_DEV_VERSION_READ_CONFIG             0x0030
+/*app request user district*/
+#define TYPE_APP_REQ_USER_DIS                    0x0031
 /*Upload*********************************************************************/
 
 /*AP report device data to M1*//*M1 report device data to APP*/
