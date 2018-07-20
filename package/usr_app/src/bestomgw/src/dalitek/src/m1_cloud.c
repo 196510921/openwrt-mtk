@@ -2,6 +2,7 @@
 #include "m1_protocol.h"
 #include "socket_server.h"
 #include "m1_common_log.h"
+#include "tcp_client.h"
 
 void m1_report_id_to_cloud(int clientFd)
 {
@@ -64,8 +65,8 @@ void m1_report_id_to_cloud(int clientFd)
 
     M1_LOG_DEBUG("string:%s\n",p);
     /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
-
+    //socketSeverSend((uint8*)p, strlen(p), clientFd);
+    socket_client_tx((uint8*)p, strlen(p));
     Finish:
 
     return ret;
@@ -134,8 +135,7 @@ void m1_heartbeat_to_cloud(void)
 
     M1_LOG_DEBUG("string:%s\n",p);
     /*response to client*/
-    clientFd = get_local_clientFd();
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
+    socket_client_tx((uint8*)p, strlen(p));
 
     Finish:
 

@@ -9,6 +9,7 @@
 
 #include "tcp_client.h"
 #include "interface_srpcserver.h"
+#include "m1_protocol.h"
 #include "socket_server.h"
 #include "m1_common_log.h"
 #include "hal_defs.h"
@@ -22,12 +23,13 @@
 	#define SERV_PORT 14010
 #else
 	#define SERVER_IP  "server.natappfree.cc"
-	#define SERV_PORT 44809
+	#define SERV_PORT 36200
 #endif
-
+extern pthread_mutex_t client_timeout_tick_lock;
 static int conn_flag = TCP_DISCONNECTED;
 static int client_sockfd = 0;
 static char clientTcpRxBuf[1024*60] = {0};
+static int client_timeout_tick = 0;
 
 static int socket_client_handle(int clientFd, int revent);
 static void client_rx_cb(int clientFd);
@@ -37,7 +39,7 @@ static void set_connect_flag(int d)
 	conn_flag = d;
 }
 
-static int get_connect_flag(void)
+int get_connect_flag(void)
 {
 	return conn_flag;
 }
@@ -46,7 +48,39 @@ int get_local_clientFd(void)
 {
 	return client_sockfd;
 }
+/*tcp cliemt timeout handle*/
+void tcp_client_timeout_tick(int d)
+{
+	pthread_mutex_lock(&client_timeout_tick_lock);
+	if(!d) //reset timeout flag
+	{
+		client_timeout_tick = 0;
+	}
+	else //increment timeout tick
+	{
+		client_timeout_tick++;
+	}
 
+	pthread_mutex_unlock(&client_timeout_tick_lock);
+
+	if(client_timeout_tick >= CLIENT_TIMEOUT)
+	{
+		/*断开client连接*/
+		M1_LOG_INFO("connection timeout ,disconnect !");
+		//close(client_sockfd);
+		set_connect_flag(TCP_DISCONNECTED);
+	}
+}
+
+void tcp_client_timeout_reset(int pdutype)
+{
+	if(pdutype == TYPE_M1_HEARTBEAT_TO_CLOUD)
+	{
+		tcp_client_timeout_tick(0);
+	}
+}
+
+/*tcp disconnecnt*/
 void tcp_client_disconnect_cb(int sockfd)
 {
 	if(sockfd == client_sockfd){
@@ -80,10 +114,12 @@ int tcp_client_connect(void)
 	servaddr.sin_port = htons(SERV_PORT);
 	inet_pton(AF_INET, server_ip, &servaddr.sin_addr);
 	if(connect(client_sockfd,(struct sockaddr*)&servaddr,sizeof(servaddr)) == -1){
-		perror("server connect fialed:\n");
+		printf("server connect failed!\n");
 		set_connect_flag(TCP_DISCONNECTED);
 		return TCP_CLIENT_FAILED;
-	}else{
+	}
+	else
+	{
 	 	printf("server connect ok\n");
 	 	set_connect_flag(TCP_CONNECTED);
 	 	m1_report_id_to_cloud(client_sockfd);
@@ -94,45 +130,38 @@ int tcp_client_connect(void)
 
 void socket_client_poll(void)
 {
+	struct pollfd *pollFds = malloc(sizeof(struct pollfd));
+	
 	while (1)
 	{
 		if(get_connect_flag() == TCP_DISCONNECTED){
-			printf("reconnect...\n");
-			//sleep(5);
+			printf("client reconnect...\n");
+			sleep(5);
 			/*reconnect*/ 
 			if(tcp_client_connect() != TCP_CLIENT_SUCCESS)
 				continue;
-		}
-		M1_LOG_INFO("socket_client_poll\n");
-	
-		int pollFdIdx;
-		int ret;
-		//socket client FD
-		struct pollfd *pollFds = malloc(sizeof(struct pollfd));
-
-		if(pollFds)
-		{
-			/*set client port in the poll file descriptors*/
-			pollFds[0].fd = client_sockfd;
-			pollFds[0].events = POLLIN | POLLRDHUP;
-
-			M1_LOG_INFO("client waiting for poll()\n");
-
-			poll(pollFds, 1, -1);
-			//poll(pollFds, numClientFds, -1);
-			M1_LOG_INFO("client poll out\n");
-			/*client*/
-			if ((pollFds[0].revents))
-			{
-				M1_LOG_INFO("Message from Socket Sever\n");
-				socket_client_handle(pollFds[0].fd, pollFds[0].revents);
-			}
-
-			free(pollFds);
-			M1_LOG_INFO("free client\n");
+			printf("client connected to remote!\n");
 		}
 		
+		pollFds[0].fd = client_sockfd;
+		pollFds[0].events = POLLIN | POLLRDHUP;
+
+		/*set client port in the poll file descriptors*/
+		M1_LOG_INFO("client waiting for poll()\n");
+
+		poll(pollFds, 1, -1);
+		//poll(pollFds, numClientFds, -1);
+		M1_LOG_INFO("client poll out\n");
+		/*client*/
+		if ((pollFds[0].revents))
+		{
+			M1_LOG_INFO("Message from Socket Sever\n");
+			socket_client_handle(pollFds[0].fd, pollFds[0].revents);
+		}
 	}
+	
+	free(pollFds);
+	M1_LOG_INFO("free client\n");
 
 }
 
@@ -160,6 +189,19 @@ static int socket_client_handle(int clientFd, int revent)
 	}
 
 	return TCP_CLIENT_SUCCESS;
+}
+
+void socket_client_tx(unsigned char* buf, int len)
+{
+	int ret = 0;
+
+	ret = get_connect_flag();
+    if(ret == TCP_DISCONNECTED)
+    {
+        M1_LOG_INFO("CLOUD CONNECTION NOT EXIST, DO NOT SEND HEARTBEAT!\n");
+        return;
+    }
+	socketSeverSend(buf, len, client_sockfd);
 }
 
 static void client_rx_cb(int clientFd)

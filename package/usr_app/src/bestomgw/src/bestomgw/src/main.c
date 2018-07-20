@@ -53,10 +53,11 @@
 #include "interface_srpcserver.h"
 
 #define MAX_DB_FILENAMR_LEN 255
-#define TCP_CLIENT_ENABLE   0
+#define TCP_CLIENT_ENABLE   1
 /*全局变量***********************************************************************************************/	
 pthread_mutex_t mutex_lock;
 pthread_mutex_t mutex_lock_sock;
+pthread_mutex_t client_timeout_tick_lock;
 /*静态变量****************************************************************************************/
 
 /*静态局部函数****************************************************************************************/
@@ -80,6 +81,7 @@ int main(int argc, char* argv[])
 
 	pthread_mutex_init(&mutex_lock, NULL);
 	pthread_mutex_init(&mutex_lock_sock, NULL);
+	pthread_mutex_init(&client_timeout_tick_lock, NULL);
 	pthread_create(&t1,NULL,socket_poll,NULL);
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
@@ -100,6 +102,7 @@ int main(int argc, char* argv[])
 	
 	pthread_mutex_destroy(&mutex_lock);
 	pthread_mutex_destroy(&mutex_lock_sock);
+	pthread_mutex_destroy(&client_timeout_tick_lock);
 	return retval;
 }
 

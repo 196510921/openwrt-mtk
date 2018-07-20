@@ -214,11 +214,15 @@ void data_handle(m1_package_t* package)
 static int common_rsp_handle(payload_t data)
 {
     cJSON* resultJson = NULL;
+    cJSON* pduTypeJson = NULL;
     M1_LOG_DEBUG("common_rsp_handle\n");
     if(data.pdu == NULL) return M1_PROTOCOL_FAILED;
 
     resultJson = cJSON_GetObjectItem(data.pdu, "result");
     M1_LOG_DEBUG("result:%d\n",resultJson->valueint);
+    pduTypeJson = cJSON_GetObjectItem(data.pdu, "pduType");
+
+    tcp_client_timeout_reset(pduTypeJson->valueint);
 }
 
 /*AP report device data to M1*/
@@ -3085,10 +3089,14 @@ void delay_send_task(void)
            // count = 0;
             Queue_delay_decrease(&head);
         }
-#if TCP_CLIENT_ENABLE
-        /*M1心跳到云端*/
+#if 1
         if(!(count % 300))
+        {
+            /*查看连接是否超时*/
+            tcp_client_timeout_tick(1);
+            /*M1心跳到云端*/
             m1_heartbeat_to_cloud();
+        }
 #endif
     }
 }
