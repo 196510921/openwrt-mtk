@@ -71,7 +71,7 @@ int m1_del_dev_from_ap(sqlite3* db, char* devId)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -82,7 +82,7 @@ int m1_del_dev_from_ap(sqlite3* db, char* devId)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc == SQLITE_ROW)
@@ -269,7 +269,7 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -280,7 +280,7 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc == SQLITE_ROW)
@@ -419,7 +419,7 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             goto Finish; 
         }
@@ -429,7 +429,7 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 
@@ -482,7 +482,7 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
                 

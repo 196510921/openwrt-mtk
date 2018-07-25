@@ -195,7 +195,7 @@ int app_req_account_config_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED; 
             goto Finish; 
@@ -246,7 +246,7 @@ int app_req_account_config_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -261,7 +261,7 @@ int app_req_account_config_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -276,7 +276,7 @@ int app_req_account_config_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1005,7 +1005,7 @@ int app_req_user_dis(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1020,7 +1020,7 @@ int app_req_user_dis(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1054,7 +1054,7 @@ int app_req_user_dis(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc != SQLITE_ROW){
@@ -1107,7 +1107,7 @@ int app_req_dis_name(payload_t data)
     int ret                 = M1_PROTOCOL_OK;
     char *district          = NULL;
     char *dis_pic           = NULL;
-    char *account           = NULL;
+    const char *account     = "Dalitek";
     char *sql               = NULL;
     char *sql_1             = NULL;
     char *sql_2             = NULL;
@@ -1158,6 +1158,7 @@ int app_req_dis_name(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
+    #if 0
     /*获取用户账户信息*/
     sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
@@ -1186,6 +1187,7 @@ int app_req_dis_name(payload_t data)
     {
         M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
     }
+    #endif
 
     /*获取项目信息*/
     {
@@ -1196,7 +1198,7 @@ int app_req_dis_name(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1211,7 +1213,7 @@ int app_req_dis_name(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1245,7 +1247,7 @@ int app_req_dis_name(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc != SQLITE_ROW){
@@ -1303,7 +1305,7 @@ int app_req_dis_scen_name(payload_t data)
     int ret                 = M1_PROTOCOL_OK;
     char *scenario          = NULL;
     char *scen_pic          = NULL;
-    char *account           = NULL;
+    const char *account     = "Dalitek";
     char *sql               = NULL;
     char *sql_1             = NULL;
     char *sql_2             = NULL;
@@ -1362,7 +1364,7 @@ int app_req_dis_scen_name(payload_t data)
     /*获取区域*/
     number = cJSON_GetArraySize(data.pdu);
     M1_LOG_DEBUG("number:%d\n",number);
-
+    #if 0
     /*获取用户账户信息*/
     {
         sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
@@ -1372,7 +1374,7 @@ int app_req_dis_scen_name(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1395,7 +1397,7 @@ int app_req_dis_scen_name(payload_t data)
             M1_LOG_WARN("clientFd:%03d,account:%s\n",data.clientFd, account);
         }
     }
-
+    #endif
     /*查询场景信息*/
     {
         sql_1 = "select distinct SCEN_NAME from scenario_table where DISTRICT = ? and ACCOUNT = ?;";
@@ -1405,7 +1407,7 @@ int app_req_dis_scen_name(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1418,7 +1420,7 @@ int app_req_dis_scen_name(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1537,7 +1539,7 @@ int app_req_dis_dev(payload_t data)
     int i                   = 0;
     int rc                  = 0;
     int ret                 = M1_PROTOCOL_OK;
-    char *account           = NULL;
+    const char *account     = "Dalitek";
     char *apId              = NULL;
     char *pId               = NULL;
     char *devName           = NULL;
@@ -1606,7 +1608,7 @@ int app_req_dis_dev(payload_t data)
     /*获取区域*/
     number = cJSON_GetArraySize(data.pdu);
     M1_LOG_DEBUG("number:%d\n",number);
-
+#if 0
     /*获取用户账户信息*/
     {
         sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
@@ -1616,7 +1618,7 @@ int app_req_dis_dev(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1638,6 +1640,7 @@ int app_req_dis_dev(payload_t data)
             M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
         }
     }
+#endif
     /*获取区域信息*/
     {
         sql_1 = "select distinct AP_ID from district_table where DIS_NAME = ? and ACCOUNT = ?;";
@@ -1647,7 +1650,7 @@ int app_req_dis_dev(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1660,7 +1663,7 @@ int app_req_dis_dev(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1673,7 +1676,7 @@ int app_req_dis_dev(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1899,6 +1902,7 @@ int user_login_handle(payload_t data)
         stmt = NULL;
     }
 
+#if 0
     //sql_0_1 = "select CLIENT_FD from account_info where ACCOUNT = ?;";
     sql_0_1 = "delete from account_info where CLIENT_FD = ?;";
     M1_LOG_DEBUG("%s\n",sql_0_1);
@@ -1936,7 +1940,7 @@ int user_login_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
     
@@ -1946,7 +1950,7 @@ int user_login_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc == SQLITE_ERROR)
@@ -1960,8 +1964,9 @@ int user_login_handle(payload_t data)
         M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
         sqlite3_free(errorMsg);
     }
-
+#endif
     Finish:
+#if 0
     if(sql_commit_flag)
     {
         rc = sql_commit(db);
@@ -1969,15 +1974,14 @@ int user_login_handle(payload_t data)
         {
             M1_LOG_DEBUG("COMMIT OK\n");
         }
-    }
-    
+    }   
     if(stmt)
-        sqlite3_finalize(stmt);
+        sqlite3_finalize(stmt);  
     if(stmt_0_1)
         sqlite3_finalize(stmt_0_1);
     if(stmt_1)
         sqlite3_finalize(stmt_1);
-    
+#endif    
 	return 	ret;
 }
 
@@ -2125,7 +2129,7 @@ int app_change_user_key(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();         
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 

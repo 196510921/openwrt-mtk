@@ -86,7 +86,7 @@ int district_create_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();    
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -100,7 +100,7 @@ int district_create_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -240,7 +240,7 @@ int app_req_district(payload_t data)
     int rc                    = 0;
     int ret                   = M1_PROTOCOL_OK;
     char *dis_pic             = NULL;
-    char *account             = NULL;
+    char *account             = "Dalitek";
     char *dist_name           = NULL;
     char *ap_id               = NULL;
     char *ap_name             = NULL;
@@ -302,6 +302,7 @@ int app_req_district(payload_t data)
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
+    #if 0
     /*获取用户账户信息*/
     {
         sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
@@ -310,7 +311,7 @@ int app_req_district(payload_t data)
         rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
         if(rc != SQLITE_OK){
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -332,7 +333,7 @@ int app_req_district(payload_t data)
             M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
         }
     }
-
+    #endif
     {
         /*取区域名称*/
        	sql_1 = "select distinct DIS_NAME from district_table where ACCOUNT = ?;";
@@ -342,7 +343,7 @@ int app_req_district(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();    
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -354,7 +355,7 @@ int app_req_district(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();    
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -366,7 +367,7 @@ int app_req_district(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -378,7 +379,7 @@ int app_req_district(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -405,7 +406,7 @@ int app_req_district(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc != SQLITE_ROW)

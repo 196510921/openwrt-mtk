@@ -475,6 +475,11 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	msg_len = (((len >> 8) & 0xff) | ((len << 8) & 0xff00)) & 0xffff;
 
 	M1_LOG_DEBUG("len:%05d, Msg len:%05d\n",len, msg_len);
+	if(len > 200*1024)
+	{
+		M1_LOG_ERROR("socket write too long!");
+		return;
+	}
 	send_buf = (char*)malloc(len + 4);
 	memcpy(send_buf, &header, 2);
 	memcpy((send_buf+2), &msg_len, 2);

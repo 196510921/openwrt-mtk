@@ -195,7 +195,7 @@ int app_create_project(payload_t data)
 	M1_LOG_DEBUG("app_create_project\n");
     int rc                 = 0;
     int ret                = M1_PROTOCOL_OK;
-    char*  account         = NULL;
+    const char*  account         = "Dalitek";
     /*Json*/
 	cJSON* pNameJson       = NULL;
 	cJSON* pNumberJson     = NULL;
@@ -230,7 +230,7 @@ int app_create_project(payload_t data)
     M1_LOG_DEBUG("pBrief:%s\n",pBriefJson->valuestring);
     /*获取数据路*/
     db = data.db;
-
+    #if 0
     {
         sql = "select ACCOUNT from account_info where CLIENT_FD = ? limit 1;";
         M1_LOG_DEBUG( "%s\n", sql);
@@ -238,7 +238,7 @@ int app_create_project(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -258,7 +258,7 @@ int app_create_project(payload_t data)
 
     }
 
-
+    #endif
     {
         sql_1_0 = "delete from project_table where P_NAME = ? and P_NUMBER = ?;";
         M1_LOG_DEBUG( "%s\n", sql_1_0);
@@ -266,7 +266,7 @@ int app_create_project(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -280,7 +280,7 @@ int app_create_project(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -296,7 +296,7 @@ int app_create_project(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 
@@ -316,7 +316,7 @@ int app_create_project(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 
@@ -468,7 +468,7 @@ int app_change_project_config(payload_t data)
     int rc               = 0;
     int ret              = M1_PROTOCOL_OK;
     char* pKey           = NULL;
-    char* account        = NULL;
+    const char* account  = "Dalitek";
     /*Json*/
     cJSON *pNameJson     = NULL;
     cJSON *pNumberJson   = NULL;
@@ -514,7 +514,7 @@ int app_change_project_config(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -524,7 +524,7 @@ int app_change_project_config(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         pKey = sqlite3_column_text(stmt, 0);
@@ -535,7 +535,7 @@ int app_change_project_config(payload_t data)
             goto Finish;
         }
     }
-
+    #if 0
     {
         sql_1 = "select ACCOUNT from account_info where CLIENT_FD = ?;";
         M1_LOG_DEBUG("sql:%s\n", sql_1);
@@ -543,7 +543,7 @@ int app_change_project_config(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -553,7 +553,7 @@ int app_change_project_config(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         account = sqlite3_column_text(stmt_1, 0);
@@ -564,7 +564,7 @@ int app_change_project_config(payload_t data)
             goto Finish;
         }
     }
-
+    #endif
     {
         sql_2 = "insert into project_table(P_NAME,P_NUMBER,P_CREATOR,P_MANAGER,P_EDITOR,P_TEL,P_ADD,P_BRIEF,P_KEY,ACCOUNT)\
         values(?,?,?,?,?,?,?,?,?,?);";
@@ -573,7 +573,7 @@ int app_change_project_config(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -597,7 +597,7 @@ int app_change_project_config(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 
@@ -725,7 +725,7 @@ int app_change_project_key(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 

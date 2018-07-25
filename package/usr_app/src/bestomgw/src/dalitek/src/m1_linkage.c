@@ -90,7 +90,7 @@ static int device_exec(char* data, sqlite3* db)
 		if(rc != SQLITE_OK)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-	        if(rc == SQLITE_CORRUPT)
+	        if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
@@ -104,7 +104,7 @@ static int device_exec(char* data, sqlite3* db)
 		if(rc != SQLITE_OK)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-	        if(rc == SQLITE_CORRUPT)
+	        if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
@@ -118,7 +118,7 @@ static int device_exec(char* data, sqlite3* db)
 		if(rc != SQLITE_OK)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-	        if(rc == SQLITE_CORRUPT)
+	        if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
@@ -132,7 +132,7 @@ static int device_exec(char* data, sqlite3* db)
 		if(rc != SQLITE_OK)
 		{
 	        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-	        if(rc == SQLITE_CORRUPT)
+	        if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();  
 	        ret = M1_PROTOCOL_FAILED;
 	        goto Finish; 
@@ -337,7 +337,7 @@ int linkage_msg_handle(payload_t data)
 	    if(rc != SQLITE_OK)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-    	    if(rc == SQLITE_CORRUPT)
+    	    if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();   
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
@@ -352,7 +352,7 @@ int linkage_msg_handle(payload_t data)
 	    if(rc != SQLITE_OK)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-    	    if(rc == SQLITE_CORRUPT)
+    	    if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();     
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
@@ -367,7 +367,7 @@ int linkage_msg_handle(payload_t data)
 	    if(rc != SQLITE_OK)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-    	    if(rc == SQLITE_CORRUPT)
+    	    if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();      
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
@@ -382,7 +382,7 @@ int linkage_msg_handle(payload_t data)
 	    if(rc != SQLITE_OK)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-    	    if(rc == SQLITE_CORRUPT)
+    	    if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();       
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
@@ -396,7 +396,7 @@ int linkage_msg_handle(payload_t data)
 	    if(rc != SQLITE_OK)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-    	    if(rc == SQLITE_CORRUPT)
+    	    if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();       
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
@@ -410,7 +410,7 @@ int linkage_msg_handle(payload_t data)
 	    if(rc != SQLITE_OK)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-    	    if(rc == SQLITE_CORRUPT)
+    	    if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();       
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
@@ -473,7 +473,7 @@ int linkage_msg_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 
@@ -625,7 +625,7 @@ void linkage_task(void)
 		if(rc != SQLITE_OK)
 		{
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-    	    if(rc == SQLITE_CORRUPT)
+    	    if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();       
     	    goto Finish; 
     	}
@@ -820,7 +820,7 @@ static void linkage_check(sqlite3* db, char* link_name)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 		

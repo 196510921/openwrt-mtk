@@ -784,7 +784,7 @@ int scenario_alarm_create_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 
@@ -792,7 +792,7 @@ int scenario_alarm_create_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 
@@ -834,7 +834,7 @@ int app_req_scenario(payload_t data)
     int pId                  = 0;
     int type                 = 0;
     int value                = 0;
-    char* account            = NULL;
+    const char* account      = "Dalitek";
     char *scen_name          = NULL;
     char *district           = NULL;
     char *week               = NULL;
@@ -908,7 +908,7 @@ int app_req_scenario(payload_t data)
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-
+    #if 0
     /*获取用户账户信息*/
     sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
@@ -936,7 +936,7 @@ int app_req_scenario(payload_t data)
     {
         M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
     }
-
+	#endif
     /*取场景名称*/
     {
     	sql_1 = "select distinct SCEN_NAME from scenario_table where ACCOUNT = ?;";
@@ -1055,7 +1055,7 @@ int app_req_scenario(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         } 
 		if(rc == SQLITE_ROW)
@@ -1089,7 +1089,7 @@ int app_req_scenario(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         } 
 		if(rc == SQLITE_ROW)

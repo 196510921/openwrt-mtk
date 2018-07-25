@@ -21,6 +21,8 @@
 #ifdef LOCAL_IP
 	#define SERVER_IP  "101.132.91.12"
 	#define SERV_PORT 14010
+	// #define SERVER_IP  "192.168.100.124"
+	// #define SERV_PORT 14010
 #else
 	#define SERVER_IP  "server.natappfree.cc"
 	#define SERV_PORT 36200
@@ -74,7 +76,7 @@ void tcp_client_timeout_tick(int d)
 
 void tcp_client_timeout_reset(int pdutype)
 {
-	if(pdutype == TYPE_M1_HEARTBEAT_TO_CLOUD)
+	if(pdutype == TYPE_M1_HEARTBEAT_TO_CLOUD || pdutype == TYPE_M1_REPORT_ID_TO_CLOUD)
 	{
 		tcp_client_timeout_tick(0);
 	}
@@ -149,8 +151,8 @@ void socket_client_poll(void)
 		/*set client port in the poll file descriptors*/
 		M1_LOG_INFO("client waiting for poll()\n");
 
-		poll(pollFds, 1, -1);
-		//poll(pollFds, numClientFds, -1);
+		//poll(pollFds, 1, -1);
+		poll(pollFds, 1, 1000*60*3); //3分钟超时
 		M1_LOG_INFO("client poll out\n");
 		/*client*/
 		if ((pollFds[0].revents))

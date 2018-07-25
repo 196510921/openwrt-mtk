@@ -44,7 +44,7 @@ static uint8_t hex_to_uint8(int h);
 static void check_offline_dev(sqlite3*db);
 /*variable******************************************************************************************************/
 extern pthread_mutex_t mutex_lock;
-sqlite3* db = NULL;
+const sqlite3* db = NULL;
 const char* db_path = "/bin/dev_info.db";
 const char* sql_back_path = "/bin/sql_restore.sh";
 // const char* db_path = "dev_info.db";
@@ -81,11 +81,11 @@ void data_handle(m1_package_t* package)
     M1_LOG_DEBUG("data_handle\n");
     int rc, ret;
     int pduType;
-    uint32_t* msg = NULL;
-    cJSON* rootJson = NULL;
-    cJSON* pduJson = NULL;
+    uint32_t* msg      = NULL;
+    cJSON* rootJson    = NULL;
+    cJSON* pduJson     = NULL;
     cJSON* pduTypeJson = NULL;
-    cJSON* snJson = NULL;
+    cJSON* snJson      = NULL;
     cJSON* pduDataJson = NULL;
 
     payload_t pdu;
@@ -285,7 +285,7 @@ static int AP_report_data_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));   
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -299,7 +299,7 @@ static int AP_report_data_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -312,7 +312,7 @@ static int AP_report_data_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -746,7 +746,7 @@ static int AP_report_ap_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -758,7 +758,7 @@ static int AP_report_ap_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -770,7 +770,7 @@ static int AP_report_ap_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -784,7 +784,7 @@ static int AP_report_ap_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -795,7 +795,7 @@ static int AP_report_ap_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -806,7 +806,7 @@ static int AP_report_ap_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -911,7 +911,7 @@ static int AP_report_ap_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc == SQLITE_ROW)
@@ -955,7 +955,7 @@ static int AP_report_ap_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
                 
@@ -1119,7 +1119,7 @@ static int APP_read_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1133,7 +1133,7 @@ static int APP_read_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -1177,7 +1177,7 @@ static int APP_read_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc == SQLITE_ROW)
@@ -1664,7 +1664,7 @@ static int APP_req_added_dev_info_handle(payload_t data)
     int ret                 = M1_PROTOCOL_OK;
     int pduType             = TYPE_M1_REPORT_ADDED_INFO;
     /*rx data*/
-    const char *account     = NULL;
+    const char *account     = "Dalitek";
     /*tx data*/
     const char *apId        = NULL;
     const char *apName      = NULL;
@@ -1672,11 +1672,11 @@ static int APP_req_added_dev_info_handle(payload_t data)
     const char *devName     = NULL;
     int pId                 = 0;
     /*sql*/
-    char *sql               = NULL;
+    // char *sql               = NULL;
     char *sql_1             = NULL;
     char *sql_2             = NULL;
     sqlite3 *db             = NULL;
-    sqlite3_stmt *stmt      = NULL;
+    // sqlite3_stmt *stmt      = NULL;
     sqlite3_stmt *stmt_1    = NULL;
     sqlite3_stmt *stmt_2    = NULL;
     /*Json*/
@@ -1725,6 +1725,7 @@ static int APP_req_added_dev_info_handle(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray); 
     /*获取当前账户*/
+    #if 0
     sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
     rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
@@ -1756,7 +1757,8 @@ static int APP_req_added_dev_info_handle(payload_t data)
             M1_LOG_DEBUG("account:%s\n",account);
         }
     }
-    
+    #endif
+
     sql_1 = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID = AP_ID and ACCOUNT = ?;";
     rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
     if(rc != SQLITE_OK)
@@ -1852,8 +1854,10 @@ static int APP_req_added_dev_info_handle(payload_t data)
     socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     
     Finish:
+#if 0
     if(stmt != NULL)
         sqlite3_finalize(stmt);
+#endif
     if(stmt_1 != NULL)
         sqlite3_finalize(stmt_1);
     if(stmt_2 != NULL)
@@ -1999,6 +2003,7 @@ static int M1_report_ap_info(payload_t data)
     /*Tx data*/
     const char *apId       = NULL;
     const char *apName     = NULL;
+    const char *account    = "Dalitek";
     int pId                 = 0;
     /*Json*/
     char *sql               = NULL;
@@ -2051,9 +2056,8 @@ static int M1_report_ap_info(payload_t data)
     ret = app_gw_search();
     printf("app_gw_search :%d\n",ret);
 
-    // sql = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID = AP_ID and ACCOUNT in \
-    //       (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
-    sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID = a.AP_ID and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
+    //sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID = a.AP_ID and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
+    sql = "select DEV_ID,DEV_NAME,PID from all_dev where DEV_ID = AP_ID and ACCOUNT = ?;";
     M1_LOG_DEBUG( "%s\n", sql);
     rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(rc != SQLITE_OK)
@@ -2065,8 +2069,8 @@ static int M1_report_ap_info(payload_t data)
         goto Finish; 
     }
 
-    sqlite3_bind_int(stmt, 1, data.clientFd);
-   
+    //sqlite3_bind_int(stmt, 1, data.clientFd);
+    sqlite3_bind_text(stmt, 1, account, -1, NULL);
     while(sqlite3_step(stmt) == SQLITE_ROW){
         apId   = sqlite3_column_text(stmt, 0);
         apName = sqlite3_column_text(stmt, 1);
@@ -2114,10 +2118,10 @@ static int M1_report_dev_info(payload_t data)
     int rc                  = 0;
     int ret                 = M1_PROTOCOL_OK;
     char *apId              = NULL;
-    char *account           = NULL;
     /*Tx data*/
     const char *devId       = NULL;
     const char *devName     = NULL;
+    const char *account     = "Dalitek";
     int pId                 = 0;
     /*Json*/
     cJSON *pJsonRoot        = NULL;
@@ -2170,7 +2174,8 @@ static int M1_report_dev_info(payload_t data)
 
     // sql = "select DEV_ID, DEV_NAME, PID from all_dev where AP_ID != DEV_ID and AP_ID = ? and  ACCOUNT in \
     //       (select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1);";
-    sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.AP_ID = ? and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
+    //sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.AP_ID = ? and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
+    sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.AP_ID = ? and ACCOUNT = ?;";
     M1_LOG_DEBUG("sql:%s", sql);
     rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(rc != SQLITE_OK)
@@ -2183,8 +2188,8 @@ static int M1_report_dev_info(payload_t data)
     }
 
     sqlite3_bind_text(stmt, 1, apId, -1, NULL);
-    sqlite3_bind_int(stmt, 2, data.clientFd);
-
+    //sqlite3_bind_int(stmt, 2, data.clientFd);
+    sqlite3_bind_text(stmt, 2, account, -1, NULL);
     while(sqlite3_step(stmt) == SQLITE_ROW)
     {
         devId   = sqlite3_column_text(stmt, 0);
@@ -2596,7 +2601,7 @@ static void check_offline_dev(sqlite3*db)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();   
             goto Finish; 
         }
@@ -2608,7 +2613,7 @@ static void check_offline_dev(sqlite3*db)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
 
@@ -2750,7 +2755,7 @@ static int ap_heartbeat_handle(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -2765,7 +2770,7 @@ static int ap_heartbeat_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
     }
@@ -2978,7 +2983,7 @@ static int app_change_device_name(payload_t data)
         if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
@@ -2991,7 +2996,7 @@ static int app_change_device_name(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                 m1_error_handle();
         }
         if(rc == SQLITE_ERROR)
@@ -3128,12 +3133,19 @@ int sql_exec(sqlite3* db, char*sql)
 /*打开数据库*/
 int sql_open(void)
 {
+    //static int sql_open_once = 0;
     int rc;
 
-    pthread_mutex_lock(&mutex_lock);
+    // if(sql_open_once != 0)
+    //     return SQLITE_OK;
+
+    // sql_open_once = 1;
+
+    //pthread_mutex_lock(&mutex_lock);
     M1_LOG_DEBUG( "pthread_mutex_lock\n");
 
-    rc = sqlite3_open(db_path, &db);
+    //rc = sqlite3_open(db_path, &db);
+    rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_SHAREDCACHE, NULL);
     if( rc != SQLITE_OK){  
         M1_LOG_ERROR( "Can't open database\n");  
     }else{  
@@ -3146,12 +3158,13 @@ int sql_open(void)
 /*关闭数据库*/
 int sql_close(void)
 {
+    //return SQLITE_OK;
     int rc;
     
     M1_LOG_DEBUG( "Sqlite3 close\n");
     rc = sqlite3_close(db);
 
-    pthread_mutex_unlock(&mutex_lock);
+    //pthread_mutex_unlock(&mutex_lock);
     M1_LOG_DEBUG( "pthread_mutex_unlock\n");
 
     return rc;
@@ -3599,7 +3612,7 @@ static int create_sql_table(void)
             if(rc != SQLITE_OK)
             {
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s, rc:%d\n", sqlite3_errmsg(db),rc);  
-                if(rc == SQLITE_CORRUPT)
+                if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                     m1_error_handle();
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
@@ -3620,7 +3633,7 @@ static int create_sql_table(void)
             if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                if(rc == SQLITE_CORRUPT)
+                if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
                     m1_error_handle();
             }
             if(rc == SQLITE_ERROR)
