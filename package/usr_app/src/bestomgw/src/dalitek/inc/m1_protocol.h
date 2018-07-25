@@ -99,7 +99,7 @@ int sql_commit(sqlite3* db);
 /*用户信息*/
 void delete_client_db(void);
 char* get_account_info(user_account_t data);
-void delete_account_conn_info(int clientFd);
+int delete_account_conn_info(int clientFd);
 /*设备升级*/
 int m1_ap_update(cJSON* devData);
 int m1_ap_version_read(payload_t data);

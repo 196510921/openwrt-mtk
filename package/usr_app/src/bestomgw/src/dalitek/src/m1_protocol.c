@@ -2862,46 +2862,84 @@ static int common_rsp(rsp_data_t data)
     return ret;
 }
 
-void delete_account_conn_info(int clientFd)
+int delete_account_conn_info(int clientFd)
 {
     int rc              = 0;
+    int sqlFlag         = 0;
     int ret             = M1_PROTOCOL_OK;
     char *errorMsg      = NULL;
     char *sql           = NULL;
     sqlite3_stmt* stmt  = NULL;
 
+    // rc = sql_open();
+    // if( rc != SQLITE_OK){  
+    //     M1_LOG_ERROR( "Can't open database\n");  
+    //     goto Finish;
+    // }else{  
+    //     M1_LOG_DEBUG( "Opened database successfully\n");  
+    // }
+
+    //sql = "delete from account_info where CLIENT_FD = ?;";
+    sql = "delete from conn_info where CLIENT_FD = ?;";
+
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s, num:%d\n", sqlite3_errmsg(db), rc); 
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle(); 
+        // ret = M1_PROTOCOL_FAILED;
+        // goto Finish; 
+    }
+
+    /*打开数据库*/
+    if(rc == SQLITE_MISUSE)
+    {
+        rc = sql_open();
+        if( rc != SQLITE_OK)
+        {  
+            M1_LOG_ERROR( "Can't open database\n");  
+            goto Finish;
+        }
+        else
+        {  
+            M1_LOG_DEBUG( "Opened database successfully\n");  
+        }
+
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s, num:%d\n", sqlite3_errmsg(db), rc); 
+            if(rc == SQLITE_CORRUPT)
+                m1_error_handle(); 
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+
+        sqlFlag = 1;
+
+    }
+
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
+        
+        sqlite3_bind_int(stmt, 1, clientFd);
+
+        M1_LOG_DEBUG("string:%s\n",sql);
+        rc = sqlite3_step(stmt);   
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
-            sql = "delete from account_info where CLIENT_FD = ?;";
-            M1_LOG_DEBUG("string:%s\n",sql);
-
-            rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
-            if(rc != SQLITE_OK)
-            {
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
-                if(rc == SQLITE_CORRUPT)
-                    m1_error_handle(); 
-                ret = M1_PROTOCOL_FAILED;
-                goto Finish; 
-            }
-
-            sqlite3_bind_int(stmt, 1, clientFd);
-
-            rc = sqlite3_step(stmt);   
-            if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
-            {
-                M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-                if(rc == SQLITE_CORRUPT)
-                    m1_error_handle();
-            }
-            
-            if(stmt)
-            {
-                stmt = NULL;
-                sqlite3_finalize(stmt);
-            }
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            if(rc == SQLITE_CORRUPT)
+                m1_error_handle();
         }
+            
+        if(stmt)
+        {
+            stmt = NULL;
+            sqlite3_finalize(stmt);
+        }
+        
 
         rc = sql_commit(db);
         if(rc == SQLITE_OK)
@@ -2913,13 +2951,19 @@ void delete_account_conn_info(int clientFd)
     {
         M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
         sqlite3_free(errorMsg);
+        ret = M1_PROTOCOL_FAILED;
     }
 
+    M1_LOG_INFO("delete from conn_info where CLIENT_FD = %d\n", clientFd);
     Finish:
 
+    /*数据库open的情况下关闭*/
+    if(sqlFlag == 1)
+        sql_close();
     if(stmt)
         sqlite3_finalize(stmt);
 
+    return ret;
 }
 
 /*删除用户登录历史数据*/
@@ -3134,14 +3178,14 @@ int sql_exec(sqlite3* db, char*sql)
 int sql_open(void)
 {
     //static int sql_open_once = 0;
-    int rc;
+    int rc = SQLITE_OK;
 
     // if(sql_open_once != 0)
     //     return SQLITE_OK;
 
     // sql_open_once = 1;
 
-    //pthread_mutex_lock(&mutex_lock);
+    pthread_mutex_lock(&mutex_lock);
     M1_LOG_DEBUG( "pthread_mutex_lock\n");
 
     //rc = sqlite3_open(db_path, &db);
@@ -3164,7 +3208,7 @@ int sql_close(void)
     M1_LOG_DEBUG( "Sqlite3 close\n");
     rc = sqlite3_close(db);
 
-    //pthread_mutex_unlock(&mutex_lock);
+    pthread_mutex_unlock(&mutex_lock);
     M1_LOG_DEBUG( "pthread_mutex_unlock\n");
 
     return rc;

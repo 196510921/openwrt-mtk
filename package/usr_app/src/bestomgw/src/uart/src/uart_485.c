@@ -22,7 +22,7 @@ struct termios newtio, oldtio;
 int set_com_opt( int fd, int nspeed, int nbits, char parity, int nstop )
 {
 //打印配置信息
-  printf("set_com_opt - speed:%d,bits:%d,parity:%c,stop:%d\n", \
+  M1_LOG_INFO("set_com_opt - speed:%d,bits:%d,parity:%c,stop:%d\n", \
         nspeed, nbits, parity, nstop );
     
   //保存并测试现在有串口参数设置，在这里如果串口号等出错，会有相关的出错信息 
@@ -135,12 +135,12 @@ int set_com_opt( int fd, int nspeed, int nbits, char parity, int nstop )
 //激活配置 (将修改后的termios数据设置到串口中）
   if( tcsetattr( fd, TCSANOW, &newtio ) != 0 )
   {
-    printf("serial set error!\n");
+    M1_LOG_WARN("serial set error!\n");
     perror( "serial set error!" );
     return -1;
   }
  
-  printf( "serial set ok!\n" );
+  M1_LOG_INFO( "serial set ok!\n" );
   return 1;
 }
  
@@ -153,15 +153,15 @@ int open_com_dev( char *dev_name )
   {
  
     perror("open\n");
-    printf("Can't open Serial %s Port!\n", dev_name );
+    M1_LOG_WARN("Can't open Serial %s Port!\n", dev_name );
     return -1;
   }
  
-  printf("open %s ok!\n", dev_name );
+  M1_LOG_INFO("open %s ok!\n", dev_name );
  
   if(fcntl(fd,F_SETFL,0)<0)
   {
-    printf("fcntl failed!\n");
+    M1_LOG_WARN("fcntl failed!\n");
   }
   return fd;
 }
@@ -173,7 +173,7 @@ int uart_485_init(char* uart)
   int fd_s = open_com_dev(uart);
   if( fd_s < 0 )
   {
-    printf( "open UART device error! %s\n", uart );
+    M1_LOG_WARN( "open UART device error! %s\n", uart );
   }
   else
   {
@@ -189,19 +189,19 @@ int uart_write(uart_data_t data)
   int n = 0;
   int i = 0;
 
-  printf("uart_write:");
+  M1_LOG_DEBUG("uart_write:");
   for(i = 0; i < data.len; i++)
   {
-    printf("%x ",data.d[i]);
+    M1_LOG_DEBUG("%x ",data.d[i]);
   }
-  printf("\n");
+  M1_LOG_DEBUG("\n");
   n = write(data.uartFd, data.d, data.len);
   if(n < 0)
   {
     perror ("write err");
     return -1;
   }
-  printf("write len:%d\n",n);
+  M1_LOG_DEBUG("write len:%d\n",n);
 
   return n;
 }
@@ -218,10 +218,10 @@ int uart_read(uart_data_t* data)
     return -1;
   }
   data->len = n;
-  printf("nread:%d read data : ",n);
+  M1_LOG_DEBUG("nread:%d read data : ",n);
   for(i = 0; i < n; i++)
-    printf("%02x ",data->d[i]);
-  printf("read end\n");
+    M1_LOG_DEBUG("%02x ",data->d[i]);
+  M1_LOG_DEBUG("read end\n");
 
   return n;
 }

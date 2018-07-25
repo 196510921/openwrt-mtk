@@ -114,7 +114,7 @@ static void socket_poll(void)
 
 		if (numClientFds)
 		{
-			M1_LOG_DEBUG("numClientFds:%d\n",numClientFds);
+			M1_LOG_INFO("numClientFds:%d\n",numClientFds);
 		
 			int pollFdIdx;
 			int *client_fds = malloc(numClientFds * sizeof(int));
@@ -137,12 +137,12 @@ static void socket_poll(void)
 
 				M1_LOG_DEBUG("zllMain: waiting for poll()\n");
 
-				poll(pollFds, (numClientFds), -1);
+				poll(pollFds, numClientFds, -1);
 				M1_LOG_INFO("poll out\n");
 				/*server*/
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
-					if ((pollFds[pollFdIdx].revents))
+					if (pollFds[pollFdIdx].revents)
 					{
 						M1_LOG_DEBUG("Message from Socket Client\n");
 						socketSeverPoll(pollFds[pollFdIdx].fd, pollFds[pollFdIdx].revents);

@@ -362,9 +362,12 @@ int client_block_destory(int clientFd)
 	M1_LOG_INFO( "block_destory\n");
 	int i;
 
-	for(i = 0; i <  STACK_BLOCK_NUM; i++){
+	for(i = 0; i <  STACK_BLOCK_NUM; i++)
+	{
 
-		if(clientFd == client_block_get_fd(i)){
+		if(clientFd == client_block_get_fd(i))
+		{
+			M1_LOG_INFO( "clientFd:%d destory\n",clientFd);	
 			client_block_set_fd(0, i);
 			if(TCP_SERVER_FAILED == stack_block_destroy(client_block[i].stack_block)){
 				M1_LOG_ERROR("block_destroy failed\n");
