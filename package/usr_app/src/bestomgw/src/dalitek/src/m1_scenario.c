@@ -85,9 +85,12 @@ int scenario_exec(char* data, sqlite3* db)
     {
 	    sql = "select distinct AP_ID from scenario_table where SCEN_NAME = ?;";
 		M1_LOG_DEBUG("sql:%s\n",sql);
-		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+		rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+		if(rc != SQLITE_OK)
 		{
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle(); 
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -96,9 +99,12 @@ int scenario_exec(char* data, sqlite3* db)
 	{
 		sql_1 = "select distinct DEV_ID from scenario_table where SCEN_NAME = ? and AP_ID = ?;";
 		M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+		rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+		if(rc != SQLITE_OK)
 		{
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();   
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -107,9 +113,12 @@ int scenario_exec(char* data, sqlite3* db)
 	{
 		sql_2 = "select STATUS from all_dev where DEV_ID = ?;";
 		M1_LOG_DEBUG("sql_2:%s\n",sql_2);
-		if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+		rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+		if(rc != SQLITE_OK)
 		{
 		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();   
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -118,9 +127,12 @@ int scenario_exec(char* data, sqlite3* db)
 	{
 		sql_3 = "select TYPE, VALUE, DELAY from scenario_table where SCEN_NAME = ? and DEV_ID = ? and ACCOUNT = ?;";
 		M1_LOG_DEBUG("sql_3:%s\n",sql_3);
-		if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+		rc = sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+		if(rc != SQLITE_OK)
 		{
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle(); 
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -129,9 +141,12 @@ int scenario_exec(char* data, sqlite3* db)
 	{
 		sql_4 = "select CLIENT_FD from conn_info where AP_ID = ?;";
 		M1_LOG_DEBUG("sql_4:%s\n",sql_4);
-		if(sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL) != SQLITE_OK)
+		rc = sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL);
+		if(rc != SQLITE_OK)
 		{
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();   
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -155,7 +170,7 @@ int scenario_exec(char* data, sqlite3* db)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    m1_error_handle();
             }
 		   	if(rc == SQLITE_ROW)
 		   	{
@@ -228,7 +243,7 @@ int scenario_exec(char* data, sqlite3* db)
             	{
             	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             	    if(rc == SQLITE_CORRUPT)
-            	        exit(0);
+            	        m1_error_handle();
             	}
 		    	if(rc == SQLITE_ROW)
 		    	{
@@ -348,18 +363,24 @@ int scenario_create_handle(payload_t data)
 	{
 		sql_0 = "delete from scen_alarm_table where SCEN_NAME = ?;";
 		M1_LOG_DEBUG("%s\n",sql_0);
-		if(sqlite3_prepare_v2(db, sql_0, strlen(sql_0), &stmt_0, NULL) != SQLITE_OK)
+		rc = sqlite3_prepare_v2(db, sql_0, strlen(sql_0), &stmt_0, NULL);
+		if(rc != SQLITE_OK)
 		{
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();    
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
 
 		sql = "insert into scen_alarm_table(SCEN_NAME, HOUR, MINUTES, WEEK, STATUS) values(?,?,?,?,?);";
 		M1_LOG_DEBUG("%s\n",sql);
-		if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+		rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+		if(rc != SQLITE_OK)
 		{
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();     
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -368,9 +389,12 @@ int scenario_create_handle(payload_t data)
 	{
 		sql_1 = "insert into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
 		M1_LOG_DEBUG("%s\n",sql_1);
-		if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+		rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+		if(rc != SQLITE_OK)
 		{
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();       
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -379,9 +403,12 @@ int scenario_create_handle(payload_t data)
 	{
 		sql_1_1 = "select DISTINCT ACCOUNT from scenario_table where SCEN_NAME = ? and DISTRICT = ?;";
 	    M1_LOG_DEBUG("%s\n",sql_1_1);
-	    if(sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL) != SQLITE_OK)
+	    rc = sqlite3_prepare_v2(db, sql_1_1, strlen(sql_1_1), &stmt_1_1, NULL);
+	    if(rc != SQLITE_OK)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();       
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
@@ -390,9 +417,12 @@ int scenario_create_handle(payload_t data)
 	{
 		sql_1_2 = "delete from scenario_table where SCEN_NAME = ? and DISTRICT = ?;";
 	    M1_LOG_DEBUG("%s\n",sql_1_2);
-	    if(sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL) != SQLITE_OK)
+	    rc = sqlite3_prepare_v2(db, sql_1_2, strlen(sql_1_2), &stmt_1_2, NULL);
+	    if(rc != SQLITE_OK)
 	    {
     	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+    	    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();       
     	    ret = M1_PROTOCOL_FAILED;
     	    goto Finish; 
     	}
@@ -438,7 +468,7 @@ int scenario_create_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    m1_error_handle();
             }
 
 		    /*插入新数据*/
@@ -453,7 +483,7 @@ int scenario_create_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    m1_error_handle();
             }
 		}
 		
@@ -502,7 +532,7 @@ int scenario_create_handle(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    m1_error_handle();
             }
 		}
 
@@ -587,7 +617,7 @@ int scenario_create_handle(payload_t data)
             	{
             	    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             	    if(rc == SQLITE_CORRUPT)
-            	        exit(0);
+            	        m1_error_handle();
             	}
 
 				sqlite3_reset(stmt_1);
@@ -612,7 +642,7 @@ int scenario_create_handle(payload_t data)
             		{
             		    M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
             		    if(rc == SQLITE_CORRUPT)
-            		        exit(0);
+            		        m1_error_handle();
             		}
 
 					sqlite3_reset(stmt_1);
@@ -715,10 +745,13 @@ int scenario_alarm_create_handle(payload_t data)
 	/*删除历史数据*/
 	sql_0 = "delete from scen_alarm_table where SCEN_NAME = ?;";
 	M1_LOG_DEBUG("%s\n",sql_0);
-	  
-	if(sqlite3_prepare_v2(db, sql_0, strlen(sql_0), &stmt_0, NULL) != SQLITE_OK)
+
+	rc = sqlite3_prepare_v2(db, sql_0, strlen(sql_0), &stmt_0, NULL);
+	if(rc != SQLITE_OK)
 	{
 		M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		if(rc == SQLITE_CORRUPT)
+            m1_error_handle();       
 		ret = M1_PROTOCOL_FAILED;
 		goto Finish; 
 	}		
@@ -728,9 +761,12 @@ int scenario_alarm_create_handle(payload_t data)
 	sql = "insert into scen_alarm_table(SCEN_NAME, HOUR, MINUTES, WEEK, STATUS) values(?,?,?,?,?);";
 	M1_LOG_DEBUG("sql:%s\n",sql);
 	  
-	if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+	 rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL); 
+	if(rc != SQLITE_OK)
 	{
 		M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		if(rc == SQLITE_CORRUPT)
+            m1_error_handle();       
 		ret = M1_PROTOCOL_FAILED;
 		goto Finish; 
 	}
@@ -748,16 +784,16 @@ int scenario_alarm_create_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
-                exit(0);
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
         }
 
 		rc = sqlite3_step(stmt);     
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
-                exit(0);
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
         }
 
 		rc = sql_commit(db);
@@ -798,7 +834,7 @@ int app_req_scenario(payload_t data)
     int pId                  = 0;
     int type                 = 0;
     int value                = 0;
-    char* account            = NULL;
+    const char* account      = "Dalitek";
     char *scen_name          = NULL;
     char *district           = NULL;
     char *week               = NULL;
@@ -872,13 +908,16 @@ int app_req_scenario(payload_t data)
     }
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
-
+    #if 0
     /*获取用户账户信息*/
     sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
 	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	    if(rc == SQLITE_CORRUPT)
+            m1_error_handle();       
 	    ret = M1_PROTOCOL_FAILED;
 	    goto Finish; 
 	}
@@ -897,14 +936,17 @@ int app_req_scenario(payload_t data)
     {
         M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
     }
-
+	#endif
     /*取场景名称*/
     {
     	sql_1 = "select distinct SCEN_NAME from scenario_table where ACCOUNT = ?;";
 	    M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-	    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+	    rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+	    if(rc != SQLITE_OK)
 	    {
 		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();       
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -913,9 +955,12 @@ int app_req_scenario(payload_t data)
     {
     	sql_2 = "select DISTRICT, SCEN_PIC from scenario_table where SCEN_NAME = ? order by ID desc limit 1;";
     	M1_LOG_DEBUG("sql_2:%s\n",sql_2);
-	    if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+    	rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+	    if(rc != SQLITE_OK)
 	    {
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();        
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -924,9 +969,12 @@ int app_req_scenario(payload_t data)
     {
     	sql_3 = "select HOUR, MINUTES, WEEK, STATUS from scen_alarm_table where SCEN_NAME = ? order by ID desc limit 1;";
     	M1_LOG_DEBUG("sql_3:%s\n",sql_3);
-	    if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+    	rc = sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+	    if(rc != SQLITE_OK)
 	    {
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();          
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -935,9 +983,12 @@ int app_req_scenario(payload_t data)
     {
     	sql_4 = "select DISTINCT DEV_ID from scenario_table where SCEN_NAME = ? order by ID asc;";
     	M1_LOG_DEBUG("sql_4:%s\n",sql_4);
-	    if(sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL) != SQLITE_OK)
+    	rc = sqlite3_prepare_v2(db, sql_4, strlen(sql_4), &stmt_4, NULL);
+	    if(rc != SQLITE_OK)
 	    {
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();           
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -946,9 +997,12 @@ int app_req_scenario(payload_t data)
     {
     	sql_5 = "select AP_ID, DELAY from scenario_table where SCEN_NAME = ? and DEV_ID = ? order by ID desc limit 1;";
     	M1_LOG_DEBUG("sql_5:%s\n",sql_5);
-	    if(sqlite3_prepare_v2(db, sql_5, strlen(sql_5), &stmt_5, NULL) != SQLITE_OK)
+    	rc = sqlite3_prepare_v2(db, sql_5, strlen(sql_5), &stmt_5, NULL);
+	    if(rc != SQLITE_OK)
 	    {
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();             
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -957,9 +1011,12 @@ int app_req_scenario(payload_t data)
     {
     	sql_6 = "select DEV_NAME, PID from all_dev where DEV_ID = ? order by ID desc limit 1;";
     	M1_LOG_DEBUG("sql_6:%s\n",sql_6);
-	    if(sqlite3_prepare_v2(db, sql_6, strlen(sql_6), &stmt_6, NULL) != SQLITE_OK)
+    	rc = sqlite3_prepare_v2(db, sql_6, strlen(sql_6), &stmt_6, NULL);
+	    if(rc != SQLITE_OK)
 	    {
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();              
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -968,9 +1025,12 @@ int app_req_scenario(payload_t data)
     {
     	sql_7 = "select TYPE, VALUE from scenario_table where SCEN_NAME = ? and DEV_ID = ? and ACCOUNT = ?;";
     	M1_LOG_DEBUG("sql_7:%s\n",sql_7);
-	    if(sqlite3_prepare_v2(db, sql_7, strlen(sql_7), &stmt_7, NULL) != SQLITE_OK)
+    	rc = sqlite3_prepare_v2(db, sql_7, strlen(sql_7), &stmt_7, NULL);
+	    if(rc != SQLITE_OK)
 	    {
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();                
 		    ret = M1_PROTOCOL_FAILED;
 		    goto Finish; 
 		}
@@ -995,8 +1055,8 @@ int app_req_scenario(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
-                exit(0);
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
         } 
 		if(rc == SQLITE_ROW)
 		{
@@ -1029,8 +1089,8 @@ int app_req_scenario(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
-                exit(0);
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
         } 
 		if(rc == SQLITE_ROW)
 		{
@@ -1077,7 +1137,7 @@ int app_req_scenario(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    m1_error_handle();
             } 
 			if(rc == SQLITE_ROW)
 			{
@@ -1129,7 +1189,7 @@ int app_req_scenario(payload_t data)
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    m1_error_handle();
             }
 			if(rc == SQLITE_ROW)
 			{
@@ -1280,9 +1340,12 @@ int app_req_scenario_name(payload_t data)
     /*取区域名称*/
     sql = "select distinct SCEN_NAME from scenario_table;";
    	M1_LOG_DEBUG("sql:%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+   	rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+	    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+	    if(rc == SQLITE_CORRUPT)
+            m1_error_handle();                  
 	    ret = M1_PROTOCOL_FAILED;
 	    goto Finish; 
 	}
@@ -1323,7 +1386,7 @@ int app_req_scenario_name(payload_t data)
 }
 
 /*定时执行场景检查*/
-void scenario_alarm_select(void)
+void* scenario_alarm_select(void)
 {
  	M1_LOG_DEBUG("scenario_alarm_select\n");
  	int rc;
@@ -1344,9 +1407,12 @@ void scenario_alarm_select(void)
 	         M1_LOG_DEBUG( "Opened database successfully\n");  
 	     }
 
-	    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+	     rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+	    if(rc != SQLITE_OK)
 	    {
-		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+		    M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+		    if(rc == SQLITE_CORRUPT)
+            	m1_error_handle();                   
 		    goto Finish; 
 		}
 	    while(sqlite3_step(stmt) == SQLITE_ROW)

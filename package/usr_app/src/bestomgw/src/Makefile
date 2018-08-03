@@ -2,9 +2,13 @@
 # nfc daemon Makefile 
 #############################################################
 EXEC    = bestomgwd
-CFLAGS += -O2 -Wall -Ibestomgw/inc -Idalitek/inc -Itcp_client/inc -Iuart/inc
-##-IthreadPool
-
+CFLAGS += -O2 -Wall \
+          -Ibestomgw/inc \
+          -Idalitek/inc \
+          -Itcp_client/inc \
+          -Iuart/inc \
+          -Iprotocol_dev/inc \
+		  -Ihttp_client/inc 
 
 OBJS    =   bestomgw/src/utils.o bestomgw/src/sqlite3.o bestomgw/src/main.o \
             bestomgw/src/interface_srpcserver.o                                     \
@@ -15,9 +19,12 @@ OBJS    =   bestomgw/src/utils.o bestomgw/src/sqlite3.o bestomgw/src/main.o \
 		    dalitek/src/m1_cloud.o dalitek/src/m1_project.o                         \
 		    dalitek/src/sql_backup.o dalitek/src/m1_common_log.o                    \
 		    dalitek/src/m1_device.o tcp_client/src/tcp_client.o                     \
-		    uart/src/uart_485.o           
+		    uart/src/uart_485.o                                                     \
+            protocol_dev/src/dev_common.o protocol_dev/src/dev_zh.o                 \
+            http_client/src/update.o
 
-LIBS = -lpthread -lm -lrt -ldl
+LIBS = -lpthread -lm -lrt -ldl 
+LDFLAGS = -lcurl
 all: $(EXEC)
 
 $(EXEC): $(OBJS) $(LIBS)

@@ -1,268 +1,227 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>   
-#include <string.h>  
-#include <signal.h>
-#include <termios.h> 
-#include <fcntl.h>
-#include <errno.h>
-#include <linux/serial.h>
-#include <sys/ioctl.h>
+#include <fcntl.h>     //文件控制定义
+#include <stdio.h>     //标准输入输出定义
+#include <stdlib.h>     //标准函数库定义
+#include <unistd.h>    //Unix标准函数定义 
+#include <errno.h>     //错误好定义
+#include <termios.h>   //POSIX终端控制定义
+#include <sys/ioctl.h>   //ioctl函数定义
+#include <string.h>     //字符操作
+#include <sys/types.h>  
+#include <sys/stat.h> 
 #include "uart_485.h"
+#include "m1_common_log.h"
 
+struct termios newtio, oldtio;
 
-/***RS485*****/
-/* Driver-specific ioctls: ...\linux-3.10.x\include\uapi\asm-generic\ioctls.h */
-#define TIOCGRS485      0x542E
-#define TIOCSRS485      0x542F
-
-static struct termios newtios;
-static struct termios oldtios;
-static int saved_portfd =-1;/*serial port fd */
-
-/* Test GCC version, this structure is consistent in GCC 4.8, thus no need to overwrite */
-#if (__GNUC__ == 4 && __GNUC_MINOR__ == 3)
-
-struct my_serial_rs485
+//配置串口
+/* 参数说明：fd 设备文件描述符，nspeed 波特率，nbits 数据位数（7位或8位），
+            parity 奇偶校验位（'n'或'N'为无校验位，'o'或'O'为偶校验，'e'或'E'奇校验），
+        nstop 停止位（1位或2位）
+  成功返回1，失败返回-1。 
+*/
+int set_com_opt( int fd, int nspeed, int nbits, char parity, int nstop )
 {
-	unsigned long	                    flags;			       /* RS485 feature flags */
-	#define SER_RS485_ENABLED		    (1 << 0)	           /* If enabled */
-	#define SER_RS485_RTS_ON_SEND		(1 << 1)	           /* Logical level for RTS pin when sending */
-    #define SER_RS485_RTS_AFTER_SEND	(1 << 2)	           /* Logical level for RTS pin after sent*/
-    #define SER_RS485_RX_DURING_TX		(1 << 4)
-	unsigned long	                    delay_rts_before_send; /* Delay before send (milliseconds) */
-	unsigned long	                    delay_rts_after_send;  /* Delay after send (milliseconds) */
-	unsigned long	                    padding[5];		       /* Memory is cheap, new structs are a royal PITA .. */
-};
-
-#endif
-
-static void reset_tty_atexit(void)
+//打印配置信息
+  M1_LOG_INFO("set_com_opt - speed:%d,bits:%d,parity:%c,stop:%d\n", \
+        nspeed, nbits, parity, nstop );
+    
+  //保存并测试现在有串口参数设置，在这里如果串口号等出错，会有相关的出错信息 
+  if( tcgetattr( fd, &oldtio ) != 0 )
+  {
+    perror( "SetupSerial 1" );
+    return -1;
+  }
+ 
+    //修改输出模式，原始数据输出
+  bzero( &newtio, sizeof( newtio ));
+  newtio.c_cflag &=~(OPOST);
+ 
+  //屏蔽其他标志位
+  newtio.c_cflag |= (CLOCAL | CREAD );
+  newtio.c_cflag &= ~CSIZE;
+  
+    //设置数据位
+  switch( nbits )
+  {
+  case 7:
+    newtio.c_cflag |= CS7;
+    break;
+  case 8:
+    newtio.c_cflag |= CS8;
+    break;
+  default:
+    perror("Unsupported date bit!\n");
+    return -1;
+  }
+  
+  //设置校验位
+  switch( parity )
+  {
+  case 'n':
+  case 'N':  //无奇偶校验位
+    newtio.c_cflag &= ~PARENB;
+    newtio.c_iflag &= ~INPCK;
+    break;
+  case 'o':
+  case 'O':  //设置为奇校验
+    newtio.c_cflag |= ( PARODD | PARENB );
+    newtio.c_iflag |= ( INPCK | ISTRIP );
+    break;
+  case 'e':
+  case 'E':  //设置为偶校验
+    newtio.c_iflag |= ( INPCK |ISTRIP );
+    newtio.c_cflag |= PARENB;
+    newtio.c_cflag &= ~PARODD;
+    break;
+  default:
+    perror("unsupported parity\n");
+    return -1;
+  }
+ 
+  //设置停止位
+  switch( nstop ) 
+  {
+  case 1: 
+    newtio.c_cflag &= ~CSTOPB;
+    break;
+  case 2:
+    newtio.c_cflag |= CSTOPB;
+    break;
+  default :
+    perror("Unsupported stop bit\n");
+    return -1;
+  }
+ 
+  //设置波特率
+  switch( nspeed )
+  {
+  case 2400:
+    cfsetispeed( &newtio, B2400 );
+    cfsetospeed( &newtio, B2400 );
+    break;
+  case 4800:
+    cfsetispeed( &newtio, B4800 );
+    cfsetospeed( &newtio, B4800 );
+    break;  
+  case 9600:
+    cfsetispeed( &newtio, B9600 );
+    cfsetospeed( &newtio, B9600 );
+    break;  
+  case 115200:
+    cfsetispeed( &newtio, B115200 );
+    cfsetospeed( &newtio, B115200 );
+    break;
+  case 460800:
+    cfsetispeed( &newtio, B460800 );
+    cfsetospeed( &newtio, B460800 );
+    break;
+  default:  
+    cfsetispeed( &newtio, B9600 );
+    cfsetospeed( &newtio, B9600 );
+    break;
+  }
+ 
+  //设置等待时间和最小接收字符
+  newtio.c_cc[VTIME] = 0;  
+  newtio.c_cc[VMIN] = 0;   
+//VTIME=0，VMIN=0，不管能否读取到数据，read都会立即返回。
+ 
+//输入模式
+  newtio.c_lflag &= ~(ICANON|ECHO|ECHOE|ISIG);
+//设置数据流控制
+  newtio.c_iflag &= ~(IXON|IXOFF|IXANY); //使用软件流控制
+//如果发生数据溢出，接收数据，但是不再读取 刷新收到的数据但是不读
+  tcflush( fd, TCIFLUSH ); 
+//激活配置 (将修改后的termios数据设置到串口中）
+  if( tcsetattr( fd, TCSANOW, &newtio ) != 0 )
+  {
+    M1_LOG_WARN("serial set error!\n");
+    perror( "serial set error!" );
+    return -1;
+  }
+ 
+  M1_LOG_INFO( "serial set ok!\n" );
+  return 1;
+}
+ 
+//打开串口并返回串口设备文件描述
+int open_com_dev( char *dev_name )
 {
-	if(saved_portfd != -1)
-	{
-		tcsetattr(saved_portfd,TCSANOW,&oldtios);
-	}
+  int fd;
+ 
+  if(( fd = open( dev_name, O_RDWR|O_NOCTTY|O_NDELAY)) == -1 )
+  {
+ 
+    perror("open\n");
+    M1_LOG_WARN("Can't open Serial %s Port!\n", dev_name );
+    return -1;
+  }
+ 
+  M1_LOG_INFO("open %s ok!\n", dev_name );
+ 
+  if(fcntl(fd,F_SETFL,0)<0)
+  {
+    M1_LOG_WARN("fcntl failed!\n");
+  }
+  return fd;
+}
+ 
+
+/*初始化串口*/
+int uart_485_init(char* uart)
+{
+  int fd_s = open_com_dev(uart);
+  if( fd_s < 0 )
+  {
+    M1_LOG_WARN( "open UART device error! %s\n", uart );
+  }
+  else
+  {
+    set_com_opt(fd_s, 9600,8,'n',1);
+  }
+
+  return fd_s;
 }
 
-/*cheanup signal handler */
-static void reset_tty_handler(int signal)
+/*串口写*/
+int uart_write(uart_data_t data)
 {
-	if(saved_portfd != -1)
-	{
-		tcsetattr(saved_portfd,TCSANOW,&oldtios);
-	}
-	_exit(EXIT_FAILURE);
-}
+  int n = 0;
+  int i = 0;
 
-int open_rs485_port(char *portname,int nSpeed, int nBits, char nEvent, int nStop)
+  M1_LOG_DEBUG("uart_write:");
+  for(i = 0; i < data.len; i++)
+  {
+    M1_LOG_DEBUG("%x ",data.d[i]);
+  }
+  M1_LOG_DEBUG("\n");
+  n = write(data.uartFd, data.d, data.len);
+  if(n < 0)
+  {
+    perror ("write err");
+    return -1;
+  }
+  M1_LOG_DEBUG("write len:%d\n",n);
+
+  return n;
+}
+/*串口读*/
+int uart_read(uart_data_t* data)
 {
-	struct sigaction sa;
-	int portfd;
-#if (__GNUC__ == 4 && __GNUC_MINOR__ == 3)
-	struct my_serial_rs485 rs485conf;
-	struct my_serial_rs485 rs485conf_bak;
-#else
-	struct serial_rs485 rs485conf;
-	struct serial_rs485 rs485conf_bak;
-#endif
-	printf("opening serial port:%s\n",portname);
-	/*open serial port */
-	if((portfd=open(portname,O_RDWR | O_NOCTTY, 0)) < 0 )
-	{
-   		printf("open serial port %s fail \n ",portname);
-   		return portfd;
-	}
+  int n = 0;
+  int i = 0;
 
-	/*get serial port parnms,save away */
-	tcgetattr(portfd,&newtios);
-	memcpy(&oldtios,&newtios,sizeof newtios);
-	/* configure new values */
-	cfmakeraw(&newtios); /*see man page */
-	newtios.c_iflag |=IGNPAR; /*ignore parity on input */
-	newtios.c_oflag &= ~(OPOST | ONLCR | OLCUC | OCRNL | ONOCR | ONLRET | OFILL);
+  n = read(data->uartFd, data->d, 512);
+  if(n < 0)
+  {
+    perror ("write err");
+    return -1;
+  }
+  data->len = n;
+  M1_LOG_DEBUG("nread:%d read data : ",n);
+  for(i = 0; i < n; i++)
+    M1_LOG_DEBUG("%02x ",data->d[i]);
+  M1_LOG_DEBUG("read end\n");
 
-    newtios.c_cflag |= CLOCAL;
-    newtios.c_cflag |= CREAD;
-    switch( nBits )
-    {
-    case 7:
-      newtios.c_cflag |= CS7;
-      break;
-    case 8:
-      newtios.c_cflag |= CS8;
-      break;
-    }
-    switch( nEvent )
-    {
-    case 'O':
-      newtios.c_cflag |= PARENB;
-      newtios.c_cflag |= PARODD;
-      newtios.c_iflag |= (INPCK | ISTRIP);
-      break;
-    case 'E':
-      newtios.c_iflag |= (INPCK | ISTRIP);
-      newtios.c_cflag |= PARENB;
-      newtios.c_cflag &= ~PARODD;
-      break;
-    case 'N':
-      newtios.c_cflag &= ~PARENB;
-      break;
-    }
-    switch( nEvent ){
-        case 1:
-            newtios.c_cflag &= ~CSTOPB;
-            break;
-        case 2:
-            newtios.c_cflag |= CSTOPB;
-            break;
-    }
-
-	newtios.c_cc[VMIN]=16; /* block until 1 char received */
-	newtios.c_cc[VTIME]=1; /*no inter-character timer */
-
-	/* bps */
-    switch( nSpeed )
-    {
-      case 2400:
-        cfsetispeed(&newtios, B2400);
-        cfsetospeed(&newtios, B2400);
-        break;
-      case 4800:
-        cfsetispeed(&newtios, B4800);
-        cfsetospeed(&newtios, B4800);
-        break;
-      case 9600:
-        cfsetispeed(&newtios, B9600);
-        cfsetospeed(&newtios, B9600);
-        break;
-      case 115200:
-        cfsetispeed(&newtios, B115200);
-        cfsetospeed(&newtios, B115200);
-        break;
-      default:
-        cfsetispeed(&newtios, B9600);
-        cfsetospeed(&newtios, B9600);
-        break;
-    }
-
-	/* register cleanup stuff */
-	atexit(reset_tty_atexit);
-	memset(&sa,0,sizeof sa);
-	sa.sa_handler = reset_tty_handler;
-	sigaction(SIGHUP,&sa,NULL);
-	sigaction(SIGINT,&sa,NULL);
-	sigaction(SIGPIPE,&sa,NULL);
-	sigaction(SIGTERM,&sa,NULL);
-	/*apply modified termios */
-	saved_portfd=portfd;
-	tcflush(portfd,TCIFLUSH);
-	tcsetattr(portfd,TCSADRAIN,&newtios);
-
-
-	if (ioctl (portfd, TIOCGRS485, &rs485conf) < 0)
-	{
-		/* Error handling.*/
-		printf("ioctl error:%s\n",strerror(errno));
-	}
-	/* Enable RS485 mode: */
-	rs485conf.flags |= SER_RS485_ENABLED;
-	/* Set logical level for RTS pin equal to 1 when sending: */
-	rs485conf.flags |= SER_RS485_RTS_ON_SEND;
-	//rs485conf.flags &= ~(SER_RS485_RTS_ON_SEND);
-	//rs485conf.flags |= SER_RS485_RTS_AFTER_SEND;
-	rs485conf.flags &= ~(SER_RS485_RTS_AFTER_SEND);
-	/* Set rts delay after send, if needed: */
-	rs485conf.delay_rts_after_send = 0x80;
-	//rs485conf.delay_rts_before_send = ...;
-	//rs485conf.flags | = SER_RS485_RX_DURING_TX;
-	if (ioctl (portfd, TIOCSRS485, &rs485conf) < 0)
-	{
-		/* Error handling.*/
-		printf("ioctl error:%s\n",strerror(errno));
-	}
-
-	if (ioctl (portfd, TIOCGRS485, &rs485conf_bak) < 0)
-	{
-		/* Error handling.*/
-		printf("ioctl error:%s\n",strerror(errno));
-	}
-	else
-	{
-//		printf("rs485conf_bak.flags 0x%x.\n", rs485conf_bak.flags);
-//		printf("rs485conf_bak.delay_rts_before_send 0x%x.\n", rs485conf_bak.delay_rts_before_send);
-//		printf("rs485conf_bak.delay_rts_after_send 0x%x.\n", rs485conf_bak.delay_rts_after_send);
-	}
-
-	return portfd;
+  return n;
 }
-
-
-void uart_485_test(void)
-{
-	int rtn             = 0;
-	char buf[1024]      = {0};
-	/*串口配置*/
-	const char* ttyS2   = "/dev/ttyS2";
-	const char* ttyUSB0 = "/dev/ttyUSB0";
-	const char* ttyUSB1 = "/dev/ttyUSB1";
-	const char* ttyUSB2 = "/dev/ttyUSB2";
-	int speed           = 9600;
-	int nBits           = 8;
-	char nEvent         = 'N';
-	int nStop           = 1;   
-	/*文件描述符*/
-	int ttyS2Fd         = 0;
-	int ttyUSB0Fd       = 0;
-	int ttyUSB1Fd       = 0;
-	int ttyUSB2Fd       = 0;
-
-	ttyS2Fd = open_rs485_port(ttyS2, speed, nBits, nEvent, nStop);
-	if(ttyS2Fd == 0)
-	{
-		printf("ttyS2Fd == 0  !!!\n");
-	}
-
-	ttyUSB0Fd = open_rs485_port(ttyUSB0, speed, nBits, nEvent, nStop);
-	if(ttyS2Fd == 0)
-	{
-		printf("ttyS2Fd == 0  !!!\n");
-	}
-
-	ttyUSB1Fd = open_rs485_port(ttyUSB1, speed, nBits, nEvent, nStop);
-	if(ttyS2Fd == 0)
-	{
-		printf("ttyS2Fd == 0  !!!\n");
-	}
-
-	ttyUSB2Fd = open_rs485_port(ttyUSB2, speed, nBits, nEvent, nStop);
-	if(ttyS2Fd == 0)
-	{
-		printf("ttyS2Fd == 0  !!!\n");
-	}
-
-	rtn = write(ttyS2Fd, "ttyS2 485 testing !!!\n", sizeof("ttyS2 485 testing !!!\n"));
-	if(rtn < 0)
-	{
-		printf("write to ttyS2 error !!!\n");
-	}
-
-	while(1)
-	{
-		rtn = read(ttyS2Fd, buf, 1024);
-		if(rtn < 0)
-		{
-			printf("read ttyS2 error !!! \n");
-		}
-		else
-		{
-			printf("read ttyS2:%s\n",buf);
-			memset(buf, 0, 1024);
-		}
-	}
-}
-
-
-
-
-

@@ -49,17 +49,19 @@
 #include "m1_protocol.h"
 #include "socket_server.h"
 #include "m1_common_log.h"
+#include "dev_common.h"
 #include "interface_srpcserver.h"
 
 #define MAX_DB_FILENAMR_LEN 255
-#define TCP_CLIENT_ENABLE   0
+#define TCP_CLIENT_ENABLE   1
 /*全局变量***********************************************************************************************/	
 pthread_mutex_t mutex_lock;
 pthread_mutex_t mutex_lock_sock;
+pthread_mutex_t client_timeout_tick_lock;
 /*静态变量****************************************************************************************/
 
 /*静态局部函数****************************************************************************************/
-static void socket_poll(void);
+static void* socket_poll(void);
 
 #if 1
 int main(int argc, char* argv[])
@@ -74,9 +76,12 @@ int main(int argc, char* argv[])
 	tcp_client_connect();
 #endif
 	m1_protocol_init();
+	/*485设备、数据库初始化*/
+	dev485Init();
 
 	pthread_mutex_init(&mutex_lock, NULL);
 	pthread_mutex_init(&mutex_lock_sock, NULL);
+	pthread_mutex_init(&client_timeout_tick_lock, NULL);
 	pthread_create(&t1,NULL,socket_poll,NULL);
 	pthread_create(&t2,NULL,client_read,NULL);
 	pthread_create(&t3,NULL,delay_send_task,NULL);
@@ -95,10 +100,11 @@ int main(int argc, char* argv[])
 	
 	pthread_mutex_destroy(&mutex_lock);
 	pthread_mutex_destroy(&mutex_lock_sock);
+	pthread_mutex_destroy(&client_timeout_tick_lock);
 	return retval;
 }
 
-static void socket_poll(void)
+static void* socket_poll(void)
 {
 	while (1)
 	{
@@ -106,7 +112,7 @@ static void socket_poll(void)
 
 		if (numClientFds)
 		{
-			M1_LOG_DEBUG("numClientFds:%d\n",numClientFds);
+			M1_LOG_INFO("numClientFds:%d\n",numClientFds);
 		
 			int pollFdIdx;
 			int *client_fds = malloc(numClientFds * sizeof(int));
@@ -129,12 +135,12 @@ static void socket_poll(void)
 
 				M1_LOG_DEBUG("zllMain: waiting for poll()\n");
 
-				poll(pollFds, (numClientFds), -1);
+				poll(pollFds, numClientFds, -1);
 				M1_LOG_INFO("poll out\n");
 				/*server*/
 				for (pollFdIdx = 0; pollFdIdx < numClientFds; pollFdIdx++)
 				{
-					if ((pollFds[pollFdIdx].revents))
+					if (pollFds[pollFdIdx].revents)
 					{
 						M1_LOG_DEBUG("Message from Socket Client\n");
 						socketSeverPoll(pollFds[pollFdIdx].fd, pollFds[pollFdIdx].revents);
@@ -149,13 +155,13 @@ static void socket_poll(void)
 	}
 
 }
-
 #else
 extern void uart_485_test(void);
-int main(int argc, char* argv[])
+int main(int argc, char* arg)
 {
 	uart_485_test();
-
+	//dev_common_testing();
+	//test_http_client();
 	return 0;
 }
 #endif

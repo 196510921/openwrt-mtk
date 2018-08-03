@@ -152,7 +152,6 @@ void m1_common_log_set_level(m1_log_level_t m1LogLevel);
     {\
         if(m1LogLevel <= M1_LOG_LEVEL_INFO)\
         {\
-            //printf("[info] %s:%d %s()| "format"\n", __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
             printf("[info] %s %s:%d %s()| "format"\n", get_cur_time(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);\
             fflush(stdout);\
         }\

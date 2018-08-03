@@ -9,6 +9,7 @@
 #include     <fcntl.h>   
 #include     <termios.h>  
 #include     <errno.h>  
+#include <stdbool.h>
 
 #include <time.h>
 
@@ -55,6 +56,9 @@
 typedef unsigned char      uint8;
 typedef unsigned short     uint16;
 
+typedef unsigned char      UINT8;
+typedef unsigned short     UINT16;
+
  //long MAXLEN = 10*1024;//10KB
  char sexepath[PATH_MAX];
  char slogpath[PATH_MAX]; //log 文件路径
@@ -65,10 +69,6 @@ typedef unsigned short     uint16;
 extern sqlite3 *gdb;
 
 int fdserwrite, fdread; //串口 写,读
-
-
-
-
 
 
 //16 进制字符转 数字
@@ -144,4 +144,11 @@ int  ConfigGetKey(void *CFG_file, void *section, void *key, void *buf);
 
 //static 
 	void gw_debug(char *declare, unsigned char *data, unsigned int dlen);
+//checksum
+uint8 app_checksum(uint8* d, uint16 len);
+
+char a2x(char ch);
+char x2a(char hex);
+
+
 #endif //_UTILS_H_

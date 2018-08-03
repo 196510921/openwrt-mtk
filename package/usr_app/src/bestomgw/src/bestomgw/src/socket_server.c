@@ -93,7 +93,6 @@ extern fifo_t client_delete_fifo;
  */
 //static void deleteSocketRec(int rmSocketFd);
 static int createSocketRec(void);
-static void deleteSocketRec(int rmSocketFd);
 static int set_udp_broadcast_add(char* d);
 static void get_mac_address(int sockFd);
 
@@ -189,8 +188,7 @@ void deleteSocketRec(int rmSocketFd)
 		if (prevRec == NULL)
 		{
 			//trying to remove first rec, which is always the listining socket
-			M1_LOG_DEBUG(
-					"deleteSocketRec: removing first rec, which is always the listining socket\n");
+			M1_LOG_DEBUG("deleteSocketRec: removing first rec, which is always the listining socket\n");
 			return;
 		}
 
@@ -347,17 +345,25 @@ uint32 socketSeverGetNumClients(void)
 	return (recordCnt);
 }
 
+
 /*清除与clientFd相关的信息*/
 static void delete_socket_clientfd(int clientFd)
 {
-	/*删除数据库记录*/
-	//delete_account_conn_info(clientFd);
-	fifo_write(&client_delete_fifo, clientFd);
-	/*删除分配资源*/
-	client_block_destory(clientFd);
-	M1_LOG_WARN("delete socket ++\n");
-	deleteSocketRec(clientFd);
-	M1_LOG_WARN("delete socket --\n");
+	int ret = 0;
+
+	/*直接操作数据库删除数据库记录*/
+	//ret = delete_account_conn_info(clientFd);
+	/*利用fifo删除*/
+	//fifo_write(&client_delete_fifo, clientFd);
+	// if(ret == 0)
+	// {
+		/*删除分配资源*/
+		client_block_destory(clientFd);
+		M1_LOG_WARN("delete socket ++\n");
+		deleteSocketRec(clientFd);
+		M1_LOG_WARN("delete socket --\n");
+	// }
+	
 }
 
 /*********************************************************************
@@ -470,11 +476,17 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	char* ptr = NULL;
 	//char send_buf[4096] = {0};
 	M1_LOG_INFO("Tx msg:%s\n",buf);
+
 	/*大端序*/
 	header = (((header >> 8) & 0xff) | ((header << 8) & 0xff00)) & 0xffff;
 	msg_len = (((len >> 8) & 0xff) | ((len << 8) & 0xff00)) & 0xffff;
 
 	M1_LOG_DEBUG("len:%05d, Msg len:%05d\n",len, msg_len);
+	if(len > 200*1024 || fdClient > 500)
+	{
+		M1_LOG_ERROR("socket write too long!");
+		return -1;
+	}
 	send_buf = (char*)malloc(len + 4);
 	memcpy(send_buf, &header, 2);
 	memcpy((send_buf+2), &msg_len, 2);
@@ -487,25 +499,34 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 		rtn = write(fdClient, ptr, bytes_left);
 		if (rtn < 0)
 		{
-			if(errno == EINTR){
+			if(errno == EINTR)
+			{
 				M1_LOG_WARN("error errno==EINTR continue\n");  //EINTR:4
 				continue;
-			}else if(errno == EAGAIN){                         //EAGAIN:11
+			}
+			else if(errno == EAGAIN)
+			{                         //EAGAIN:11
 				M1_LOG_WARN("WARN: socket:%d, errno = %d, strerror = %s \n",fdClient, errno, strerror(errno));
 				tick++;
-				if(tick > 300){
+				if(tick > 300)
+				{
 					M1_LOG_ERROR("send timeout!\n");
 					//delete_socket_clientfd(fdClient);	
 					break;
 				}
 				/*等待10ms*/
 				usleep(10000);
-			}else{
+			}
+			else
+			{
 				M1_LOG_ERROR("ERROR writing to socket %d, errno:%d:%s\n", fdClient,errno,strerror(errno));
+
 				//delete_socket_clientfd(fdClient);
 				break;
 			}
-		}else{
+		}
+		else
+		{
 			bytes_left -= rtn;
 			ptr += rtn;
 		}
@@ -660,7 +681,7 @@ int udp_broadcast_server(void)
     
     if(NULL == p)
     {    
-        return;
+        return -1;
     }
     strcpy(ip, p);
     cJSON_Delete(pJsonRoot);

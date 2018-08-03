@@ -65,12 +65,21 @@ int app_req_account_info_handle(payload_t data)
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
     M1_LOG_DEBUG("%s\n", sql);
 
-    if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        sql_error_set(); 
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();
         ret = M1_PROTOCOL_FAILED; 
         goto Finish; 
     }
+    else
+    {
+        sql_error_clear();
+    }
+
     while(sqlite3_step(stmt) == SQLITE_ROW)
     {
 	    /*create pdu object*/	    
@@ -188,11 +197,19 @@ int app_req_account_config_handle(payload_t data)
         sql = "select KEY,KEY_AUTH,REMOTE_AUTH from account_table where ACCOUNT = ?;";
         M1_LOG_DEBUG("%s\n", sql);
 
-        if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
             ret = M1_PROTOCOL_FAILED; 
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
 
         sqlite3_bind_text(stmt, 1, accountJson->valuestring, -1, NULL);
@@ -236,11 +253,19 @@ int app_req_account_config_handle(payload_t data)
         sql = "select distinct DIS_NAME from district_table where ACCOUNT = ?;";
         M1_LOG_DEBUG("%s\n", sql);
 
-        if(sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
     }
 
@@ -248,10 +273,19 @@ int app_req_account_config_handle(payload_t data)
         sql_1 = "select distinct SCEN_NAME from scenario_table where ACCOUNT = ? and DISTRICT = ?;";
         M1_LOG_DEBUG("%s\n", sql_1);
         
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL) != SQLITE_OK){
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1),&stmt_1, NULL);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
     }
 
@@ -259,10 +293,19 @@ int app_req_account_config_handle(payload_t data)
         sql_2 = "select PID, DEV_NAME, DEV_ID from all_dev where ACCOUNT = ?;";
         M1_LOG_DEBUG("%s\n", sql_2);
 
-        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2),&stmt_2, NULL) != SQLITE_OK){
+        rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2),&stmt_2, NULL);
+        if(rc != SQLITE_OK)
+        {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
     }
 
@@ -468,11 +511,19 @@ int app_account_config_handle(payload_t data)
             sql = "delete from account_table where ACCOUNT = ?;";
             M1_LOG_DEBUG("sql_0:%s\n",sql);
 
-            if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+            if(rc != SQLITE_OK)
             {
                 ret = M1_PROTOCOL_FAILED;
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();    
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }
 
             sqlite3_bind_text(stmt, 1,  accountJson->valuestring, -1, NULL);
@@ -481,8 +532,13 @@ int app_account_config_handle(payload_t data)
             if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                sql_error_set();
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    m1_error_handle();
+            }
+            else
+            {
+                sql_error_clear();
             }
             
             if(stmt)
@@ -494,11 +550,19 @@ int app_account_config_handle(payload_t data)
             sql_1 = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(?,?,?,?);";
             M1_LOG_DEBUG("sql:%s\n",sql_1);
 
-            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+            if(rc != SQLITE_OK)
             {
                 ret = M1_PROTOCOL_FAILED;
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();    
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }
 
             sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
@@ -510,8 +574,13 @@ int app_account_config_handle(payload_t data)
             if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
             {
                 M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                sql_error_set();
                 if(rc == SQLITE_CORRUPT)
-                    exit(0);
+                    m1_error_handle();
+            }
+            else
+            {
+                sql_error_clear();
             }
             
             if(stmt_1)
@@ -532,32 +601,56 @@ int app_account_config_handle(payload_t data)
             sql_1 = "select AP_ID, DIS_PIC from district_table where DIS_NAME = ? and ACCOUNT = \"Dalitek\";";
             M1_LOG_DEBUG("sql:%s\n",sql_1);
 
-            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+            if(rc != SQLITE_OK)
             {
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();    
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }
 
             sql_2 = "insert into district_table(DIS_NAME, DIS_PIC, AP_ID, ACCOUNT)values(?,?,?,?);";
             M1_LOG_DEBUG("sql:%s\n",sql_2);
 
-            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            if(rc != SQLITE_OK)
             {
                 ret = M1_PROTOCOL_FAILED;
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();     
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }
 
             /*删除用户历史信息*/
             sql_3 = "delete from district_table where ACCOUNT = ?;";
             M1_LOG_DEBUG("%s\n",sql_3);
 
-            if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+            if(rc != SQLITE_OK)
             {
                 ret = M1_PROTOCOL_FAILED;
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+                sql_error_set(); 
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();     
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }            
 
             /*查询用户历史信息*/
@@ -568,8 +661,13 @@ int app_account_config_handle(payload_t data)
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    sql_error_set();
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        m1_error_handle();
+                }
+                else
+                {
+                    sql_error_clear();
                 }
 
             }
@@ -597,8 +695,13 @@ int app_account_config_handle(payload_t data)
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                     {
                         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        sql_error_set();
                         if(rc == SQLITE_CORRUPT)
-                            exit(0);
+                            m1_error_handle();
+                    }
+                    else
+                    {
+                        sql_error_clear();
                     }  
             
                     sqlite3_reset(stmt_2);
@@ -629,33 +732,58 @@ int app_account_config_handle(payload_t data)
         /*添加用户场景信息*/
         /*删除重复用户信息*/
         {
-            
             sql = "select DISTRICT,AP_ID,DEV_ID,TYPE,VALUE,DELAY,SCEN_PIC from scenario_table where SCEN_NAME = ? and ACCOUNT = \"Dalitek\";";
             M1_LOG_DEBUG("sql:%s\n",sql);
-            if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+
+            rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+            if(rc != SQLITE_OK)
             {
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();     
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             } 
 
             sql_1 = "insert into scenario_table(SCEN_NAME, SCEN_PIC, DISTRICT, AP_ID, DEV_ID, TYPE, VALUE, DELAY, ACCOUNT)values(?,?,?,?,?,?,?,?,?);";
             M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+            rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+            if(rc != SQLITE_OK)
+            {
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();     
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }
 
             /*删除用户历史信息*/
             sql_2 = "delete from scenario_table where ACCOUNT = ?;";
             M1_LOG_DEBUG("%s\n",sql_2);
 
-            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            if(rc != SQLITE_OK)
             {
                 ret = M1_PROTOCOL_FAILED;
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();      
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }
 
             /*查询用户历史信息*/
@@ -666,8 +794,13 @@ int app_account_config_handle(payload_t data)
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    sql_error_set();
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        m1_error_handle();
+                }
+                else
+                {
+                    sql_error_clear();
                 }
             }
 
@@ -703,8 +836,13 @@ int app_account_config_handle(payload_t data)
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                     {
                         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        sql_error_set();
                         if(rc == SQLITE_CORRUPT)
-                            exit(0);
+                            m1_error_handle();
+                    }
+                    else
+                    {
+                        sql_error_clear();
                     }
                         
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
@@ -739,30 +877,55 @@ int app_account_config_handle(payload_t data)
         {
             sql = "select DEV_NAME,AP_ID,PID,ADDED,NET,STATUS from all_dev where DEV_ID = ? and ACCOUNT = \"Dalitek\";";
             M1_LOG_DEBUG("sql:%s\n",sql);
-            if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+            if(rc != SQLITE_OK)
             {
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();      
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             } 
 
             sql_1 = "insert into all_dev(DEV_ID,DEV_NAME,AP_ID,PID,ADDED,NET,STATUS,ACCOUNT)values(?,?,?,?,?,?,?,?);";
             M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-            if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK){
+            rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+            if(rc != SQLITE_OK)
+            {
                 M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle();      
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }
 
             /*删除用户历史信息*/
             sql_2 = "delete from all_dev where ACCOUNT = ?;";
             M1_LOG_DEBUG("%s\n",sql_2);
 
-            if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+            rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+            if(rc != SQLITE_OK)
             {
                 ret = M1_PROTOCOL_FAILED;
-                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+                M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+                sql_error_set();
+                if(rc == SQLITE_CORRUPT)
+                    m1_error_handle(); 
                 goto Finish; 
+            }
+            else
+            {
+                sql_error_clear();
             }
 
             /*删除用户历史信息*/
@@ -773,8 +936,13 @@ int app_account_config_handle(payload_t data)
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    sql_error_set();
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        m1_error_handle();
+                }
+                else
+                {
+                    sql_error_clear();
                 }
             }
 
@@ -814,8 +982,13 @@ int app_account_config_handle(payload_t data)
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                     {
                         M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                        sql_error_set();
                         if(rc == SQLITE_CORRUPT)
-                            exit(0);
+                            m1_error_handle();
+                    }
+                    else
+                    {
+                        sql_error_clear();
                     }
                         
                     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
@@ -875,6 +1048,193 @@ int app_account_config_handle(payload_t data)
     return  ret;
 }
 
+/*请求用户下区域名称*/
+int app_req_user_dis(payload_t data)
+{
+    M1_LOG_DEBUG("app_req_user_dis\n"); 
+    int pdu_type            = TYPE_M1_REPORT_DIS_NAME;
+    int rc                  = 0;
+    int ret                 = M1_PROTOCOL_OK;
+    char *district          = NULL;
+    char *dis_pic           = NULL;
+    char *account           = NULL;
+    char *sql_1             = NULL;
+    char *sql_2             = NULL;
+    cJSON *accountJson      = NULL;
+    cJSON *pJsonRoot        = NULL; 
+    cJSON *pduJsonObject    = NULL;
+    cJSON *devDataObject    = NULL;
+    cJSON *districtObject   = NULL;
+    cJSON *devDataJsonArray = NULL;
+    sqlite3 *db             = NULL;
+    sqlite3_stmt *stmt_1    = NULL;
+    sqlite3_stmt *stmt_2    = NULL;
+
+    db = data.db;
+    /*get account*/
+    accountJson = data.pdu;
+    account = accountJson->valuestring;
+    if(account == NULL)
+    {
+        M1_LOG_WARN("account NULL\n");
+        return M1_PROTOCOL_FAILED;
+    }
+    M1_LOG_DEBUG("account:%s\n",account);
+    /*get sql data json*/
+    pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        M1_LOG_ERROR("pJsonRoot NULL\n");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    cJSON_AddNumberToObject(pJsonRoot, "sn", data.sn);
+    cJSON_AddStringToObject(pJsonRoot, "version", "1.0");
+    cJSON_AddNumberToObject(pJsonRoot, "netFlag", 1);
+    cJSON_AddNumberToObject(pJsonRoot, "cmdType", 1); 
+    /*create pdu object*/
+    pduJsonObject = cJSON_CreateObject();
+    if(NULL == pduJsonObject)
+    {
+        // create object faild, exit
+        cJSON_Delete(pduJsonObject);
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*add pdu to root*/
+    cJSON_AddItemToObject(pJsonRoot, "pdu", pduJsonObject);
+    /*add pdu type to pdu object*/
+    cJSON_AddNumberToObject(pduJsonObject, "pduType", pdu_type);
+    /*添加devData*/
+    devDataJsonArray = cJSON_CreateArray();
+    if(NULL == devDataJsonArray)
+    {
+        cJSON_Delete(devDataJsonArray);
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+    /*add devData array to pdu pbject*/
+    cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
+
+    /*获取项目信息*/
+    {
+        sql_1 = "select distinct DIS_NAME from district_table where ACCOUNT = ?;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_1);
+
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle(); 
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
+        }
+    }
+    /*获取区域名称*/
+    {
+        sql_2 = "select DIS_PIC from district_table where DIS_NAME = ? order by ID desc limit 1;";
+        M1_LOG_DEBUG("sql_1:%s\n", sql_2);
+
+        rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();  
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
+        }
+    }
+
+    sqlite3_bind_text(stmt_1, 1, account, -1, NULL);
+    while(sqlite3_step(stmt_1) == SQLITE_ROW)
+    {
+        districtObject = cJSON_CreateObject();
+        if(NULL == districtObject)
+        {
+            // create object faild, exit
+            cJSON_Delete(districtObject);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+
+        /*获取区域名称*/
+        district = sqlite3_column_text(stmt_1, 0);
+        if(district == NULL){
+            M1_LOG_ERROR( "%s\n", district);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;
+        }
+        M1_LOG_DEBUG("district:%s\n", district);
+        cJSON_AddStringToObject(districtObject, "disName", district);
+       
+        sqlite3_bind_text(stmt_2, 1, district, -1, NULL);
+        rc = sqlite3_step(stmt_2); 
+        if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+        {
+            M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
+        }
+        else
+        {
+            sql_error_clear();
+        }
+
+        if(rc != SQLITE_ROW){
+            sqlite3_reset(stmt_2);
+            sqlite3_clear_bindings(stmt_2);
+            continue;
+        }
+        dis_pic = sqlite3_column_text(stmt_2, 0);
+        if(dis_pic == NULL){
+            sqlite3_reset(stmt_2);
+            sqlite3_clear_bindings(stmt_2);
+            continue;
+        }
+        M1_LOG_DEBUG("dis_pic:%s\n", dis_pic);
+        cJSON_AddStringToObject(districtObject, "disPic", dis_pic);
+        //districtObject = cJSON_CreateString(district);
+        cJSON_AddItemToArray(devDataJsonArray, districtObject);
+
+        sqlite3_reset(stmt_2);
+        sqlite3_clear_bindings(stmt_2);
+    }
+
+    char* p = cJSON_PrintUnformatted(pJsonRoot);
+    
+    if(NULL == p)
+    {    
+        cJSON_Delete(pJsonRoot);
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+
+    M1_LOG_DEBUG("string:%s\n",p);
+    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+    Finish:
+    if(stmt_1)
+        sqlite3_finalize(stmt_1);
+    if(stmt_2)
+        sqlite3_finalize(stmt_2);
+    
+    cJSON_Delete(pJsonRoot);
+
+    return  ret;
+}
+/*请求区域名称*/
 int app_req_dis_name(payload_t data)
 {
     M1_LOG_DEBUG("app_req_dis_name\n"); 
@@ -883,7 +1243,7 @@ int app_req_dis_name(payload_t data)
     int ret                 = M1_PROTOCOL_OK;
     char *district          = NULL;
     char *dis_pic           = NULL;
-    char *account           = NULL;
+    const char *account     = "Dalitek";
     char *sql               = NULL;
     char *sql_1             = NULL;
     char *sql_2             = NULL;
@@ -934,12 +1294,16 @@ int app_req_dis_name(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
+    #if 0
     /*获取用户账户信息*/
     sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "%s\n", sql);
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle(); 
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -959,17 +1323,26 @@ int app_req_dis_name(payload_t data)
     {
         M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
     }
+    #endif
 
     /*获取项目信息*/
     {
         sql_1 = "select distinct DIS_NAME from district_table where ACCOUNT = ?;";
         M1_LOG_DEBUG("sql_1:%s\n", sql_1);
 
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            sql_error_set(); 
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
     }
     /*获取区域名称*/
@@ -977,11 +1350,19 @@ int app_req_dis_name(payload_t data)
         sql_2 = "select DIS_PIC from district_table where DIS_NAME = ? order by ID desc limit 1;";
         M1_LOG_DEBUG("sql_1:%s\n", sql_2);
 
-        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
     }
 
@@ -1012,9 +1393,15 @@ int app_req_dis_name(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
-                exit(0);
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
         }
+        else
+        {
+            sql_error_clear();
+        }
+
         if(rc != SQLITE_ROW){
             sqlite3_reset(stmt_2);
             sqlite3_clear_bindings(stmt_2);
@@ -1070,7 +1457,7 @@ int app_req_dis_scen_name(payload_t data)
     int ret                 = M1_PROTOCOL_OK;
     char *scenario          = NULL;
     char *scen_pic          = NULL;
-    char *account           = NULL;
+    const char *account     = "Dalitek";
     char *sql               = NULL;
     char *sql_1             = NULL;
     char *sql_2             = NULL;
@@ -1129,15 +1516,18 @@ int app_req_dis_scen_name(payload_t data)
     /*获取区域*/
     number = cJSON_GetArraySize(data.pdu);
     M1_LOG_DEBUG("number:%d\n",number);
-
+    #if 0
     /*获取用户账户信息*/
     {
         sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
         M1_LOG_DEBUG("sql:%s\n", sql);
     
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -1159,27 +1549,43 @@ int app_req_dis_scen_name(payload_t data)
             M1_LOG_WARN("clientFd:%03d,account:%s\n",data.clientFd, account);
         }
     }
-
+    #endif
     /*查询场景信息*/
     {
         sql_1 = "select distinct SCEN_NAME from scenario_table where DISTRICT = ? and ACCOUNT = ?;";
         M1_LOG_DEBUG("sql_1:%s\n", sql_1);
 
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
 
         sql_2 = "select SCEN_PIC from scenario_table where SCEN_NAME = ? order by ID desc limit 1;";
         M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 
-        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+            sql_error_set(); 
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle(); 
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
 
         for(i = 0; i < number; i++)
@@ -1239,9 +1645,15 @@ int app_req_dis_scen_name(payload_t data)
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    sql_error_set();
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        m1_error_handle();
                 }
+                else
+                {
+                    sql_error_clear();
+                }
+                
                 if(rc != SQLITE_ROW)
                 {
                     sqlite3_reset(stmt_2);
@@ -1295,7 +1707,7 @@ int app_req_dis_dev(payload_t data)
     int i                   = 0;
     int rc                  = 0;
     int ret                 = M1_PROTOCOL_OK;
-    char *account           = NULL;
+    const char *account     = "Dalitek";
     char *apId              = NULL;
     char *pId               = NULL;
     char *devName           = NULL;
@@ -1364,15 +1776,18 @@ int app_req_dis_dev(payload_t data)
     /*获取区域*/
     number = cJSON_GetArraySize(data.pdu);
     M1_LOG_DEBUG("number:%d\n",number);
-
+#if 0
     /*获取用户账户信息*/
     {
         sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
         M1_LOG_DEBUG("sql:%s\n", sql);
 
-        if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
         }
@@ -1393,36 +1808,61 @@ int app_req_dis_dev(payload_t data)
             M1_LOG_DEBUG("clientFd:%03d,account:%s\n",data.clientFd, account);
         }
     }
+#endif
     /*获取区域信息*/
     {
         sql_1 = "select distinct AP_ID from district_table where DIS_NAME = ? and ACCOUNT = ?;";
         M1_LOG_DEBUG("sql_1:%s\n", sql_1);
 
-        if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
 
         sql_2 = "select PID, DEV_NAME from all_dev where DEV_ID = ? order by ID desc limit 1;";
         M1_LOG_DEBUG("sql_2:%s\n", sql_2);
 
-        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(rc != SQLITE_OK)
         {
             M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();  
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
 
         sql_3 = "select PID, DEV_NAME, DEV_ID from all_dev where AP_ID = ? and ACCOUNT = ?;";
         M1_LOG_DEBUG("sql_3:%s\n", sql_3);
 
-        if(sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_3, strlen(sql_3), &stmt_3, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();   
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
 
         for(i = 0; i < number; i++)
@@ -1486,8 +1926,13 @@ int app_req_dis_dev(payload_t data)
                 if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
                 {
                     M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+                    sql_error_set();
                     if(rc == SQLITE_CORRUPT)
-                        exit(0);
+                        m1_error_handle();
+                }
+                else
+                {
+                    sql_error_clear();
                 }
                 if(rc == SQLITE_ROW)
                 {
@@ -1608,11 +2053,19 @@ int user_login_handle(payload_t data)
     db = data.db;
     /*验证用户信息*/
     sql = "select KEY from account_table where ACCOUNT = ?;";
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        sql_error_set();
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();    
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
+    }
+    else
+    {
+        sql_error_clear();
     }
     sqlite3_bind_text(stmt, 1, accountJson->valuestring, -1, NULL);
 	if(sqlite3_step(stmt) == SQLITE_ROW)
@@ -1642,12 +2095,16 @@ int user_login_handle(payload_t data)
         stmt = NULL;
     }
 
+#if 0
     //sql_0_1 = "select CLIENT_FD from account_info where ACCOUNT = ?;";
     sql_0_1 = "delete from account_info where CLIENT_FD = ?;";
     M1_LOG_DEBUG("%s\n",sql_0_1);
-    if(sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql_0_1, strlen(sql_0_1), &stmt_0_1, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();     
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -1655,9 +2112,13 @@ int user_login_handle(payload_t data)
     /*插入用户信息*/  
     sql_1 = "insert into account_info(ACCOUNT,CLIENT_FD)values(?,?);";
     M1_LOG_DEBUG("sql_1:%s\n",sql_1);
-    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+
+    rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();      
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
     }
@@ -1672,8 +2133,8 @@ int user_login_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
-                exit(0);
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
         }
     
         sqlite3_bind_text(stmt_1, 1,  accountJson->valuestring, -1, NULL);
@@ -1682,8 +2143,8 @@ int user_login_handle(payload_t data)
         if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
         {
             M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
-            if(rc == SQLITE_CORRUPT)
-                exit(0);
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();
         }
         if(rc == SQLITE_ERROR)
         {
@@ -1696,8 +2157,9 @@ int user_login_handle(payload_t data)
         M1_LOG_WARN("BEGIN IMMEDIATE errorMsg:%s",errorMsg);
         sqlite3_free(errorMsg);
     }
-
+#endif
     Finish:
+#if 0
     if(sql_commit_flag)
     {
         rc = sql_commit(db);
@@ -1705,15 +2167,14 @@ int user_login_handle(payload_t data)
         {
             M1_LOG_DEBUG("COMMIT OK\n");
         }
-    }
-    
+    }   
     if(stmt)
-        sqlite3_finalize(stmt);
+        sqlite3_finalize(stmt);  
     if(stmt_0_1)
         sqlite3_finalize(stmt_0_1);
     if(stmt_1)
         sqlite3_finalize(stmt_1);
-    
+#endif    
 	return 	ret;
 }
 
@@ -1776,11 +2237,19 @@ int app_change_user_key(payload_t data)
     sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG("sql:%s\n", sql);
 
-    if(sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
     {
         M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        sql_error_set();
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();      
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
+    }
+    else
+    {
+        sql_error_clear();
     }
     
     sqlite3_bind_int(stmt, 1, clientFd);
@@ -1800,11 +2269,19 @@ int app_change_user_key(payload_t data)
     sql_1 = "select KEY, KEY_AUTH from account_table where account = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "sql_1:%s\n", sql_1);
     
-    if(sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL) != SQLITE_OK)
+    rc = sqlite3_prepare_v2(db, sql_1, strlen(sql_1), &stmt_1, NULL);
+    if(rc != SQLITE_OK)
     {
-        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        sql_error_set();
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();       
         ret = M1_PROTOCOL_FAILED;
         goto Finish; 
+    }
+    else
+    {
+        sql_error_clear();
     }
 
     sqlite3_bind_text(stmt_1, 1, account, -1, NULL);
@@ -1851,11 +2328,19 @@ int app_change_user_key(payload_t data)
 
         sql_2 = "update account_table set KEY = ? where account = ?;";
         M1_LOG_DEBUG("sql_2:%s\n", sql_2);
-        if(sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL) != SQLITE_OK)
+        rc = sqlite3_prepare_v2(db, sql_2, strlen(sql_2), &stmt_2, NULL);
+        if(rc != SQLITE_OK)
         {
-            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+            M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+            sql_error_set();
+            if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+                m1_error_handle();         
             ret = M1_PROTOCOL_FAILED;
             goto Finish; 
+        }
+        else
+        {
+            sql_error_clear();
         }
 
         sqlite3_bind_text(stmt_2, 1, newKeyJson->valuestring, -1, NULL);

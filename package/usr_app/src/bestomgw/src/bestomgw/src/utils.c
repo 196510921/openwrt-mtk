@@ -32,12 +32,6 @@ static uint32 hex2int(uint8 *data, uint32 dlen)
 	return value;
 }
 
-static void send_data_to_client(unsigned char *data, int dlen)
-{
-	int i;
-
-}
-
 #if 1
 void prt_debug(char *declare, unsigned char *data, unsigned int dlen)
 {
@@ -936,7 +930,119 @@ char *random_uuid( char buf[37] )
 }
 
 
+uint8 app_checksum(uint8* d, uint16 len)
+{
+  uint16 i       = 0;
+  uint8 checksum = 0;
+
+  printf("data: ");
+  for(i = 0; i < len; i++)
+  {
+    printf("%x ",d[i]);
+    checksum += d[i];   
+  }
+  printf("\n");
+  printf("checksum value:%x\n", checksum);
+  return checksum;
+}
+
+char a2x(char ch)
+{
+    switch(ch)
+    {
+    case '1':
+        return 1;
+    case '2':
+        return 2;
+    case '3':
+        return 3;
+    case '4':
+        return 4;
+    case '5':
+        return 5;
+    case '6':
+        return 6;
+    case '7':
+        return 7;
+    case '8':
+        return 8;
+    case '9':
+        return 9;
+    case 'A':
+    case 'a':
+        return 10;
+    case 'B':
+    case 'b':
+        return 11;
+    case 'C':
+    case 'c':
+        return 12;
+    case 'D':
+    case 'd':
+        return 13;
+    case 'E':
+    case 'e':
+        return 14;
+    case 'F':
+    case 'f':
+        return 15;
+    default:
+        break;;
+    }
+ 
+    return 0;
+}
+
+char x2a(char hex)
+{
+    if(hex >= 0 && hex < 0x0a)
+    {
+      return hex + '0';
+    }
+    else if(hex >= 0x0a && hex <= 0x0f )
+    {
+      return (hex - 0x0a + 'a');
+    }
+    else if(hex >= 0x0A && hex <= 0x0F )
+    {
+      return (hex - 0x0F + 'A');
+    }
+
+    return 0;
+}
 
 
+#if 0
+int curl_app_md5_sum(const char *file,unsigned char *out_md5)
+{
+  int i;
+  unsigned char md5[16];
+  unsigned char ptr[33]={'\0'};
+  unsigned char tmp[3]={0};
+  FILE *f;
+    int len;
+    char *data;
+    f=fopen(file,"r");
+    if(!f) {
+        return -1;
+    }
+    fseek(f,0,SEEK_END);
+    len=ftell(f);
+    fseek(f,0,SEEK_SET);
+    data=(char*)malloc(len+1);
+    fread(data,1,len,f);
+    fclose(f);
+    data[len]='\0';
+  
+  mbedtls_md5(data,len,md5);
+  free(data);
+    for(i=0;i<16;i++){
+        sprintf(tmp,"%02x",md5[i]);
+        strncat(ptr,tmp,2);
+    }
+  strncpy(out_md5,ptr,33);
+  return 0;
+}
+#endif
 
 

@@ -58,7 +58,7 @@ typedef struct _block_status_t{
 /*优先级队列*/
 typedef struct _Item
 {
-cJSON* data;  //数据
+char* data;  //数据
 int prio;  //优先级，值越小，优先级越高
 int clientFd;
 }Item;

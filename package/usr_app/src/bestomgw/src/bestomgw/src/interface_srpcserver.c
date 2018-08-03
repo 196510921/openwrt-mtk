@@ -56,6 +56,7 @@
 #include "utils.h"
 #include "m1_protocol.h"
 
+static char tcpRxBuf[1024*60] = {0};
 
 void SRPC_RxCB(int clientFd);
 void SRPC_ConnectCB(int status);
@@ -134,24 +135,7 @@ void SRPC_ConnectCB(int clientFd)
  *
  * @return  Status
  ***************************************************************************************************/
-// int msg_header_checker(char*str, int len){
-// 	int i = 0,j = 0, _len = 0;
-
-// 	_len = len;
-// 	printf("msg_header_checker\n");
-// 	while(*(str + i) != '{'){ 
-// 		printf("1. %c, i:%03d\n",*(str + i), i);
-// 		i++;
-// 		_len--;
-// 		if(i >= len)
-// 			return 0;
-// 	}
-
-// 	printf("\n");
-// 	printf("mLen:%03d\n", len - _len);
-// 	return (len - _len);
-// }
-
+#if 0
 static int json_checker(char* str, int len)
 {
 	int i;
@@ -170,6 +154,7 @@ static int json_checker(char* str, int len)
 
 	return 0;
 }
+#endif
 
 /*接收包header高低字节转换*/
 int msg_header_check(uint16_t header)
@@ -197,15 +182,11 @@ uint16_t msg_len_get(uint16_t len)
 	return TransLen;	
 }
 
-#if 1
-static char tcpRxBuf[1024*60] = {0};
-#endif
 void SRPC_RxCB(int clientFd)
 {
 	int byteToRead = 0;
 	int byteRead = 0;
 	int rtn = 0;
-	int JsonComplete = 0;
 	int rc = 0;
 	static int len = 0;
 	static uint16_t exLen = 0;
@@ -308,6 +289,8 @@ int client_block_init(void)
 		client_block[i].clientFd = 0;
 		// client_block[i].stack_block = NULL;
 	}
+
+	return TCP_SERVER_SUCCESS;
 }
 
 client_block_t* client_stack_block_req(int clientFd)
@@ -362,9 +345,12 @@ int client_block_destory(int clientFd)
 	M1_LOG_INFO( "block_destory\n");
 	int i;
 
-	for(i = 0; i <  STACK_BLOCK_NUM; i++){
+	for(i = 0; i <  STACK_BLOCK_NUM; i++)
+	{
 
-		if(clientFd == client_block_get_fd(i)){
+		if(clientFd == client_block_get_fd(i))
+		{
+			M1_LOG_INFO( "clientFd:%d destory\n",clientFd);	
 			client_block_set_fd(0, i);
 			if(TCP_SERVER_FAILED == stack_block_destroy(client_block[i].stack_block)){
 				M1_LOG_ERROR("block_destroy failed\n");
@@ -395,7 +381,7 @@ static void client_block_set_fd(int clientFd, int i)
 int client_write(stack_mem_t* d, char* data, int len)
 {
 	//pthread_mutex_lock(&mutex_lock_sock);
-	M1_LOG_DEBUG("write begin: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
+	M1_LOG_DEBUG("write begin: num:%d\n, d->wPtr:%x, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%x\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	//M1_LOG_DEBUG("header:%x,%x,%x,%x,str:%s\n",*(uint8_t*)&data[0],*(uint8_t*)&data[1],data[2],data[3],&data[4]);
 	if(NULL == d){
 		M1_LOG_ERROR( "NULL == d\n");
@@ -406,6 +392,32 @@ int client_write(stack_mem_t* d, char* data, int len)
 	uint16_t header = 0;
 	uint16_t distance = 0;
 
+	while(len > 0)
+	{
+		header = *(uint16_t*)data;
+		header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
+		if(header == MSG_HEADER)
+		{
+			distance = (*(uint16_t*)(data + BLOCK_LEN_OFFSET)) & 0xFFFF;
+			distance = (((distance << 8) & 0xff00) | ((distance >> 8) & 0xff)) & 0xffff;
+		}
+		else
+		{
+			//distance = 0;
+			return -1;
+		}
+
+		M1_LOG_DEBUG("len:%05d, distance:%05d\n",distance + 4, distance);
+		rc = stack_push(d, data, distance + 4 ,distance);
+		if(rc != TCP_SERVER_SUCCESS)
+			M1_LOG_WARN( "client write failed\n");	
+	
+		data = data + distance + 4;
+		len = len - distance - 4;	
+	}
+	
+
+#if 0
 	header = *(uint16_t*)data;
 	header = (uint16_t)(((header << 8) & 0xff00) | ((header >> 8) & 0xff)) & 0xffff;
 	if(header == MSG_HEADER){
@@ -417,18 +429,17 @@ int client_write(stack_mem_t* d, char* data, int len)
 	rc = stack_push(d, data, len ,distance);
 	if(rc != TCP_SERVER_SUCCESS)
 		M1_LOG_WARN( "client write failed\n");
-	
+#endif	
 	M1_LOG_DEBUG("write end: num:%d\n, d->wPtr:%05d, d->rPtr:%05d,d->start:%05d,len:%05d, d->end:%05d\n",d->blockNum,d->wPtr, d->rPtr, d->start, len, d->end);
 	//pthread_mutex_unlock(&mutex_lock_sock);
 	return rc;
 }
 
-void client_read(void)
+void* client_read(void)
 {
 	M1_LOG_DEBUG( "client_read\n");
 	int i = 0;
 	int rc = TCP_SERVER_SUCCESS;
-	int count = 0;
 	uint16_t len = 0;
 	uint16_t header = 0;
 	char* headerP = NULL;

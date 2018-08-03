@@ -72,7 +72,7 @@ void SRPC_Init(void);
 int client_block_init(void);
 client_block_t* client_stack_block_req(int clientFd);
 int client_block_destory(int clientFd);
-void client_read(void);
+void* client_read(void);
 int client_write(stack_mem_t* d, char* data, int len);
 /*msg*/
 int msg_header_check(uint16_t header);

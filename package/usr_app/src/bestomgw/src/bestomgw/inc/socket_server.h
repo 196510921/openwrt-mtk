@@ -108,6 +108,9 @@ int udp_broadcast_server(void);
 
 /*get eth0 mac address*/
 char* get_eth0_mac_addr(void);
+
+/*删除socket连接相关资源*/
+void deleteSocketRec(int rmSocketFd);
 #ifdef __cplusplus
 }
 #endif
