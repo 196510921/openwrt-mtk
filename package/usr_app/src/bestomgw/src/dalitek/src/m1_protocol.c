@@ -2123,7 +2123,7 @@ static int APP_net_control(payload_t data)
         goto Finish;
     }
     M1_LOG_DEBUG("value:%d\n",valueJson->valueint);  
-
+#if 0
     /*搜索485空调设备在线状态*/
     {
         dev485cmd.devId   = apIdJson->valuestring;
@@ -2132,6 +2132,7 @@ static int APP_net_control(payload_t data)
         if(rc == M1_PROTOCOL_OK)
             return M1_PROTOCOL_OK;
     }
+#endif
     sql = "select CLIENT_FD from conn_info where AP_ID = ?;";
     M1_LOG_DEBUG("sql:%s\n",sql);
     rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
