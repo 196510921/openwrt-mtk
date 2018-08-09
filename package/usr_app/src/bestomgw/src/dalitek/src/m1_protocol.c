@@ -18,6 +18,7 @@
 #include "m1_common_log.h"
 #include "m1_device.h"
 #include "dev_common.h"
+#include "ap_config.h"
 #include "interface_srpcserver.h"
 
 /*Macro**********************************************************************************************************/
@@ -161,6 +162,10 @@ void data_handle(m1_package_t* package)
         case TYPE_REQ_DIS_NAME:             rc = app_req_dis_name(pdu); break;
         case TYPE_APP_REQ_USER_DIS:         rc = app_req_user_dis(pdu); break;
         case TYPE_REQ_DIS_DEV:              rc = app_req_dis_dev(pdu); break;
+        case TYPE_APP_CFG_AP_ROUTER:        rc = ap_cfg_router(rootJson,db); break;
+        case TYPE_APP_CFG_AP_ZIGBEE:        rc = ap_cfg_router(rootJson,db); break;
+        case TYPE_APP_READ_AP_ROUTER:       rc = app_read_ap_router_cfg(pdu); break;
+        case TYPE_APP_READ_AP_ZIGBEE:       rc = app_read_ap_zigbee_cfg(pdu); break;
         case TYPE_GET_PROJECT_INFO:         rc = app_get_project_config(pdu);break;
         case TYPE_APP_CONFIRM_PROJECT:      rc = app_confirm_project(pdu);break;
         case TYPE_APP_EXEC_SCEN:            rc = app_exec_scenario(pdu);break;
@@ -172,6 +177,8 @@ void data_handle(m1_package_t* package)
         case TYPE_ECHO_DEV_INFO:            rc = APP_echo_dev_info_handle(pdu); break;
         case TYPE_AP_REPORT_DEV_INFO:       rc = AP_report_dev_handle(pdu); break;
         case TYPE_AP_REPORT_AP_INFO:        rc = AP_report_ap_handle(pdu); break;
+        case TYPE_AP_REPORT_AP_ROUTER:      rc = ap_cfg_router(rootJson,db); break;
+        case TYPE_AP_REPORT_ZIGBEE:         rc = ap_cfg_router(rootJson,db); break;
         case TYPE_CREATE_LINKAGE:           rc = linkage_msg_handle(pdu);break;
         case TYPE_CREATE_SCENARIO:          rc = scenario_create_handle(pdu);break;
         case TYPE_CREATE_DISTRICT:          rc = district_create_handle(pdu);break;
@@ -4249,7 +4256,24 @@ static int create_sql_table(void)
     if(rc != SQLITE_OK)
     {
         sqlite3_free(errmsg);
-        M1_LOG_WARN("param_detail_table already exit: %s\n",errmsg);
+        M1_LOG_WARN("version_table already exit: %s\n",errmsg);
+    }
+
+    /*version_table*/
+    sql = "CREATE TABLE ap_router_cfg_table (                  \
+                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                DEV_ID    TEXT,                                \
+                PARAM     TEXT,                                \
+                ZIGBEE    TEXT,                                \
+                TIME      TIME    NOT NULL                     \
+                                  DEFAULT CURRENT_TIMESTAMP    \
+            );";
+    M1_LOG_DEBUG("%s:\n",sql);        
+    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+    if(rc != SQLITE_OK)
+    {
+        sqlite3_free(errmsg);
+        M1_LOG_WARN("ap_router_cfg_table already exit: %s\n",errmsg);
     }
 
     /*插入Dalitek账户*/

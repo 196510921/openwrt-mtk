@@ -258,7 +258,7 @@ void m1_error_handle(void);
 #define ON_OFF_ON                                0x01     //开
 #define ON_OFF_RETURN                            0x02     //翻转
 /*空调执行器S10*/
-#define DEV_POWER_EXEC_S10                       0xA0C0   //(常供电、执行类)空调执行器S10
+#define DEV_POWER_EXEC_S10                       0xA0C5   //(常供电、执行类)空调执行器S10
 #define DEV_CONDITIONER_MODE                     0x801B   //空调模式(制冷、制暖、通风、切换)
 #define DEV_CONDITIONER_SPEED_1                  0x801C   //风速档类型1(低、中、高)
 #define DEV_CONDITIONER_SPEED_2                  0x801E   //风速档类型2(无极变速)

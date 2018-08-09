@@ -27,7 +27,7 @@
 extern "C"
 {
 #endif
-
+#include <stddef.h>
 /* cJSON Types: */
 #define cJSON_False 0
 #define cJSON_True 1
