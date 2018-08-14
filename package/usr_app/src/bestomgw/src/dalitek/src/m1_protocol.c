@@ -164,8 +164,8 @@ void data_handle(m1_package_t* package)
         case TYPE_REQ_DIS_DEV:              rc = app_req_dis_dev(pdu); break;
         case TYPE_APP_CFG_AP_ROUTER:        rc = ap_cfg_router(rootJson,db); break;
         case TYPE_APP_CFG_AP_ZIGBEE:        rc = ap_cfg_router(rootJson,db); break;
-        case TYPE_APP_READ_AP_ROUTER:       rc = app_read_ap_router_cfg(pdu); break;
-        case TYPE_APP_READ_AP_ZIGBEE:       rc = app_read_ap_zigbee_cfg(pdu); break;
+        case TYPE_APP_READ_AP_ROUTER:       app_read_ap_router_cfg(pdu);M1_write_to_AP(rootJson, db);rc = M1_PROTOCOL_NO_RSP; break;
+        case TYPE_APP_READ_AP_ZIGBEE:       app_read_ap_zigbee_cfg(pdu);M1_write_to_AP(rootJson, db);rc = M1_PROTOCOL_NO_RSP; break;
         case TYPE_GET_PROJECT_INFO:         rc = app_get_project_config(pdu);break;
         case TYPE_APP_CONFIRM_PROJECT:      rc = app_confirm_project(pdu);break;
         case TYPE_APP_EXEC_SCEN:            rc = app_exec_scenario(pdu);break;

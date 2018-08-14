@@ -33,7 +33,8 @@ typedef struct
 typedef struct 
 {
     char* project;     //项目名称
-    char* ip;          //主机IP
+    char* lanIp;       //主机lan口IP
+    char* wanIp;       //主机wan口IP
 } broadcast_rsp_ip_t;
 
 typedef struct 
@@ -71,7 +72,8 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
     udp_rsp_msg_t rsp_msg;
     udp_rsp_pdu_t rsp_pdu;
     broadcast_rsp_ip_t rsp_data;
-    struct ifreq ifr;
+    struct ifreq lan_ifr;
+    struct ifreq wan_ifr;
 
     /*json*/
     req_json = cJSON_Parse(msg_in);
@@ -149,12 +151,22 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
         }
         /*project*/
         rsp_data.project = "DOM100";
-        /*获取主机IP*/
-        strcpy(ifr.ifr_name,"br-lan");
-        if(ioctl(sockfd,SIOCGIFADDR,&ifr) != 0)
+        /*获取主机LAN口IP*/
+        strcpy(lan_ifr.ifr_name,"br-lan");
+        if(ioctl(sockfd,SIOCGIFADDR,&lan_ifr) != 0)
         perror("ioctl");
-        printf("host:%s\n",(char *)inet_ntoa( ((struct sockaddr_in *)&(ifr.ifr_addr))->sin_addr));
-        rsp_data.ip = (char *)inet_ntoa( ((struct sockaddr_in *)&(ifr.ifr_addr))->sin_addr);
+        printf("host:%s\n",(char *)inet_ntoa( ((struct sockaddr_in *)&(lan_ifr.ifr_addr))->sin_addr));
+        rsp_data.lanIp = (char *)inet_ntoa( ((struct sockaddr_in *)&(lan_ifr.ifr_addr))->sin_addr);
+        
+        cJSON_AddStringToObject(rsp_pdu.devData, "lanIp", rsp_data.lanIp);
+        /*获取主机WAN口IP*/
+        strcpy(wan_ifr.ifr_name,"eth0.2");
+        if(ioctl(sockfd,SIOCGIFADDR,&wan_ifr) != 0)
+        perror("ioctl");
+        printf("host:%s\n",(char *)inet_ntoa( ((struct sockaddr_in *)&(wan_ifr.ifr_addr))->sin_addr));
+        rsp_data.wanIp = (char *)inet_ntoa( ((struct sockaddr_in *)&(wan_ifr.ifr_addr))->sin_addr);
+    
+        cJSON_AddStringToObject(rsp_pdu.devData, "wanIp", rsp_data.wanIp);
     }
 
     {
@@ -166,7 +178,6 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
         cJSON_AddNumberToObject(rsp_msg.pdu, "pduType", rsp_pdu.pduType);
         cJSON_AddItemToObject(rsp_msg.pdu, "devData", rsp_pdu.devData);
         cJSON_AddStringToObject(rsp_pdu.devData, "version", rsp_data.project);
-        cJSON_AddStringToObject(rsp_pdu.devData, "ip", rsp_data.ip);
 
         p = cJSON_PrintUnformatted(rsp_json);
         
