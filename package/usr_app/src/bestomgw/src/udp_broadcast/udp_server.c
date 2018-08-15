@@ -114,6 +114,7 @@ int BroadcastModuleInit(void *param)
     printf("[ BroadcastModuleInit success! ]\n");
     return 0;
 }
+
 int BroadcastModuleExit(void *param)
 {
     running = false;

@@ -19,6 +19,7 @@
 #include "m1_device.h"
 #include "dev_common.h"
 #include "ap_config.h"
+#include "m1_param_detail.h"
 #include "interface_srpcserver.h"
 
 /*Macro**********************************************************************************************************/
@@ -145,58 +146,61 @@ void data_handle(m1_package_t* package)
     M1_LOG_DEBUG("pduType:%x\n",pduType);
 
     switch(pduType){
-        case TYPE_DEV_READ:                 APP_read_handle(pdu); break;
-        case TYPE_REQ_ADDED_INFO:           APP_req_added_dev_info_handle(pdu); break;
-        case TYPE_DEV_NET_CONTROL:          rc = APP_net_control(pdu); break;
-        case TYPE_REQ_AP_INFO:              M1_report_ap_info(pdu); break;
-        case TYPE_REQ_DEV_INFO:             M1_report_dev_info(pdu); break;
-        case TYPE_COMMON_RSP:               common_rsp_handle(pdu);rc = M1_PROTOCOL_NO_RSP;break;
-        case TYPE_REQ_SCEN_INFO:            rc = app_req_scenario(pdu);break;
-        case TYPE_REQ_LINK_INFO:            rc = app_req_linkage(pdu);break;
-        case TYPE_REQ_DISTRICT_INFO:        rc = app_req_district(pdu); break;
-        case TYPE_REQ_SCEN_NAME_INFO:       rc = app_req_scenario_name(pdu);break;
-        case TYPE_REQ_ACCOUNT_INFO:         rc = app_req_account_info_handle(pdu);break;
-        case TYPE_REQ_ACCOUNT_CONFIG_INFO:  rc = app_req_account_config_handle(pdu);break;
-        case TYPE_GET_PORJECT_NUMBER:       rc = app_get_project_info(pdu); break;
-        case TYPE_REQ_DIS_SCEN_NAME:        rc = app_req_dis_scen_name(pdu); break;
-        case TYPE_REQ_DIS_NAME:             rc = app_req_dis_name(pdu); break;
-        case TYPE_APP_REQ_USER_DIS:         rc = app_req_user_dis(pdu); break;
-        case TYPE_REQ_DIS_DEV:              rc = app_req_dis_dev(pdu); break;
-        case TYPE_APP_CFG_AP_ROUTER:        rc = ap_cfg_router(rootJson,db); break;
-        case TYPE_APP_CFG_AP_ZIGBEE:        rc = ap_cfg_router(rootJson,db); break;
-        case TYPE_APP_READ_AP_ROUTER:       app_read_ap_router_cfg(pdu);M1_write_to_AP(rootJson, db);rc = M1_PROTOCOL_NO_RSP; break;
-        case TYPE_APP_READ_AP_ZIGBEE:       app_read_ap_zigbee_cfg(pdu);M1_write_to_AP(rootJson, db);rc = M1_PROTOCOL_NO_RSP; break;
-        case TYPE_GET_PROJECT_INFO:         rc = app_get_project_config(pdu);break;
-        case TYPE_APP_CONFIRM_PROJECT:      rc = app_confirm_project(pdu);break;
-        case TYPE_APP_EXEC_SCEN:            rc = app_exec_scenario(pdu);break;
-        case TYPE_DEBUG_INFO:               debug_switch(pduDataJson->valuestring);break;
-        case TYPE_DEV_VERSION_READ_CONFIG:  m1_ap_version_read(pdu);rc = M1_PROTOCOL_NO_RSP;break;
+        case TYPE_DEV_READ:                  APP_read_handle(pdu); break;
+        case TYPE_DEV_NET_CONTROL:           rc = APP_net_control(pdu); break;
+        case TYPE_REQ_AP_INFO:               M1_report_ap_info(pdu); break;
+        case TYPE_REQ_DEV_INFO:              M1_report_dev_info(pdu); break;
+        case TYPE_COMMON_RSP:                common_rsp_handle(pdu);rc = M1_PROTOCOL_NO_RSP;break;
+        case TYPE_REQ_SCEN_INFO:             rc = app_req_scenario(pdu);break;
+        case TYPE_REQ_LINK_INFO:             rc = app_req_linkage(pdu);break;
+        case TYPE_REQ_DISTRICT_INFO:         rc = app_req_district(pdu); break;
+        case TYPE_REQ_SCEN_NAME_INFO:        rc = app_req_scenario_name(pdu);break;
+        case TYPE_REQ_ACCOUNT_INFO:          rc = app_req_account_info_handle(pdu);break;
+        case TYPE_REQ_ACCOUNT_CONFIG_INFO:   rc = app_req_account_config_handle(pdu);break;
+        case TYPE_GET_PORJECT_NUMBER:        rc = app_get_project_info(pdu); break;
+        case TYPE_REQ_DIS_SCEN_NAME:         rc = app_req_dis_scen_name(pdu); break;
+        case TYPE_REQ_DIS_NAME:              rc = app_req_dis_name(pdu); break;
+        case TYPE_APP_REQ_USER_DIS:          rc = app_req_user_dis(pdu); break;
+        case TYPE_REQ_DIS_DEV:               rc = app_req_dis_dev(pdu); break;
+        case TYPE_APP_CFG_AP_ROUTER:         rc = ap_cfg_router(rootJson,db); break;
+        case TYPE_APP_CFG_AP_ZIGBEE:         rc = ap_cfg_router(rootJson,db); break;
+        case TYPE_APP_READ_AP_ROUTER:        app_read_ap_router_cfg(pdu);M1_write_to_AP(rootJson, db);rc = M1_PROTOCOL_NO_RSP; break;
+        case TYPE_APP_READ_AP_ZIGBEE:        app_read_ap_zigbee_cfg(pdu);M1_write_to_AP(rootJson, db);rc = M1_PROTOCOL_NO_RSP; break;
+        case TYPE_GET_PROJECT_INFO:          rc = app_get_project_config(pdu);break;
+        case TYPE_APP_CONFIRM_PROJECT:       rc = app_confirm_project(pdu);break;
+        case TYPE_APP_EXEC_SCEN:             rc = app_exec_scenario(pdu);break;
+        case TYPE_DEBUG_INFO:                debug_switch(pduDataJson->valuestring);break;
+        case TYPE_DEV_VERSION_READ_CONFIG:   m1_ap_version_read(pdu);rc = M1_PROTOCOL_NO_RSP;break;
+        case TYPE_REQ_ADDED_INFO:            APP_req_added_dev_info_handle(pdu); break;
+        case TYPE_APP_REQ_DEV_DYNAMIC_PARAM: app_read_param_detail(pdu);rc = M1_PROTOCOL_NO_RSP;break;
         /*write*/
-        case TYPE_REPORT_DATA:              rc = AP_report_data_handle(pdu); break;
-        case TYPE_DEV_WRITE:                rc = M1_write_to_AP(rootJson, db);/*APP_write_handle(pdu);*/break;
-        case TYPE_ECHO_DEV_INFO:            rc = APP_echo_dev_info_handle(pdu); break;
-        case TYPE_AP_REPORT_DEV_INFO:       rc = AP_report_dev_handle(pdu); break;
-        case TYPE_AP_REPORT_AP_INFO:        rc = AP_report_ap_handle(pdu); break;
-        case TYPE_AP_REPORT_AP_ROUTER:      rc = ap_cfg_router(rootJson,db); break;
-        case TYPE_AP_REPORT_ZIGBEE:         rc = ap_cfg_router(rootJson,db); break;
-        case TYPE_CREATE_LINKAGE:           rc = linkage_msg_handle(pdu);break;
-        case TYPE_CREATE_SCENARIO:          rc = scenario_create_handle(pdu);break;
-        case TYPE_CREATE_DISTRICT:          rc = district_create_handle(pdu);break;
-        case TYPE_SCENARIO_ALARM:           rc = scenario_alarm_create_handle(pdu);break;
-        case TYPE_COMMON_OPERATE:           rc = common_operate(pdu);break;
-        case TYPE_AP_HEARTBEAT_INFO:        rc = ap_heartbeat_handle(pdu);break;
-        case TYPE_LINK_ENABLE_SET:          rc = app_linkage_enable(pdu);break;
-        case TYPE_APP_LOGIN:                rc = user_login_handle(pdu);break;
-        case TYPE_SEND_ACCOUNT_CONFIG_INFO: rc = app_account_config_handle(pdu);break;
-        case TYPE_APP_CREATE_PROJECT:       rc = app_create_project(pdu);break;
-        case TYPE_PROJECT_KEY_CHANGE:       rc = app_change_project_key(pdu);break;
-        case TYPE_PROJECT_INFO_CHANGE:      rc = app_change_project_config(pdu);break;
-        case TYPE_APP_CHANGE_DEV_NAME:      rc = app_change_device_name(pdu);break;
-        case TYPE_APP_USER_KEY_CHANGE:      rc = app_change_user_key(pdu);break;
+        case TYPE_REPORT_DATA:               rc = AP_report_data_handle(pdu); break;
+        case TYPE_DEV_WRITE:                 rc = M1_write_to_AP(rootJson, db);/*APP_write_handle(pdu);*/break;
+        case TYPE_ECHO_DEV_INFO:             rc = APP_echo_dev_info_handle(pdu); break;
+        case TYPE_AP_REPORT_DEV_INFO:        rc = AP_report_dev_handle(pdu); break;
+        case TYPE_AP_REPORT_AP_INFO:         rc = AP_report_ap_handle(pdu); break;
+        case TYPE_AP_REPORT_AP_ROUTER:       rc = ap_cfg_router(rootJson,db); break;
+        case TYPE_AP_REPORT_ZIGBEE:          rc = ap_cfg_router(rootJson,db); break;
+        case TYPE_CREATE_LINKAGE:            rc = linkage_msg_handle(pdu);break;
+        case TYPE_CREATE_SCENARIO:           rc = scenario_create_handle(pdu);break;
+        case TYPE_CREATE_DISTRICT:           rc = district_create_handle(pdu);break;
+        case TYPE_SCENARIO_ALARM:            rc = scenario_alarm_create_handle(pdu);break;
+        case TYPE_COMMON_OPERATE:            rc = common_operate(pdu);break;
+        case TYPE_AP_HEARTBEAT_INFO:         rc = ap_heartbeat_handle(pdu);break;
+        case TYPE_LINK_ENABLE_SET:           rc = app_linkage_enable(pdu);break;
+        case TYPE_APP_LOGIN:                 rc = user_login_handle(pdu);break;
+        case TYPE_SEND_ACCOUNT_CONFIG_INFO:  rc = app_account_config_handle(pdu);break;
+        case TYPE_APP_CREATE_PROJECT:        rc = app_create_project(pdu);break;
+        case TYPE_PROJECT_KEY_CHANGE:        rc = app_change_project_key(pdu);break;
+        case TYPE_PROJECT_INFO_CHANGE:       rc = app_change_project_config(pdu);break;
+        case TYPE_APP_CHANGE_DEV_NAME:       rc = app_change_device_name(pdu);break;
+        case TYPE_APP_USER_KEY_CHANGE:       rc = app_change_user_key(pdu);break;
         case TYPE_APP_DOWNLOAD_TESTING_INFO: rc = app_download_testing_to_ap(rootJson,db); break;
         case TYPE_AP_UPLOAD_TESTING_INFO:    rc = ap_upload_testing_to_app(rootJson,db);break;
         case TYPE_DEV_UPDATE_CONFIG:         rc = m1_ap_update(rootJson);break;
         case TYPE_REPORT_VERSION_INFO:       rc = ap_report_version_handle(pdu);break;
+        case TYPE_APP_ADD_DEV_DYNAMIC_PARAM: rc = app_write_param_detail(pdu);break;
+        case TYPE_APP_DEL_DEV_DYNAMIC_PARAM: rc = app_delete_param_detail(pdu);break;
 
         default: M1_LOG_ERROR("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -2412,7 +2416,8 @@ static int M1_report_dev_info(payload_t data)
     /*add devData array to pdu pbject*/
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataJsonArray);
 
-    sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.AP_ID = ? and a.ACCOUNT = ?;";
+    //sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID != a.AP_ID and a.AP_ID = ? and a.ACCOUNT = ?;";
+    sql = "select DEV_ID, DEV_NAME, PID from all_dev where DEV_ID != AP_ID and AP_ID = ? and ACCOUNT = ?;";
     M1_LOG_DEBUG("sql:%s", sql);
     rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(rc != SQLITE_OK)
@@ -3776,24 +3781,6 @@ static int create_sql_table(void)
             //     sqlite3_free(errmsg);
             // }
         }
-        /*account index*/
-        // sql = "CREATE UNIQUE INDEX appAcount ON account_info (\"ACCOUNT\" ASC);";
-        // M1_LOG_DEBUG("%s:\n",sql);
-        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        // if(rc != SQLITE_OK)
-        // {
-        //     M1_LOG_WARN("CREATE UNIQUE INDEX appAcount failed: %s\n",errmsg);
-        //     sqlite3_free(errmsg);
-        // }
-        /*client_fdindex*/
-        // sql = "CREATE UNIQUE INDEX appClient ON account_info (\"CLIENT_FD\" ASC);";
-        // M1_LOG_DEBUG("%s:\n",sql);
-        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        // if(rc != SQLITE_OK)
-        // {
-        //     M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
-        //     sqlite3_free(errmsg);
-        // }
     }
     
     /*account_table*/
@@ -3813,16 +3800,6 @@ static int create_sql_table(void)
             M1_LOG_WARN("account_table already exit: %s\n",errmsg);
         }
         sqlite3_free(errmsg);
-
-        /*account index*/
-        // sql = "CREATE UNIQUE INDEX userAccount ON account_table (\"ACCOUNT\" ASC);";
-        // M1_LOG_DEBUG("%s:\n",sql);
-        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        // if(rc != SQLITE_OK)
-        // {
-        //     M1_LOG_WARN("delete from account_info failed: %s\n",errmsg);
-        //     sqlite3_free(errmsg);
-        // }
     }
     /*all_dev*/
     { 
@@ -3846,17 +3823,9 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
             M1_LOG_WARN("all_dev: %s\n",errmsg);
         }
-        /*dev_id,account,ap_id index*/
-        //sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC,\"AP_ID\" ASC);";
-        // sql = "CREATE UNIQUE INDEX userAccRecord ON all_dev (\"DEV_ID\" ASC,\"ACCOUNT\" ASC);";
-        // M1_LOG_DEBUG("%s:\n",sql);
-        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        // if(rc != SQLITE_OK)
-        // {
-        //     sqlite3_free(errmsg);
-        //     M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
-        // }              
+                  
     }
+
     /*conn_info*/
     {
         sql = "CREATE TABLE conn_info (                        \
@@ -3878,25 +3847,7 @@ static int create_sql_table(void)
             // }
             sqlite3_free(errmsg);   
         }
-         
-        /*AP_ID index*/
-        // sql = "CREATE UNIQUE INDEX apAccount ON conn_info (\"AP_ID\" ASC);";
-        // M1_LOG_DEBUG("%s:\n",sql);
-        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        // if(rc != SQLITE_OK)
-        // {
-        //     sqlite3_free(errmsg);
-        //     M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
-        // }
-        /*CLIENT_FD index*/
-        // sql = "CREATE UNIQUE INDEX apClient ON conn_info (\"CLIENT_FD\" ASC);";
-        // M1_LOG_DEBUG("%s:\n",sql);
-        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        // if(rc != SQLITE_OK)
-        // {
-        //     sqlite3_free(errmsg);
-        //     M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
-        // }
+    
     }
     /*district_table*/
     {
@@ -3916,15 +3867,6 @@ static int create_sql_table(void)
             M1_LOG_WARN("district_table: %s\n",errmsg);
         }
         sqlite3_free(errmsg); 
-        /*DIS_NAME,AP_ID,ACCOUNT UNION index*/
-        // sql = "CREATE UNIQUE INDEX district ON district_table (\"DIS_NAME\" ASC, \"AP_ID\" ASC, \"ACCOUNT\" ASC);";
-        // M1_LOG_DEBUG("%s:\n",sql);
-        // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        // if(rc != SQLITE_OK)
-        // {
-        //     sqlite3_free(errmsg);
-        //     M1_LOG_WARN("CREATE INDEX district: %s\n",errmsg);
-        // }   
     }
     
     /*link_exec_table*/
@@ -3948,18 +3890,6 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
             M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
         }  
-        #if 0  
-        /*LINK_NAME,DISTRICT,DEV_ID,TYPE UNION index*/
-        sql = " CREATE UNIQUE INDEX linkExec ON link_exec_table \
-               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("link_exec_table already exit: %s\n",errmsg);
-        }
-        #endif
     }
     /*link_trigger_table*/
     {
@@ -3984,18 +3914,6 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
             M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
         }
-        #if 0
-        /*LINK_NAME,DISTRICT,DEV_ID,TYPE UNION index*/
-        sql = "CREATE UNIQUE INDEX linkTrigger ON link_trigger_table \
-               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("link_trigger_table already exit: %s\n",errmsg);
-        }
-        #endif
     }
     /*linkage_table*/
     {
@@ -4017,18 +3935,6 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
             M1_LOG_WARN("linkage_table: %s\n",errmsg);
         }
-        #if 0
-        /*LINK_NAME,DISTRICT,EXEC_TYPE,EXEC_ID index*/
-        sql = "CREATE UNIQUE INDEX linkage ON linkage_table \
-               (\"LINK_NAME\" ASC,\"DISTRICT\" ASC,\"EXEC_TYPE\" ASC,\"EXEC_ID\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("linkage_table: %s\n",errmsg);
-        }
-        #endif
     }
     /*param_table*/
     {
@@ -4048,18 +3954,6 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
             M1_LOG_WARN("param_table already exit: %s\n",errmsg);
         }
-        #if 0
-        /*DEV_ID,DEV_NAME,TYPE UNION index*/
-        sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"DEV_NAME\" ASC,\"TYPE\" ASC);";
-        sql = "CREATE UNIQUE INDEX param ON param_table (\"DEV_ID\" ASC,\"TYPE\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX: %s\n",errmsg);
-        }
-        #endif
     }
     /*scen_alarm_table*/
     {
@@ -4081,16 +3975,6 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
             M1_LOG_WARN("scen_alarm_table: %s\n",errmsg);
         }
-        #if 0
-        sql = "CREATE UNIQUE INDEX scenAlarm ON scen_alarm_table (\"SCEN_NAME\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX scenAlarm: %s\n",errmsg);
-        }
-        #endif
     }
     /*scenario_table*/
     {
@@ -4115,18 +3999,6 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
             M1_LOG_WARN("scenario_table already exit: %s\n",errmsg);
         }
-        #if 0
-        /*SCEN_NAME, DISTRICT,DEV_ID,TYPE,VALUE,ACCOUNT UNION index*/
-        sql = "CREATE UNIQUE INDEX scenario ON scenario_table \
-               (\"SCEN_NAME\" ASC,\"DISTRICT\" ASC,\"DEV_ID\" ASC,\"TYPE\" ASC,\"VALUE\" ASC,\"ACCOUNT\" ASC );";
-        M1_LOG_DEBUG("%s:\n",sql);
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE INDEX scenario: %s\n",errmsg);
-        }
-        #endif
     }
     /*project_table*/
     {
@@ -4201,98 +4073,69 @@ static int create_sql_table(void)
                 ret = M1_PROTOCOL_FAILED;
                 goto Finish;   
             }
+        }   
+    }
+
+    /*param_detail_table*/
+    {
+        app_create_param_detail_table(db);
+    }
     
-        }
-        #if 0
-        /*P_NUMBER,P_EDITOR UNION index*/
-        sql = "CREATE UNIQUE INDEX project ON project_table (\"P_NUMBER\" ASC,\"P_EDITOR\" ASC);";
-        M1_LOG_DEBUG("%s:\n",sql);
+    /*version_table*/
+    {
+        sql = "CREATE TABLE version_table (                        \
+                    ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                    DEV_ID    TEXT,                                \
+                    VERSION   TEXT,                                \
+                    TIME      TIME    NOT NULL                     \
+                                      DEFAULT CURRENT_TIMESTAMP    \
+                );";
+        M1_LOG_DEBUG("%s:\n",sql);        
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
         if(rc != SQLITE_OK)
         {
             sqlite3_free(errmsg);
-            M1_LOG_WARN("CREATE UNIQUE INDEX project: %s\n",errmsg);
-        } 
-        #endif       
-    }
-    /*param_detail_table*/
-    sql = "CREATE TABLE param_detail_table (                   \
-                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
-                DEV_ID    TEXT,                                \
-                TYPE      INT,                                 \
-                VALUE     INT,                                 \
-                DESCRIP   TEXT,                                \
-                TIME      TIME    NOT NULL                     \
-                                  DEFAULT CURRENT_TIMESTAMP    \
-            );";
-    M1_LOG_DEBUG("%s:\n",sql);        
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK)
-    {
-        sqlite3_free(errmsg);
-        M1_LOG_WARN("param_detail_table already exit: %s\n",errmsg);
-    }
-    #if 0
-    /*P_NUMBER,P_EDITOR UNION index*/
-    sql = "CREATE UNIQUE INDEX paramDetail ON param_detail_table (\"DEV_ID\" ASC,\"TYPE\" ASC,\"DESCRIP\" ASC);";
-    M1_LOG_DEBUG("%s:\n",sql);
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK)
-    {
-        sqlite3_free(errmsg);
-        M1_LOG_WARN("CREATE UNIQUE INDEX paramDetail: %s\n",errmsg);
-    }
-    #endif
-    /*version_table*/
-    sql = "CREATE TABLE version_table (                        \
-                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
-                DEV_ID    TEXT,                                \
-                VERSION   TEXT,                                \
-                TIME      TIME    NOT NULL                     \
-                                  DEFAULT CURRENT_TIMESTAMP    \
-            );";
-    M1_LOG_DEBUG("%s:\n",sql);        
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK)
-    {
-        sqlite3_free(errmsg);
-        M1_LOG_WARN("version_table already exit: %s\n",errmsg);
+            M1_LOG_WARN("version_table already exit: %s\n",errmsg);
+        }
     }
 
-    /*version_table*/
-    sql = "CREATE TABLE ap_router_cfg_table (                  \
-                ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
-                DEV_ID    TEXT,                                \
-                PARAM     TEXT,                                \
-                ZIGBEE    TEXT,                                \
-                TIME      TIME    NOT NULL                     \
-                                  DEFAULT CURRENT_TIMESTAMP    \
-            );";
-    M1_LOG_DEBUG("%s:\n",sql);        
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK)
+    /*ap_router_cfg_table*/
     {
-        sqlite3_free(errmsg);
-        M1_LOG_WARN("ap_router_cfg_table already exit: %s\n",errmsg);
+        sql = "CREATE TABLE ap_router_cfg_table (                  \
+                    ID        INTEGER PRIMARY KEY AUTOINCREMENT,   \
+                    DEV_ID    TEXT,                                \
+                    PARAM     TEXT,                                \
+                    ZIGBEE    TEXT,                                \
+                    TIME      TIME    NOT NULL                     \
+                                      DEFAULT CURRENT_TIMESTAMP    \
+                );";
+        M1_LOG_DEBUG("%s:\n",sql);        
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            sqlite3_free(errmsg);
+            M1_LOG_WARN("ap_router_cfg_table already exit: %s\n",errmsg);
+        }
     }
 
     /*插入Dalitek账户*/
-    sql = "delete from account_table where ACCOUNT = \"Dalitek\";";
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK)
     {
-        M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
-        sqlite3_free(errmsg);
-    }
+        sql = "delete from account_table where ACCOUNT = \"Dalitek\";";
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
+            sqlite3_free(errmsg);
+        }
 
-    sql = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(\"Dalitek\",\"root\",\"on\",\"on\");";
-    rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-    if(rc != SQLITE_OK)
-    {
-        M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
-        sqlite3_free(errmsg);
-    } 
-    
+        sql = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(\"Dalitek\",\"root\",\"on\",\"on\");";
+        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+        if(rc != SQLITE_OK)
+        {
+            M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
+            sqlite3_free(errmsg);
+        } 
+    }
 
     Finish:
     if(stmt)
