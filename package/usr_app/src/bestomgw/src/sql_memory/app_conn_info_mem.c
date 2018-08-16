@@ -41,12 +41,18 @@ static int mem_app_conn_info_init(void)
 
 static int mem_app_conn_info_search(void* d)
 {
-	int ret                   = -1;
-	int i                     = 0;
-	int num                   = 0;
-	cJSON* data_obj           = NULL;
-	cJSON* ap_id              = NULL;
-	app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;
+	int ret         = -1;
+	int i           = 0;
+	int num         = 0;
+	cJSON* data_obj = NULL;
+	cJSON* ap_id    = NULL;
+
+    if(d == NULL)
+    {
+        printf("d NULL\n");
+        return -1;
+    }
+    app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;
 
 	pthread_mutex_lock(&mem_app_conn_info_lock);
     
@@ -69,13 +75,19 @@ static int mem_app_conn_info_search(void* d)
 
 static int mem_app_conn_info_select(void* d)
 {
-	int ret                   = 0;
-	int i                     = 0;
-	int num                   = 0;
-	cJSON* data_obj           = NULL;
-	cJSON* ap_id              = NULL;
-	cJSON* client_fd          = NULL;
-	app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;
+	int ret          = 0;
+	int i            = 0;
+	int num          = 0;
+	cJSON* data_obj  = NULL;
+	cJSON* ap_id     = NULL;
+	cJSON* client_fd = NULL;
+
+    if(d == NULL)
+    {
+        printf("d NULL\n");
+        return -1;
+    }
+    app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;
 
 	pthread_mutex_lock(&mem_app_conn_info_lock);
     
@@ -106,13 +118,20 @@ static int mem_app_conn_info_select(void* d)
 
 static int mem_app_conn_info_update(void* d)
 {
-	int i                     = 0;
-	int num                   = 0;
-	cJSON* data_obj           = NULL;
-	cJSON* client_fd_obj      = NULL;
-	cJSON* ap_id              = NULL;
-	cJSON* client_fd          = NULL;
-	app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;
+	int i                = 0;
+	int num              = 0;
+    int ret              = 0;
+	cJSON* data_obj      = NULL;
+	cJSON* client_fd_obj = NULL;
+	cJSON* ap_id         = NULL;
+	cJSON* client_fd     = NULL;
+	
+    if(d == NULL)
+    {
+        printf("d NULL\n");
+        return -1;
+    }
+    app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;
 
 	pthread_mutex_lock(&mem_app_conn_info_lock);
 
@@ -134,7 +153,8 @@ static int mem_app_conn_info_update(void* d)
     		    // create object faild, exit
     		    printf("data_obj NULL\n");
     		    cJSON_Delete(client_fd_obj);
-    		    return -1;
+    		    ret = -1;
+                goto Finish;
     		}
 
         	cJSON_ReplaceItemInObject(data_obj,"CLIENT_FD", client_fd_obj);
@@ -142,14 +162,22 @@ static int mem_app_conn_info_update(void* d)
         }
     }
 
+    Finish:
 	pthread_mutex_unlock(&mem_app_conn_info_lock);	
-	return 0;
+	return ret;
 }
 
 static int mem_app_conn_info_insert(void* d)
 {
+    int ret         = 0;
 	cJSON* data_obj = NULL;
-	app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;		
+	
+    if(d == NULL)
+    {
+        printf("d NULL\n");
+        return -1;
+    }
+    app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;		
 
 	pthread_mutex_lock(&mem_app_conn_info_lock);
 
@@ -159,25 +187,32 @@ static int mem_app_conn_info_insert(void* d)
         // create object faild, exit
         printf("data_obj NULL\n");
         cJSON_Delete(data_obj);
-        return -1;
+        ret = -1;
+        goto Finish;
     }
     cJSON_AddItemToArray(conn_info_array, data_obj);
 
     cJSON_AddStringToObject(data_obj, "AP_ID", data->ap_id);
     cJSON_AddNumberToObject(data_obj, "CLIENT_FD", data->client_fd);
 	
+    Finish:
 	pthread_mutex_unlock(&mem_app_conn_info_lock);
-
-	return 0;
+	return ret;
 }
 
 static int mem_app_conn_info_delete(void* d)
 {
-	int i                     = 0;
-	int num                   = 0;
-	cJSON* data_obj           = NULL;
-	cJSON* ap_id              = NULL;
-	app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;			
+	int i           = 0;
+	int num         = 0;
+	cJSON* data_obj = NULL;
+	cJSON* ap_id    = NULL;
+	
+    if(d == NULL)
+    {
+        printf("d NULL\n");
+        return -1;
+    }
+    app_conn_info_mem_t* data = (app_conn_info_mem_t*)d;			
 
 	pthread_mutex_lock(&mem_app_conn_info_lock);
 

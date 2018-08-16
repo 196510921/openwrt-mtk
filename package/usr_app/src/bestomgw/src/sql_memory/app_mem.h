@@ -1,10 +1,11 @@
 #ifndef APP_MEM_H
 #define APP_MEM_H
 
-
 /*485通信接口号*/
 typedef enum{
     MEM_CONN_INFO = 0,
+    MEM_PARAM_TABLE,
+    MEM_ALL_DEV,
     MEM_MAX
 }app_mem_id;
 
@@ -21,11 +22,15 @@ typedef struct {
 typedef struct
 {    
     int                   id;
-    const app_mem_func_t* dFunc;
-    const char*           devName;    
+    const app_mem_func_t* dFunc;   
+    const char*           devName; 
 }app_mem_info_t; 
 
 /*conn_info table memory data*/
 extern const app_mem_func_t mem_app_conn_info;
+/*param_table memory data*/
+extern const app_mem_func_t mem_app_param_table;
+/*all_dev memory data*/
+extern const app_mem_func_t mem_app_all_dev;
 
 #endif//APP_MEM_H
