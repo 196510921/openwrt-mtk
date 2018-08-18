@@ -3,20 +3,23 @@
 #include "app_all_dev_mem.h"
 #include "app_conn_info_mem.h"
 #include "app_param_table_mem.h"
+#include "app_linkage_table_mem.h"
 
-#define APP_MEME_UNIT_TEST       1
-#define APP_MEM_CONN_INFO_TEST   0
-#define APP_MEM_PARAM_TABLE_TEST 0
-#define APP_MEM_ALL_DEV_TEST     1
+#define APP_MEME_UNIT_TEST         1
+#define APP_MEM_CONN_INFO_TEST     0
+#define APP_MEM_PARAM_TABLE_TEST   0
+#define APP_MEM_ALL_DEV_TEST       0
+#define APP_MEM_LINKAGE_TABLE_TEST 1
 
 
 /*设备信息表*/
 const app_mem_info_t app_mem_info[] = 
 {
-	{MEM_CONN_INFO,   &mem_app_conn_info,   "conn_info"},
-	{MEM_PARAM_TABLE, &mem_app_param_table, "param_table"},
-	{MEM_ALL_DEV,     &mem_app_all_dev,     "all_dev"},
-	{MEM_MAX,         NULL,                 "数据信息最大值"}
+	{MEM_CONN_INFO,     &mem_app_conn_info,     "conn_info"},
+	{MEM_PARAM_TABLE,   &mem_app_param_table,   "param_table"},
+	{MEM_ALL_DEV,       &mem_app_all_dev,       "all_dev"},
+	{MEM_LINKAGE_TABLE, &mem_app_linkage_table, "linkage_table"},
+	{MEM_MAX,           NULL,                   "数据信息最大值"}
 };
 
 
@@ -364,6 +367,167 @@ int app_all_dev_test(void)
 }
 #endif
 
+/******************************************linkage_table*********************************************************************/
+#if APP_MEM_LINKAGE_TABLE_TEST
+extern int app_linkage_table_mem_print();
+int app_linkage_table_test(void)
+{
+	int ret             = 0;
+	int i               = 0;
+	int num             = 0;
+	cJSON *data_in_arry = NULL;
+	cJSON *data_obj     = NULL;
+
+	app_linkage_table_tb  member_data[5];
+
+	/*create devData array*/
+    data_in_arry = cJSON_CreateArray();
+    if(NULL == data_in_arry)
+    {
+        cJSON_Delete(data_in_arry);
+        return -1;
+    } 
+
+	{
+	    ret = app_mem_info[MEM_LINKAGE_TABLE].dFunc->app_mem_init();
+	    if(ret == -1)
+	    	printf("app_mem_init failed\n");
+	}
+
+	{
+		/*0*/
+		member_data[0].link_name = cJSON_CreateString("LIGHT_ON");
+		member_data[0].district  = cJSON_CreateString("district1");
+		member_data[0].exec_type = cJSON_CreateString("11111111");
+		member_data[0].exec_id   = cJSON_CreateString("11111111");
+		member_data[0].status    = cJSON_CreateString("ON");
+		member_data[0].enable    = cJSON_CreateString("ENABLE");
+		/*1*/
+		member_data[1].link_name = cJSON_CreateString("LIGHT_OFF");
+		member_data[1].district  = cJSON_CreateString("district1");
+		member_data[1].exec_type = cJSON_CreateString("22222222");
+		member_data[1].exec_id   = cJSON_CreateString("22222222");
+		member_data[1].status    = cJSON_CreateString("OFF");
+		member_data[1].enable    = cJSON_CreateString("ENABLE");
+		/*2*/
+		member_data[2].link_name = cJSON_CreateString("AC_ON");
+		member_data[2].district  = cJSON_CreateString("district2");
+		member_data[2].exec_type = cJSON_CreateString("33333333");
+		member_data[2].exec_id   = cJSON_CreateString("33333333");
+		member_data[2].status    = cJSON_CreateString("ON");
+		member_data[2].enable    = cJSON_CreateString("ENABLE");
+		/*3*/
+		member_data[3].link_name = NULL;
+		member_data[3].district  = NULL;
+		member_data[3].exec_type = NULL;
+		member_data[3].exec_id   = NULL;
+		member_data[3].status    = NULL;
+		member_data[3].enable    = NULL;
+
+		/*4*/
+		member_data[4].link_name = cJSON_CreateString("AC_ON");;
+		member_data[4].district  = NULL;
+		member_data[4].exec_type = NULL;
+		member_data[4].exec_id   = NULL;
+		member_data[4].status    = NULL;
+		member_data[4].enable    = NULL;
+	}
+
+	app_linkage_table_mem_t select_data[4] = {
+		{data_in_arry,&member_data[0]},
+		{data_in_arry,&member_data[1]},
+		{data_in_arry,&member_data[2]},
+		{data_in_arry,&member_data[4]}
+	};
+
+	/*insert*/
+	for(i = 0; i < 3; i++)
+	{
+		ret = app_mem_info[MEM_LINKAGE_TABLE].dFunc->app_mem_search(&select_data[i]);	
+		if(ret == -1)
+		{
+			ret = app_mem_info[MEM_LINKAGE_TABLE].dFunc->app_mem_insert(&select_data[i]);
+			if(ret == -1)
+				printf("app_mem_insert failed\n");	
+			else
+				printf("app_mem_insert success\n");
+			
+			app_linkage_table_mem_print();
+		}
+	}
+
+	/*update*/
+	member_data[2].link_name = cJSON_CreateString("AC_ON");
+	member_data[2].district  = cJSON_CreateString("district2");
+	member_data[2].exec_type = cJSON_CreateString("66666666");
+	member_data[2].exec_id   = cJSON_CreateString("66666666");
+	member_data[2].status    = cJSON_CreateString("OFF");
+	member_data[2].enable    = cJSON_CreateString("DISABLE");
+
+	ret = app_mem_info[MEM_LINKAGE_TABLE].dFunc->app_mem_search(&select_data[2]);	
+	if(ret == -1)
+	{
+		ret = app_mem_info[MEM_LINKAGE_TABLE].dFunc->app_mem_insert(&select_data[2]);
+		if(ret == -1)
+			printf("app_mem_insert failed\n");	
+		else
+			printf("app_mem_insert success\n");
+		
+		app_linkage_table_mem_print();
+	}
+	else
+	{
+		ret = app_mem_info[MEM_LINKAGE_TABLE].dFunc->app_mem_update(&select_data[2]);
+		if(ret == -1)
+			printf("app_mem_update failed\n");		
+		else
+			printf("app_mem_update success\n");
+		
+		app_linkage_table_mem_print();
+	}
+
+	ret = app_mem_info[MEM_LINKAGE_TABLE].dFunc->app_mem_select(&select_data[3]);
+	if(ret == -1)
+	{
+		printf("app_mem_select not found\n");
+	}	
+	else
+	{
+		num = cJSON_GetArraySize(data_in_arry);
+		for(i = 0; i < num; i++)
+		{
+			data_obj = cJSON_GetArrayItem(data_in_arry, i);
+       		member_data[3].link_name   = cJSON_GetObjectItem(data_obj, "LINK_NAME");
+       		member_data[3].district    = cJSON_GetObjectItem(data_obj, "DISTRICT");
+       		member_data[3].exec_type = cJSON_GetObjectItem(data_obj, "EXEC_TYPE");
+       		member_data[3].exec_id      = cJSON_GetObjectItem(data_obj, "EXEC_ID");
+       		member_data[3].status    = cJSON_GetObjectItem(data_obj, "STATUS");
+       		member_data[3].enable      = cJSON_GetObjectItem(data_obj, "ENABLE");
+			printf("app_mem_select data[%d]link_name:%s,district:%s,exec_type:%s,exec_id:%s,status:%s,enable:%s\n",\
+												                           i,\
+			                                                               member_data[3].link_name->valuestring,\
+			                                                               member_data[3].district->valuestring,\
+			                                                               member_data[3].exec_type->valuestring,\
+			                                                               member_data[3].exec_id->valuestring,\
+			                                                               member_data[3].status->valuestring,\
+			                                                               member_data[3].enable->valuestring);
+		}
+		
+	}
+
+	ret = app_mem_info[MEM_LINKAGE_TABLE].dFunc->app_mem_delete(&select_data[2]);
+    if(ret == -1)
+    {
+    	printf("app_mem_delete failed\n");
+    }
+    else
+    {
+    	printf("app_mem_delete success\n");
+    	app_linkage_table_mem_print();
+    }
+    return ret;
+}
+#endif
 
 #if APP_MEME_UNIT_TEST
 int main(int argc, char* argv[])
@@ -378,6 +542,10 @@ int main(int argc, char* argv[])
 
 	#if APP_MEM_ALL_DEV_TEST
 	app_all_dev_test();
+	#endif
+
+	#if APP_MEM_LINKAGE_TABLE_TEST
+	app_linkage_table_test();
 	#endif
 
 	return 0;

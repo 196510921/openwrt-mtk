@@ -424,7 +424,7 @@ static int mem_app_all_dev_insert(void* d)
         printf("d NULL\n");
         return -1;
     }
-    app_all_dev_mem_t* data     = (app_all_dev_mem_t*)d;
+    app_all_dev_mem_t* data = (app_all_dev_mem_t*)d;
 
 	pthread_mutex_lock(&mem_app_all_dev_lock);
 
@@ -447,7 +447,6 @@ static int mem_app_all_dev_insert(void* d)
     cJSON_AddNumberToObject(data_obj, "NET", data->member_data->net->valueint);
     cJSON_AddStringToObject(data_obj, "STATUS", data->member_data->status->valuestring);
 	
-
     Finish:
 	pthread_mutex_unlock(&mem_app_all_dev_lock);
 	return ret;

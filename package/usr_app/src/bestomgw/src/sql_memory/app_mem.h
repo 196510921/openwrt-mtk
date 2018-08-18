@@ -6,6 +6,7 @@ typedef enum{
     MEM_CONN_INFO = 0,
     MEM_PARAM_TABLE,
     MEM_ALL_DEV,
+    MEM_LINKAGE_TABLE,
     MEM_MAX
 }app_mem_id;
 
@@ -32,5 +33,10 @@ extern const app_mem_func_t mem_app_conn_info;
 extern const app_mem_func_t mem_app_param_table;
 /*all_dev memory data*/
 extern const app_mem_func_t mem_app_all_dev;
+/*linkage_table memory data*/
+extern const app_mem_func_t mem_app_linkage_table;
 
 #endif//APP_MEM_H
+
+
+
