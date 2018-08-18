@@ -220,7 +220,6 @@ void SRPC_RxCB(int clientFd)
 					goto Finish;
 				}
 			}else{
-
 				M1_LOG_DEBUG("%x,tcpRxBuf:%x,%x.%x.%x,\n",*(uint16_t*)(tcpRxBuf + len + 2),tcpRxBuf[len],tcpRxBuf[len+1],tcpRxBuf[len+2],tcpRxBuf[len+3]);
 			}
 

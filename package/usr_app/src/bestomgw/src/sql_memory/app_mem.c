@@ -4,22 +4,28 @@
 #include "app_conn_info_mem.h"
 #include "app_param_table_mem.h"
 #include "app_linkage_table_mem.h"
+#include "app_scenario_table_mem.h"
+#include "app_scen_alarm_table_mem.h"
 
-#define APP_MEME_UNIT_TEST         1
-#define APP_MEM_CONN_INFO_TEST     0
-#define APP_MEM_PARAM_TABLE_TEST   0
-#define APP_MEM_ALL_DEV_TEST       0
-#define APP_MEM_LINKAGE_TABLE_TEST 1
+#define APP_MEME_UNIT_TEST            1
+#define APP_MEM_CONN_INFO_TEST        0
+#define APP_MEM_PARAM_TABLE_TEST      0
+#define APP_MEM_ALL_DEV_TEST          0
+#define APP_MEM_LINKAGE_TABLE_TEST    0
+#define APP_MEM_SCENARIO_TABLE_TEST   0
+#define APP_MEM_SCEN_ALARM_TABLE_TEST 1
 
 
 /*设备信息表*/
 const app_mem_info_t app_mem_info[] = 
 {
-	{MEM_CONN_INFO,     &mem_app_conn_info,     "conn_info"},
-	{MEM_PARAM_TABLE,   &mem_app_param_table,   "param_table"},
-	{MEM_ALL_DEV,       &mem_app_all_dev,       "all_dev"},
-	{MEM_LINKAGE_TABLE, &mem_app_linkage_table, "linkage_table"},
-	{MEM_MAX,           NULL,                   "数据信息最大值"}
+	{MEM_CONN_INFO,        &mem_app_conn_info,        "conn_info"},
+	{MEM_PARAM_TABLE,      &mem_app_param_table,      "param_table"},
+	{MEM_ALL_DEV,          &mem_app_all_dev,          "all_dev"},
+	{MEM_LINKAGE_TABLE,    &mem_app_linkage_table,    "linkage_table"},
+	{MEM_SCENARIO_TABLE,   &mem_app_scenario_table,   "scenario_table"},
+	{MEM_SCEN_ALARM_TABLE, &mem_app_scen_alarm_table, "scenario_table"},
+	{MEM_MAX,              NULL,                      "数据信息最大值"}
 };
 
 
@@ -529,6 +535,340 @@ int app_linkage_table_test(void)
 }
 #endif
 
+/******************************************scenario_table*********************************************************************/
+#if APP_MEM_SCENARIO_TABLE_TEST
+extern int app_scenario_table_mem_print();
+int app_scenario_table_test(void)
+{
+	int ret             = 0;
+	int i               = 0;
+	int num             = 0;
+	cJSON *data_in_arry = NULL;
+	cJSON *data_obj     = NULL;
+
+	app_scenario_table_tb  member_data[5];
+
+	/*create devData array*/
+    data_in_arry = cJSON_CreateArray();
+    if(NULL == data_in_arry)
+    {
+        cJSON_Delete(data_in_arry);
+        return -1;
+    } 
+
+	{
+	    ret = app_mem_info[MEM_SCENARIO_TABLE].dFunc->app_mem_init();
+	    if(ret == -1)
+	    	printf("app_mem_init failed\n");
+	}
+
+	{
+		/*0*/
+		member_data[0].scen_name = cJSON_CreateString("SCEN_1_ON");
+		member_data[0].scen_pic  = cJSON_CreateString("scen_pic_1");
+		member_data[0].district  = cJSON_CreateString("district1");
+		member_data[0].ap_id     = cJSON_CreateString("11111111");
+		member_data[0].dev_id    = cJSON_CreateString("12345678");
+		member_data[0].type      = cJSON_CreateNumber(1001);
+		member_data[0].value     = cJSON_CreateNumber(2);
+		member_data[0].delay     = cJSON_CreateNumber(3);
+		/*1*/
+		member_data[1].scen_name = cJSON_CreateString("SCEN_2_OFF");
+		member_data[1].scen_pic  = cJSON_CreateString("scen_pic_2");
+		member_data[1].district  = cJSON_CreateString("district2");
+		member_data[1].ap_id     = cJSON_CreateString("11111111");
+		member_data[1].dev_id    = cJSON_CreateString("12345679");
+		member_data[1].type      = cJSON_CreateNumber(1002);
+		member_data[1].value     = cJSON_CreateNumber(4);
+		member_data[1].delay     = cJSON_CreateNumber(5);
+		/*2*/
+		member_data[2].scen_name = cJSON_CreateString("SCEN_3_ON");
+		member_data[2].scen_pic  = cJSON_CreateString("scen_pic_3");
+		member_data[2].district  = cJSON_CreateString("district3");
+		member_data[2].ap_id     = cJSON_CreateString("22222222");
+		member_data[2].dev_id    = cJSON_CreateString("1234567a");
+		member_data[2].type      = cJSON_CreateNumber(1003);
+		member_data[2].value     = cJSON_CreateNumber(6);
+		member_data[2].delay     = cJSON_CreateNumber(7);
+		/*3*/
+		member_data[3].scen_name = NULL;
+		member_data[3].scen_pic  = NULL;
+		member_data[3].district  = NULL;
+		member_data[3].ap_id     = NULL;
+		member_data[3].dev_id    = NULL;
+		member_data[3].type      = NULL;
+		member_data[3].value     = NULL;
+		member_data[3].delay     = NULL;
+
+		/*4*/
+		member_data[4].scen_name = cJSON_CreateString("SCEN_3_ON");
+		member_data[4].scen_pic  = NULL;
+		member_data[4].district  = NULL;
+		member_data[4].ap_id     = NULL;
+		member_data[4].dev_id    = NULL;
+		member_data[4].type      = NULL;
+		member_data[4].value     = NULL;
+		member_data[4].delay     = NULL;
+	}
+
+	app_scenario_table_mem_t select_data[4] = {
+		{data_in_arry,&member_data[0]},
+		{data_in_arry,&member_data[1]},
+		{data_in_arry,&member_data[2]},
+		{data_in_arry,&member_data[4]}
+	};
+
+	/*insert*/
+	for(i = 0; i < 3; i++)
+	{
+		ret = app_mem_info[MEM_SCENARIO_TABLE].dFunc->app_mem_search(&select_data[i]);	
+		if(ret == -1)
+		{
+			ret = app_mem_info[MEM_SCENARIO_TABLE].dFunc->app_mem_insert(&select_data[i]);
+			if(ret == -1)
+				printf("app_mem_insert failed\n");	
+			else
+				printf("app_mem_insert success\n");
+			
+			app_scenario_table_mem_print();
+		}
+	}
+
+	/*update*/
+	member_data[2].scen_name = cJSON_CreateString("SCEN_3_ON");
+	member_data[2].scen_pic  = cJSON_CreateString("scen_pic_6");
+	member_data[2].district  = cJSON_CreateString("district3");
+	member_data[2].ap_id     = cJSON_CreateString("66666666");
+	member_data[2].dev_id    = cJSON_CreateString("1234567a");
+	member_data[2].type      = cJSON_CreateNumber(1008);
+	member_data[2].value     = cJSON_CreateNumber(8);
+	member_data[2].delay     = cJSON_CreateNumber(8);
+
+	ret = app_mem_info[MEM_SCENARIO_TABLE].dFunc->app_mem_search(&select_data[2]);	
+	if(ret == -1)
+	{
+		ret = app_mem_info[MEM_SCENARIO_TABLE].dFunc->app_mem_insert(&select_data[2]);
+		if(ret == -1)
+			printf("app_mem_insert failed\n");	
+		else
+			printf("app_mem_insert success\n");
+		
+		app_scenario_table_mem_print();
+	}
+	else
+	{
+		ret = app_mem_info[MEM_SCENARIO_TABLE].dFunc->app_mem_delete(&select_data[2]);
+        if(ret == -1)
+        {
+        	printf("app_mem_delete failed\n");
+        }
+        else
+        {
+        	printf("app_mem_delete success\n");
+        	app_scenario_table_mem_print();
+        }
+
+		ret = app_mem_info[MEM_SCENARIO_TABLE].dFunc->app_mem_insert(&select_data[2]);
+		if(ret == -1)
+			printf("app_mem_update failed\n");	
+		else
+			printf("app_mem_update success\n");
+		
+		app_scenario_table_mem_print();
+	}
+
+	ret = app_mem_info[MEM_SCENARIO_TABLE].dFunc->app_mem_select(&select_data[3]);
+	if(ret == -1)
+	{
+		printf("app_mem_select not found\n");
+	}	
+	else
+	{
+		num = cJSON_GetArraySize(data_in_arry);
+		for(i = 0; i < num; i++)
+		{
+			data_obj = cJSON_GetArrayItem(data_in_arry, i);
+       		member_data[3].scen_name = cJSON_GetObjectItem(data_obj, "SCEN_NAME");
+       		member_data[3].scen_pic  = cJSON_GetObjectItem(data_obj, "SCEN_PIC");
+       		member_data[3].district  = cJSON_GetObjectItem(data_obj, "DISTRICT");
+       		member_data[3].ap_id     = cJSON_GetObjectItem(data_obj, "AP_ID");
+       		member_data[3].dev_id    = cJSON_GetObjectItem(data_obj, "DEV_ID");
+       		member_data[3].type      = cJSON_GetObjectItem(data_obj, "TYPE");
+       		member_data[3].value     = cJSON_GetObjectItem(data_obj, "VALUE");
+       		member_data[3].delay     = cJSON_GetObjectItem(data_obj, "DELAY");
+			printf("app_mem_select data[%d]scen_name:%s,scen_pic:%s,district:%s,ap_id:%s,dev_id:%s,type:%d,value:%d,delay:%d\n",\
+												                                          i,\
+			                                                                              member_data[3].scen_name->valuestring,\
+			                                                                              member_data[3].scen_pic->valuestring,\
+			                                                                              member_data[3].district->valuestring,\
+			                                                                              member_data[3].ap_id->valuestring,\
+			                                                                              member_data[3].dev_id->valuestring,\
+			                                                                              member_data[3].type->valueint,\
+			                                                                              member_data[3].value->valueint,\
+			                                                                              member_data[3].delay->valueint);
+		}
+		
+	}
+
+	return ret;
+}
+#endif
+
+/******************************************scen_alarm_table*********************************************************************/
+#if APP_MEM_SCEN_ALARM_TABLE_TEST
+extern int app_scen_alarm_table_mem_print();
+int app_scen_alarm_table_test(void)
+{
+	int ret             = 0;
+	int i               = 0;
+	int num             = 0;
+	cJSON *data_in_arry = NULL;
+	cJSON *data_obj     = NULL;
+
+	app_scen_alarm_table_tb  member_data[5];
+
+	/*create devData array*/
+    data_in_arry = cJSON_CreateArray();
+    if(NULL == data_in_arry)
+    {
+        cJSON_Delete(data_in_arry);
+        return -1;
+    } 
+
+	{
+	    ret = app_mem_info[MEM_SCEN_ALARM_TABLE].dFunc->app_mem_init();
+	    if(ret == -1)
+	    	printf("app_mem_init failed\n");
+	}
+
+	{
+		/*0*/
+		member_data[0].scen_name = cJSON_CreateString("SCEN_1_ON");
+		member_data[0].hour      = cJSON_CreateNumber(10);
+		member_data[0].minutes   = cJSON_CreateNumber(20);
+		member_data[0].week      = cJSON_CreateString("Sunday");
+		member_data[0].status    = cJSON_CreateString("ON");
+		/*1*/
+		member_data[1].scen_name = cJSON_CreateString("SCEN_2_OFF");
+		member_data[1].hour      = cJSON_CreateNumber(12);
+		member_data[1].minutes   = cJSON_CreateNumber(22);
+		member_data[1].week      = cJSON_CreateString("Monday");
+		member_data[1].status    = cJSON_CreateString("OFF");
+		/*2*/
+		member_data[2].scen_name = cJSON_CreateString("SCEN_3_ON");
+		member_data[2].hour      = cJSON_CreateNumber(13);
+		member_data[2].minutes   = cJSON_CreateNumber(23);
+		member_data[2].week      = cJSON_CreateString("Tuesday");
+		member_data[2].status    = cJSON_CreateString("ON");
+		/*3*/
+		member_data[3].scen_name = NULL;
+		member_data[3].hour      = NULL;
+		member_data[3].minutes   = NULL;
+		member_data[3].week      = NULL;
+		member_data[3].status    = NULL;
+
+		/*4*/
+		member_data[4].scen_name = cJSON_CreateString("SCEN_3_ON");
+		member_data[4].hour      = NULL;
+		member_data[4].minutes   = NULL;
+		member_data[4].week      = NULL;
+		member_data[4].status    = NULL;
+	}
+
+	app_scen_alarm_table_mem_t select_data[4] = {
+		{data_in_arry,&member_data[0]},
+		{data_in_arry,&member_data[1]},
+		{data_in_arry,&member_data[2]},
+		{data_in_arry,&member_data[4]}
+	};
+
+	/*insert*/
+	for(i = 0; i < 3; i++)
+	{
+		ret = app_mem_info[MEM_SCEN_ALARM_TABLE].dFunc->app_mem_search(&select_data[i]);	
+		if(ret == -1)
+		{
+			ret = app_mem_info[MEM_SCEN_ALARM_TABLE].dFunc->app_mem_insert(&select_data[i]);
+			if(ret == -1)
+				printf("app_mem_insert failed\n");	
+			else
+				printf("app_mem_insert success\n");
+			
+			app_scen_alarm_table_mem_print();
+		}
+	}
+
+	/*update*/
+	member_data[2].scen_name = cJSON_CreateString("SCEN_3_ON");
+	member_data[2].hour      = cJSON_CreateNumber(66);
+	member_data[2].minutes   = cJSON_CreateNumber(88);
+	member_data[2].week      = cJSON_CreateString("Allday");
+	member_data[2].status    = cJSON_CreateString("OFF");
+
+	ret = app_mem_info[MEM_SCEN_ALARM_TABLE].dFunc->app_mem_search(&select_data[2]);	
+	if(ret == -1)
+	{
+		ret = app_mem_info[MEM_SCEN_ALARM_TABLE].dFunc->app_mem_insert(&select_data[2]);
+		if(ret == -1)
+			printf("app_mem_insert failed\n");	
+		else
+			printf("app_mem_insert success\n");
+		
+		app_scen_alarm_table_mem_print();
+	}
+	else
+	{
+		ret = app_mem_info[MEM_SCEN_ALARM_TABLE].dFunc->app_mem_delete(&select_data[2]);
+        if(ret == -1)
+        {
+        	printf("app_mem_delete failed\n");
+        }
+        else
+        {
+        	printf("app_mem_delete success\n");
+        	app_scen_alarm_table_mem_print();
+        }
+
+		ret = app_mem_info[MEM_SCEN_ALARM_TABLE].dFunc->app_mem_insert(&select_data[2]);
+		if(ret == -1)
+			printf("app_mem_update failed\n");	
+		else
+			printf("app_mem_update success\n");
+		
+		app_scen_alarm_table_mem_print();
+	}
+
+	ret = app_mem_info[MEM_SCEN_ALARM_TABLE].dFunc->app_mem_select(&select_data[3]);
+	if(ret == -1)
+	{
+		printf("app_mem_select not found\n");
+	}	
+	else
+	{
+		num = cJSON_GetArraySize(data_in_arry);
+		for(i = 0; i < num; i++)
+		{
+			data_obj = cJSON_GetArrayItem(data_in_arry, i);
+       		member_data[3].scen_name = cJSON_GetObjectItem(data_obj, "SCEN_NAME");
+       		member_data[3].hour      = cJSON_GetObjectItem(data_obj, "HOUR");
+       		member_data[3].minutes   = cJSON_GetObjectItem(data_obj, "MINUTES");
+       		member_data[3].week      = cJSON_GetObjectItem(data_obj, "WEEK");
+       		member_data[3].status    = cJSON_GetObjectItem(data_obj, "STATUS");
+			printf("app_mem_select data[%d]scen_name:%s,hour%d,minutes:%d,week:%s,status:%s\n",\
+												           i,\
+			                                               member_data[3].scen_name->valuestring,\
+			                                               member_data[3].hour->valueint,\
+			                                               member_data[3].minutes->valueint,\
+			                                               member_data[3].week->valuestring,\
+			                                               member_data[3].status->valuestring);
+		}
+		
+	}
+
+	return ret;
+}
+#endif
+
 #if APP_MEME_UNIT_TEST
 int main(int argc, char* argv[])
 {
@@ -546,6 +886,14 @@ int main(int argc, char* argv[])
 
 	#if APP_MEM_LINKAGE_TABLE_TEST
 	app_linkage_table_test();
+	#endif
+
+	#if APP_MEM_SCENARIO_TABLE_TEST
+	app_scenario_table_test();
+	#endif
+
+	#if APP_MEM_SCEN_ALARM_TABLE_TEST
+	app_scen_alarm_table_test();
 	#endif
 
 	return 0;
