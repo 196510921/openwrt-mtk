@@ -118,6 +118,7 @@ int tcp_client_connect(void)
 	if(connect(client_sockfd,(struct sockaddr*)&servaddr,sizeof(servaddr)) == -1){
 		printf("server connect failed!\n");
 		set_connect_flag(TCP_DISCONNECTED);
+		close(client_sockfd);
 		return TCP_CLIENT_FAILED;
 	}
 	else

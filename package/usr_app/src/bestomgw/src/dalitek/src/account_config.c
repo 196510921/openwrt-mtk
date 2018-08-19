@@ -25,6 +25,7 @@ int app_req_account_info_handle(payload_t data)
 	cJSON* devDataJsonArray = NULL;
 	sqlite3* db             = NULL;
     sqlite3_stmt* stmt      = NULL;
+    char * p                = NULL;
     
     sql = "select ACCOUNT from account_table order by ID;";
     db = data.db;
@@ -96,7 +97,7 @@ int app_req_account_info_handle(payload_t data)
 	    cJSON_AddItemToArray(devDataJsonArray, accountJson);
 	}
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -106,12 +107,17 @@ int app_req_account_info_handle(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
-    
+
     Finish:
     if(stmt)
         sqlite3_finalize(stmt);
+
+    sql_close();
+    /*response to client*/
+    if(p)
+        socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+    
+
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -153,6 +159,7 @@ int app_req_account_config_handle(payload_t data)
     sqlite3_stmt *stmt    = NULL;
     sqlite3_stmt *stmt_1  = NULL;
     sqlite3_stmt *stmt_2  = NULL;
+    char * p              = NULL;
 
     db = data.db;
     /*get sql data json*/
@@ -405,7 +412,7 @@ int app_req_account_config_handle(payload_t data)
         sqlite3_clear_bindings(stmt_2);
 	}
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -414,8 +421,6 @@ int app_req_account_config_handle(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
     if(stmt)
@@ -424,6 +429,11 @@ int app_req_account_config_handle(payload_t data)
         sqlite3_finalize(stmt_1);
     if(stmt_2)
         sqlite3_finalize(stmt_2);
+
+    sql_close();
+    /*response to client*/
+    if(p)
+        socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     cJSON_Delete(pJsonRoot);
 
@@ -1069,6 +1079,7 @@ int app_req_user_dis(payload_t data)
     sqlite3 *db             = NULL;
     sqlite3_stmt *stmt_1    = NULL;
     sqlite3_stmt *stmt_2    = NULL;
+    char* p                 = NULL;
 
     db = data.db;
     /*get account*/
@@ -1213,7 +1224,7 @@ int app_req_user_dis(payload_t data)
         sqlite3_clear_bindings(stmt_2);
     }
 
-    char* p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1223,12 +1234,18 @@ int app_req_user_dis(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+
     Finish:
+
     if(stmt_1)
         sqlite3_finalize(stmt_1);
     if(stmt_2)
         sqlite3_finalize(stmt_2);
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
     
     cJSON_Delete(pJsonRoot);
 
@@ -1256,6 +1273,7 @@ int app_req_dis_name(payload_t data)
     sqlite3_stmt *stmt      = NULL;
     sqlite3_stmt *stmt_1    = NULL;
     sqlite3_stmt *stmt_2    = NULL;
+    char* p                 = NULL;
 
     db = data.db;
     /*get sql data json*/
@@ -1422,7 +1440,7 @@ int app_req_dis_name(payload_t data)
         sqlite3_clear_bindings(stmt_2);
     }
 
-    char* p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1432,7 +1450,7 @@ int app_req_dis_name(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+
     Finish:
     if(stmt)
         sqlite3_finalize(stmt);
@@ -1441,6 +1459,11 @@ int app_req_dis_name(payload_t data)
     if(stmt_2)
         sqlite3_finalize(stmt_2);
     
+    sql_close();
+    
+    if(p)
+        socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+
     cJSON_Delete(pJsonRoot);
 
     return  ret;
@@ -1472,6 +1495,7 @@ int app_req_dis_scen_name(payload_t data)
     sqlite3_stmt *stmt      = NULL;
     sqlite3_stmt *stmt_1    = NULL;
     sqlite3_stmt *stmt_2    = NULL;
+    char* p                 = NULL;
 
     if(data.pdu == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -1674,7 +1698,7 @@ int app_req_dis_scen_name(payload_t data)
         }
     }
 
-    char* p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1683,7 +1707,6 @@ int app_req_dis_scen_name(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
     
     Finish:
     if(stmt)
@@ -1692,6 +1715,11 @@ int app_req_dis_scen_name(payload_t data)
         sqlite3_finalize(stmt_1);
     if(stmt_2)
         sqlite3_finalize(stmt_2);
+
+    sql_close();
+    
+    if(p)
+        socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     cJSON_Delete(pJsonRoot);
 
@@ -1732,6 +1760,7 @@ int app_req_dis_dev(payload_t data)
     sqlite3_stmt *stmt_1    = NULL;
     sqlite3_stmt *stmt_2    = NULL;
     sqlite3_stmt *stmt_3    = NULL;
+    char* p                 = NULL;
 
     db = data.db;
     if(data.pdu == NULL){
@@ -1991,7 +2020,7 @@ int app_req_dis_dev(payload_t data)
         }
     }
 
-    char* p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -2000,7 +2029,6 @@ int app_req_dis_dev(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
     if(stmt)
@@ -2011,6 +2039,11 @@ int app_req_dis_dev(payload_t data)
         sqlite3_finalize(stmt_2);
     if(stmt_3)
         sqlite3_finalize(stmt_3);
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
     
     cJSON_Delete(pJsonRoot);
 

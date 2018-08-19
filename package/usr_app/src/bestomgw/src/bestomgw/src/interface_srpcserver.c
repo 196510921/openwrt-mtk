@@ -191,6 +191,78 @@ void SRPC_RxCB(int clientFd)
 	static int len = 0;
 	static uint16_t exLen = 0;
 
+	m1_package_t msg;
+	//client_block_t* client_block = NULL;
+
+	M1_LOG_DEBUG("SRPC_RxCB++[%x]\n", clientFd);
+
+	rtn = ioctl(clientFd, FIONREAD, &byteToRead);
+
+	if (rtn != 0)
+	{
+		M1_LOG_ERROR("SRPC_RxCB: Socket error\n");
+	}
+	M1_LOG_DEBUG("byteToRead:%d\n",byteToRead);
+
+	if(byteToRead > 60*1024){
+		M1_LOG_ERROR("SRPC_RxCB: out of rx buffer\n");
+		return;
+	}
+
+	while(byteToRead > 0)
+	{
+		byteRead = read(clientFd, tcpRxBuf+len, 1024);
+		if(byteRead > 0){
+			/*判断是否是头*/
+			if(msg_header_check(*(uint16_t*)(tcpRxBuf + len)) == 1){
+				exLen = msg_len_get(*(uint16_t*)(tcpRxBuf + len + 2));
+				M1_LOG_DEBUG("exLen:%05d\n",exLen);
+				if(len > 0){
+					goto Finish;
+				}
+			}else{
+				M1_LOG_DEBUG("%x,tcpRxBuf:%x,%x.%x.%x,\n",*(uint16_t*)(tcpRxBuf + len + 2),tcpRxBuf[len],tcpRxBuf[len+1],tcpRxBuf[len+2],tcpRxBuf[len+3]);
+			}
+
+			len += byteRead;
+			byteToRead -= byteRead;		
+		}					
+	}
+
+	if(len - 4 < exLen)
+	{
+		M1_LOG_INFO("waiting msg...\n");
+		return;
+	}
+
+	M1_LOG_DEBUG("clientFd:%d,rx len:%05d, rx header:%x,%x,%x,%x, rx data:%s\n",clientFd, \
+		len, tcpRxBuf[0],tcpRxBuf[1],tcpRxBuf[2],tcpRxBuf[3],tcpRxBuf+4);
+	
+	msg.clientFd = clientFd;
+	msg.len = len;
+	msg.data = &tcpRxBuf[4];
+
+	data_handle(&msg);
+
+	Finish:
+	len = 0;
+	exLen = 0;
+	memset(tcpRxBuf, 0, 1024*60);
+
+	M1_LOG_DEBUG("SRPC_RxCB--\n");
+
+	return;
+}
+#if 0
+void SRPC_RxCB(int clientFd)
+{
+	int byteToRead = 0;
+	int byteRead = 0;
+	int rtn = 0;
+	int rc = 0;
+	static int len = 0;
+	static uint16_t exLen = 0;
+
 	client_block_t* client_block = NULL;
 
 	M1_LOG_DEBUG("SRPC_RxCB++[%x]\n", clientFd);
@@ -255,6 +327,7 @@ void SRPC_RxCB(int clientFd)
 
 	return;
 }
+#endif
 
 static void client_read_to_data_handle(char* data, int len, int clientFd)
 {

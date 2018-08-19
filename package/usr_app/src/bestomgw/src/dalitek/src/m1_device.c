@@ -244,6 +244,7 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
     cJSON* pduDataJson = NULL;
     cJSON* devIdJson   = NULL;
     sqlite3_stmt* stmt = NULL;
+    char * p           = NULL;
 
     if(devData == NULL){
         ret = M1_PROTOCOL_FAILED;
@@ -311,7 +312,7 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
     }
 
     /*发送到AP*/
-    char * p = cJSON_PrintUnformatted(devData);
+    p = cJSON_PrintUnformatted(devData);
     
     if(NULL == p)
     {    
@@ -320,11 +321,15 @@ int app_download_testing_to_ap(cJSON* devData, sqlite3* db)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((uint8_t*)p, strlen(p), clientFd);
 
     Finish:
     if(stmt)
         sqlite3_finalize(stmt);
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((uint8_t*)p, strlen(p), clientFd);
     
     return ret;
 }
@@ -405,9 +410,12 @@ int ap_upload_testing_to_app(cJSON* devData, sqlite3* db)
     }
 
     Finish:
+
     free(sql);
     sqlite3_finalize(stmt);
     
+    sql_close();
+
     return ret;
 }
 
@@ -687,6 +695,28 @@ void clear_ap_related_linkage(char* ap_id, sqlite3* db)
         sqlite3_finalize(stmt);
     if(stmt_1)
         sqlite3_finalize(stmt_1);
+}
+
+int dev_linkage_type_check(int param_type)
+{
+    int ret = 0;
+
+    if(param_type == DEV_PIR_MOVE || 
+       param_type == DEV_PIR_ILUMINATION || 
+       param_type == DEV_DOOR_MAGNATE_STATE ||
+       param_type == DEV_BUTTON_1 ||
+       param_type == DEV_BUTTON_2 ||
+       param_type == DEV_BUTTON_3 ||
+       param_type == DEV_BUTTON_4 ||
+       param_type == DEV_TEMP_HUMI_TEMP ||
+       param_type == DEV_TEMP_HUMI_HUMI ||
+       param_type == DEV_AIR_PM2_5 ||
+       param_type == DEV_AIR_CO_2 )
+    {
+        ret = 1;
+    }
+
+    return ret;
 }
 
 

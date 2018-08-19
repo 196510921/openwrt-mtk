@@ -358,7 +358,9 @@ static void delete_socket_clientfd(int clientFd)
 	// if(ret == 0)
 	// {
 		/*删除分配资源*/
+		#if 0
 		client_block_destory(clientFd);
+		#endif
 		M1_LOG_WARN("delete socket ++\n");
 		deleteSocketRec(clientFd);
 		M1_LOG_WARN("delete socket --\n");
@@ -482,7 +484,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	msg_len = (((len >> 8) & 0xff) | ((len << 8) & 0xff00)) & 0xffff;
 
 	M1_LOG_DEBUG("len:%05d, Msg len:%05d\n",len, msg_len);
-	if(len > 200*1024 || fdClient > 500)
+	if(len > 200*1024 || fdClient > 2000)
 	{
 		M1_LOG_ERROR("socket write too long!");
 		return -1;

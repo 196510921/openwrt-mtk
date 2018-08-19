@@ -83,7 +83,9 @@ int main(int argc, char* argv[])
 	pthread_mutex_init(&mutex_lock_sock, NULL);
 	pthread_mutex_init(&client_timeout_tick_lock, NULL);
 	pthread_create(&t1,NULL,socket_poll,NULL);
+#if 0
 	pthread_create(&t2,NULL,client_read,NULL);
+#endif	
 	pthread_create(&t3,NULL,delay_send_task,NULL);
 	pthread_create(&t4,NULL,scenario_alarm_select,NULL);
 #if TCP_CLIENT_ENABLE
@@ -91,7 +93,9 @@ int main(int argc, char* argv[])
 #endif
 
 	pthread_join(t1,NULL);
+#if 0
 	pthread_join(t2,NULL);
+#endif	
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
 #if TCP_CLIENT_ENABLE

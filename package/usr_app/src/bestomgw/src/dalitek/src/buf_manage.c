@@ -3,7 +3,7 @@
 #include "m1_common_log.h"
 
 /*全局变量定义*************************************************************************************************/
-#define FIXED_BUF2_LEN    (1024 * 100)
+#define FIXED_BUF2_LEN    (1024)
 
 char fixed_buf[FIXED_BUF_LEN];
 char fixed_buf2[FIXED_BUF2_LEN];

@@ -279,6 +279,7 @@ int app_req_district(payload_t data)
     sqlite3_stmt *stmt_2      = NULL;
     sqlite3_stmt *stmt_3      = NULL;
     sqlite3_stmt *stmt_4      = NULL;
+    char * p                  = NULL;
 
     db = data.db;
     pJsonRoot = cJSON_CreateObject();
@@ -506,7 +507,7 @@ int app_req_district(payload_t data)
         sqlite3_clear_bindings(stmt_3);
     }
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -516,8 +517,6 @@ int app_req_district(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     
     Finish:
     if(stmt)
@@ -531,6 +530,11 @@ int app_req_district(payload_t data)
     if(stmt_4)
         sqlite3_finalize(stmt_4);
     
+    sql_close();
+    /*response to client*/
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     cJSON_Delete(pJsonRoot);
     return ret;
 

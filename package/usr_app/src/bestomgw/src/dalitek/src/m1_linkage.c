@@ -914,14 +914,15 @@ int trigger_cb_handle(sqlite3* db)
 	   	M1_LOG_DEBUG("trigger_cb_handle\n");
 
 	   	/*失使能表更新回调*/
-	   	rc = sqlite3_update_hook(db, NULL, NULL);
-	    if(rc){
-	        M1_LOG_DEBUG( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
-	    }
+	   	// rc = sqlite3_update_hook(db, NULL, NULL);
+	    // if(rc){
+	    //     M1_LOG_DEBUG( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
+	    // }
 	    /*check linkage table*/
 	    {
 	    	//sql = "select VALUE, DEV_ID, TYPE from param_table where rowid = ?;";
-	    	sql = "select a.VALUE,a.DEV_ID,a.TYPE from param_table as a,link_trigger_table as b where a.TYPE = b.TYPE and a.rowid = ? limit 1;";
+	    	//sql = "select a.VALUE,a.DEV_ID,a.TYPE from param_table as a,link_trigger_table as b where a.TYPE = b.TYPE and a.rowid = ? limit 1;";
+	    	sql = "select a.VALUE,a.DEV_ID,a.TYPE from param_table as a,link_trigger_table as b where a.TYPE = b.TYPE and a.ID = ? limit 1;";
 	    	M1_LOG_DEBUG("sql:%s\n",sql);
 	    	rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
 	    	if(rc != SQLITE_OK)
@@ -1167,6 +1168,7 @@ int app_req_linkage(payload_t data)
     sqlite3_stmt *stmt_7     = NULL;
     sqlite3_stmt *stmt_8     = NULL;
     sqlite3_stmt *stmt_9     = NULL;
+    char * p                 = NULL;
 
     db = data.db;
     pJsonRoot = cJSON_CreateObject();
@@ -1675,7 +1677,7 @@ int app_req_linkage(payload_t data)
     	
  	}
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1685,8 +1687,7 @@ int app_req_linkage(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     Finish:
     if(stmt)
  		sqlite3_finalize(stmt);
@@ -1708,6 +1709,11 @@ int app_req_linkage(payload_t data)
  		sqlite3_finalize(stmt_8);
  	if(stmt_9)
  		sqlite3_finalize(stmt_9);
+
+ 	sql_close();
+    /*response to client*/
+    if(p)
+    	socketSeverSend((uint8*)p, strlen(p), data.clientFd);
  	
     cJSON_Delete(pJsonRoot);
 

@@ -150,7 +150,13 @@ void data_handle(m1_package_t* package)
         case TYPE_DEV_NET_CONTROL:           rc = APP_net_control(pdu); break;
         case TYPE_REQ_AP_INFO:               M1_report_ap_info(pdu); break;
         case TYPE_REQ_DEV_INFO:              M1_report_dev_info(pdu); break;
-        case TYPE_COMMON_RSP:                common_rsp_handle(pdu);rc = M1_PROTOCOL_NO_RSP;break;
+        case TYPE_COMMON_RSP:                
+        {
+            common_rsp_handle(pdu);
+            sql_close();
+            rc = M1_PROTOCOL_NO_RSP;
+            break;
+        }
         case TYPE_REQ_SCEN_INFO:             rc = app_req_scenario(pdu);break;
         case TYPE_REQ_LINK_INFO:             rc = app_req_linkage(pdu);break;
         case TYPE_REQ_DISTRICT_INFO:         rc = app_req_district(pdu); break;
@@ -164,43 +170,177 @@ void data_handle(m1_package_t* package)
         case TYPE_REQ_DIS_DEV:               rc = app_req_dis_dev(pdu); break;
         case TYPE_APP_CFG_AP_ROUTER:         rc = ap_cfg_router(rootJson,db); break;
         case TYPE_APP_CFG_AP_ZIGBEE:         rc = ap_cfg_router(rootJson,db); break;
-        case TYPE_APP_READ_AP_ROUTER:        app_read_ap_router_cfg(pdu);M1_write_to_AP(rootJson, db);rc = M1_PROTOCOL_NO_RSP; break;
-        case TYPE_APP_READ_AP_ZIGBEE:        app_read_ap_zigbee_cfg(pdu);M1_write_to_AP(rootJson, db);rc = M1_PROTOCOL_NO_RSP; break;
+        case TYPE_APP_READ_AP_ROUTER:        
+        {
+            app_read_ap_router_cfg(pdu);
+            sql_open();
+            M1_write_to_AP(rootJson, db);
+            rc = M1_PROTOCOL_NO_RSP; 
+            break;
+        }
+        case TYPE_APP_READ_AP_ZIGBEE:        
+        {
+            app_read_ap_zigbee_cfg(pdu);
+            sql_open();
+            M1_write_to_AP(rootJson, db);
+            rc = M1_PROTOCOL_NO_RSP; 
+            break;
+        }
         case TYPE_GET_PROJECT_INFO:          rc = app_get_project_config(pdu);break;
         case TYPE_APP_CONFIRM_PROJECT:       rc = app_confirm_project(pdu);break;
         case TYPE_APP_EXEC_SCEN:             rc = app_exec_scenario(pdu);break;
-        case TYPE_DEBUG_INFO:                debug_switch(pduDataJson->valuestring);break;
-        case TYPE_DEV_VERSION_READ_CONFIG:   m1_ap_version_read(pdu);rc = M1_PROTOCOL_NO_RSP;break;
+        case TYPE_DEBUG_INFO:                
+        {
+            debug_switch(pduDataJson->valuestring);
+            sql_close();
+            break;
+        }
+        case TYPE_DEV_VERSION_READ_CONFIG:   
+        {
+            m1_ap_version_read(pdu);
+            rc = M1_PROTOCOL_NO_RSP;
+            break;
+        }
         case TYPE_REQ_ADDED_INFO:            APP_req_added_dev_info_handle(pdu); break;
-        case TYPE_APP_REQ_DEV_DYNAMIC_PARAM: app_read_param_detail(pdu);rc = M1_PROTOCOL_NO_RSP;break;
+        case TYPE_APP_REQ_DEV_DYNAMIC_PARAM: 
+        {
+            app_read_param_detail(pdu);
+            rc = M1_PROTOCOL_NO_RSP;
+            break;
+        }
         /*write*/
-        case TYPE_REPORT_DATA:               rc = AP_report_data_handle(pdu); break;
+        case TYPE_REPORT_DATA:               
+        {
+            rc = AP_report_data_handle(pdu);
+            sql_close();
+            break;
+        }
         case TYPE_DEV_WRITE:                 rc = M1_write_to_AP(rootJson, db);/*APP_write_handle(pdu);*/break;
-        case TYPE_ECHO_DEV_INFO:             rc = APP_echo_dev_info_handle(pdu); break;
-        case TYPE_AP_REPORT_DEV_INFO:        rc = AP_report_dev_handle(pdu); break;
-        case TYPE_AP_REPORT_AP_INFO:         rc = AP_report_ap_handle(pdu); break;
+        case TYPE_ECHO_DEV_INFO:             
+        {
+            rc = APP_echo_dev_info_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_AP_REPORT_DEV_INFO:        
+        {
+            rc = AP_report_dev_handle(pdu); 
+            sql_close();
+            break;
+        }
+        case TYPE_AP_REPORT_AP_INFO:         
+        {
+            rc = AP_report_ap_handle(pdu);
+            sql_close();
+            break;
+        }
         case TYPE_AP_REPORT_AP_ROUTER:       rc = ap_cfg_router(rootJson,db); break;
         case TYPE_AP_REPORT_ZIGBEE:          rc = ap_cfg_router(rootJson,db); break;
-        case TYPE_CREATE_LINKAGE:            rc = linkage_msg_handle(pdu);break;
-        case TYPE_CREATE_SCENARIO:           rc = scenario_create_handle(pdu);break;
-        case TYPE_CREATE_DISTRICT:           rc = district_create_handle(pdu);break;
-        case TYPE_SCENARIO_ALARM:            rc = scenario_alarm_create_handle(pdu);break;
-        case TYPE_COMMON_OPERATE:            rc = common_operate(pdu);break;
-        case TYPE_AP_HEARTBEAT_INFO:         rc = ap_heartbeat_handle(pdu);break;
-        case TYPE_LINK_ENABLE_SET:           rc = app_linkage_enable(pdu);break;
-        case TYPE_APP_LOGIN:                 rc = user_login_handle(pdu);break;
-        case TYPE_SEND_ACCOUNT_CONFIG_INFO:  rc = app_account_config_handle(pdu);break;
-        case TYPE_APP_CREATE_PROJECT:        rc = app_create_project(pdu);break;
-        case TYPE_PROJECT_KEY_CHANGE:        rc = app_change_project_key(pdu);break;
-        case TYPE_PROJECT_INFO_CHANGE:       rc = app_change_project_config(pdu);break;
-        case TYPE_APP_CHANGE_DEV_NAME:       rc = app_change_device_name(pdu);break;
-        case TYPE_APP_USER_KEY_CHANGE:       rc = app_change_user_key(pdu);break;
+        case TYPE_CREATE_LINKAGE:            
+        {
+            rc = linkage_msg_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_CREATE_SCENARIO:           
+        {
+            rc = scenario_create_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_CREATE_DISTRICT:           
+        {
+            rc = district_create_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_SCENARIO_ALARM:            
+        {
+            rc = scenario_alarm_create_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_COMMON_OPERATE:            
+        {
+            rc = common_operate(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_AP_HEARTBEAT_INFO:         
+        {
+            rc = ap_heartbeat_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_LINK_ENABLE_SET:           
+        {
+            rc = app_linkage_enable(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_APP_LOGIN:                 
+        {
+            rc = user_login_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_SEND_ACCOUNT_CONFIG_INFO:  
+        {
+            rc = app_account_config_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_APP_CREATE_PROJECT:        
+        {
+            rc = app_create_project(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_PROJECT_KEY_CHANGE:        
+        {
+            rc = app_change_project_key(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_PROJECT_INFO_CHANGE:       
+        {
+            rc = app_change_project_config(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_APP_CHANGE_DEV_NAME:       
+        {
+            rc = app_change_device_name(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_APP_USER_KEY_CHANGE:       
+        {
+            rc = app_change_user_key(pdu);
+            sql_close();
+            break;
+        }
         case TYPE_APP_DOWNLOAD_TESTING_INFO: rc = app_download_testing_to_ap(rootJson,db); break;
         case TYPE_AP_UPLOAD_TESTING_INFO:    rc = ap_upload_testing_to_app(rootJson,db);break;
         case TYPE_DEV_UPDATE_CONFIG:         rc = m1_ap_update(rootJson);break;
-        case TYPE_REPORT_VERSION_INFO:       rc = ap_report_version_handle(pdu);break;
-        case TYPE_APP_ADD_DEV_DYNAMIC_PARAM: rc = app_write_param_detail(pdu);break;
-        case TYPE_APP_DEL_DEV_DYNAMIC_PARAM: rc = app_delete_param_detail(pdu);break;
+        case TYPE_REPORT_VERSION_INFO:       
+        {
+            rc = ap_report_version_handle(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_APP_ADD_DEV_DYNAMIC_PARAM: 
+        {
+            rc = app_write_param_detail(pdu);
+            sql_close();
+            break;
+        }
+        case TYPE_APP_DEL_DEV_DYNAMIC_PARAM: 
+        {
+            rc = app_delete_param_detail(pdu);
+            sql_close();
+            break;
+        }
 
         default: M1_LOG_ERROR("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
     }
@@ -212,11 +352,16 @@ void data_handle(m1_package_t* package)
             rspData.result = RSP_FAILED;
         common_rsp(rspData);
     }
-    check_offline_dev(db);
-    /*485设备操作*/
-    app_conditioner_db_handle();
 
-    sql_close();
+    {
+        sql_open();
+
+        check_offline_dev(db);
+        /*485设备操作*/
+        app_conditioner_db_handle();
+
+        sql_close();
+    }
     /*检查是否要更新应用程序*/
     m1_update_check();
 
@@ -248,6 +393,7 @@ static int AP_report_data_handle(payload_t data)
     int j                  = 0;
     int number1            = 0;
     int number2            = 0;
+    int id                 = 0;
     int rc                 = 0;
     int ret                = M1_PROTOCOL_OK;
     int sql_commit_flag    = 0;
@@ -285,13 +431,13 @@ static int AP_report_data_handle(payload_t data)
     // }
 
     /*添加update/insert/delete监察*/
-    rc = sqlite3_update_hook(db, trigger_cb, "AP_report_data_handle");
-    if(rc)
-    {
-        M1_LOG_ERROR( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
-        ret = M1_PROTOCOL_FAILED;
-        goto Finish;
-    }
+    // rc = sqlite3_update_hook(db, trigger_cb, "AP_report_data_handle");
+    // if(rc)
+    // {
+    //     M1_LOG_ERROR( "sqlite3_update_hook falied: %s\n", sqlite3_errmsg(db));  
+    //     ret = M1_PROTOCOL_FAILED;
+    //     goto Finish;
+    // }
 
     {
         sql_0_1 = "select ID from param_table where DEV_ID = ? and TYPE = ? limit 1;"; 
@@ -439,12 +585,15 @@ static int AP_report_data_handle(payload_t data)
                 {
                     sql_error_clear();
                 }
-                
-                sqlite3_reset(stmt_0_1); 
-                sqlite3_clear_bindings(stmt_0_1);
-                
+
                 if(rc == SQLITE_ROW)
                 {
+                    /*插入更新的表*/
+                    if(dev_linkage_type_check(typeJson->valueint) == 1)
+                    {
+                        id = sqlite3_column_int(stmt_0_1,0);
+                        fifo_write(&dev_data_fifo, id);
+                    }
                     /*更新*/
                     sqlite3_bind_int(stmt_0_2, 1, valueJson->valueint);
                     sqlite3_bind_text(stmt_0_2, 2, devIdJson->valuestring, -1, NULL);
@@ -489,6 +638,10 @@ static int AP_report_data_handle(payload_t data)
                     sqlite3_clear_bindings(stmt);
 
                 }
+
+                sqlite3_reset(stmt_0_1); 
+                sqlite3_clear_bindings(stmt_0_1);
+                
             }
         }
     }
@@ -1224,6 +1377,7 @@ static int APP_read_handle(payload_t data)
     sqlite3* db              = NULL;
     sqlite3_stmt* stmt       = NULL;
     sqlite3_stmt* stmt_1     = NULL;
+    char * p                 = NULL;
     dev485Opt_t dev485cmd;    
 
     M1_LOG_DEBUG("APP_read_handle\n");
@@ -1449,7 +1603,7 @@ static int APP_read_handle(payload_t data)
         }
     }
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1458,13 +1612,17 @@ static int APP_read_handle(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
 
     Finish:
     if(stmt != NULL)
         sqlite3_finalize(stmt);
     if(stmt_1 != NULL)
         sqlite3_finalize(stmt_1);
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), clientFd);
 
     cJSON_Delete(pJsonRoot);
     return ret;
@@ -1486,6 +1644,7 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     cJSON* devDataJson    = NULL;
     cJSON* dataArrayJson  = NULL;
     cJSON* devIdJson      = NULL;
+    char * p              = NULL;
     dev485Opt_t dev485cmd;
     
     if(data == NULL){
@@ -1550,7 +1709,7 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     if(rc == SQLITE_ROW)
     {
         clientFd = sqlite3_column_int(stmt,0);
-        char * p = cJSON_PrintUnformatted(data);
+        p = cJSON_PrintUnformatted(data);
         if(NULL == p)
         {    
             cJSON_Delete(data);
@@ -1559,13 +1718,16 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
         }
 
         M1_LOG_DEBUG("string:%s\n",p);
-        /*response to client*/
-        socketSeverSend((uint8*)p, strlen(p), clientFd);
     }   
 
     Finish:
     if(stmt != NULL)
         sqlite3_finalize(stmt);
+
+    sql_close();
+    /*response to client*/
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), clientFd);
 
     return ret;
 }
@@ -1904,6 +2066,8 @@ static int APP_req_added_dev_info_handle(payload_t data)
     cJSON *pJsonRoot             = NULL;
     cJSON *devDataJsonArray      = NULL;
     cJSON *pduJsonObject         = NULL;
+    char * p                     = NULL;
+
 
     M1_LOG_DEBUG("APP_req_added_dev_info_handle\n");
     db = data.db;
@@ -2069,7 +2233,7 @@ static int APP_req_added_dev_info_handle(payload_t data)
         sqlite3_clear_bindings(stmt_2); 
     }
    
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     if(NULL == p)
     {    
         cJSON_Delete(pJsonRoot);
@@ -2078,8 +2242,6 @@ static int APP_req_added_dev_info_handle(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     
     Finish:
 #if 0
@@ -2091,6 +2253,12 @@ static int APP_req_added_dev_info_handle(payload_t data)
     if(stmt_2 != NULL)
         sqlite3_finalize(stmt_2);
     
+    sql_close();
+
+    /*response to client*/
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -2110,6 +2278,7 @@ static int APP_net_control(payload_t data)
     cJSON *apIdJson      = NULL;
     cJSON *valueJson     = NULL;
     cJSON *pduJsonObject = NULL;
+    char * p             = NULL;
     dev485Opt_t dev485cmd;
 
     if(data.pdu == NULL){
@@ -2211,7 +2380,7 @@ static int APP_net_control(payload_t data)
     /*add dev data to pdu object*/
     cJSON_AddNumberToObject(pduJsonObject, "devData", valueJson->valueint);
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -2220,12 +2389,15 @@ static int APP_net_control(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
     
     Finish:
     if(stmt != NULL)
         sqlite3_finalize(stmt);
+    
+    sql_close();
+
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), clientFd);
 
     cJSON_Delete(pJsonRoot);
     
@@ -2253,6 +2425,7 @@ static int M1_report_ap_info(payload_t data)
     /*sql*/
     sqlite3 *db                  = NULL;
     sqlite3_stmt *stmt           = NULL;
+    char * p                     = NULL;
 
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -2336,7 +2509,7 @@ static int M1_report_ap_info(payload_t data)
         
     }
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -2345,11 +2518,16 @@ static int M1_report_ap_info(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     Finish:
     if(stmt != NULL)
         sqlite3_finalize(stmt);
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -2376,6 +2554,7 @@ static int M1_report_dev_info(payload_t data)
     char *sql                    = NULL;
     sqlite3 *db                  = NULL;
     sqlite3_stmt *stmt           = NULL;
+    char * p                     = NULL;
 
     db = data.db;
     apId = data.pdu->valuestring;
@@ -2459,7 +2638,7 @@ static int M1_report_dev_info(payload_t data)
         
     }
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -2468,12 +2647,16 @@ static int M1_report_dev_info(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     
     Finish:
     if(stmt != NULL)
         sqlite3_finalize(stmt);
+
+    sql_close();
+    /*response to client*/
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     cJSON_Delete(pJsonRoot);
 
     return ret;

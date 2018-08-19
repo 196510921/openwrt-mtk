@@ -84,7 +84,8 @@ static int ap_update(char* devId, cJSON* devData)
 	int ret            = M1_PROTOCOL_OK;
 	int clientFd       = 0;
 	char* sql          = NULL;
-	sqlite3_stmt* stmt = NULL;
+	char * p           = NULL;
+    sqlite3_stmt* stmt = NULL;
 
     sql = "select a.CLIENT_FD from conn_info as a, all_dev as b where a.AP_ID = b.AP_ID and b.DEV_ID = ? limit 1;";
     M1_LOG_DEBUG("sql:%s\n",sql);
@@ -119,7 +120,7 @@ static int ap_update(char* devId, cJSON* devData)
     }
     
     /*发送到AP*/
-    char * p = cJSON_PrintUnformatted(devData);
+    p = cJSON_PrintUnformatted(devData);
     
     if(NULL == p)
     {    
@@ -128,9 +129,13 @@ static int ap_update(char* devId, cJSON* devData)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((uint8_t*)p, strlen(p), clientFd);
 
     Finish:
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((uint8_t*)p, strlen(p), clientFd);
     if(stmt)
         sqlite3_finalize(stmt);
 
@@ -141,6 +146,7 @@ int m1_ap_update(cJSON* devData)
 {
 	M1_LOG_DEBUG("m1_ap_update\n");
     int clientFd       = 0;
+    int flag           = 0;
     int ret            = M1_PROTOCOL_OK;
     const char* M1Id   = "DOA100";
     cJSON* pduJson     = NULL;
@@ -178,10 +184,13 @@ int m1_ap_update(cJSON* devData)
     }
     else
     {
+        flag = 1;
  		ret = ap_update(devIdJson->valuestring, devData);   	
     }
 
     Finish:
+    if(!flag)
+        sql_close();
     return ret;
 }
 
@@ -248,6 +257,7 @@ int m1_ap_version_read(payload_t data)
     cJSON * pJsonRoot     = NULL;
     cJSON * pduJsonObject = NULL;
     cJSON * devDataObject = NULL;
+    char * p              = NULL;
 
 	devIdJson = cJSON_GetObjectItem(data.pdu,"devId");
     M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
@@ -304,7 +314,7 @@ int m1_ap_version_read(payload_t data)
     cJSON_AddStringToObject(devDataObject, "devId", devIdJson->valuestring);
     cJSON_AddStringToObject(devDataObject, "version", version);
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -313,10 +323,14 @@ int m1_ap_version_read(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
 
     Finish:
+
+    sql_close();
+    /*response to client*/
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     if(pJsonRoot)
     	cJSON_Delete(pJsonRoot);
     free(version);

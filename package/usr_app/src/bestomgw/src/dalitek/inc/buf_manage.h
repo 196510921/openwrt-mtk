@@ -9,9 +9,11 @@
 #include "cJSON.h" 
 
 /*宏定义*******************************************************************************************************/
-#define FIXED_BUF_LEN  (5000 * 1024)  // 5M
-#define STACK_BLOCK_LEN  (100 * 1024)              //单个数据块100k
-#define STACK_BLOCK_NUM 50
+// #define FIXED_BUF_LEN  (5000 * 1024)  // 5M
+// #define STACK_BLOCK_LEN  (100 * 1024)              //单个数据块100k
+#define FIXED_BUF_LEN  (1024)  // 5M
+#define STACK_BLOCK_LEN  (512)              //单个数据块100k
+#define STACK_BLOCK_NUM 2
 #define STACK_UNIT     256
 #define STACK_UNIT_CAPACITY    (STACK_BLOCK_LEN / STACK_UNIT)
 

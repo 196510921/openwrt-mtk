@@ -9,6 +9,7 @@ static int ap_cfg_send_to_ap(sqlite3* db, char* ap_id, char* p);
 int ap_cfg_router(cJSON* data, sqlite3* db)
 {
 	int ret              = 0;
+    int sql_flag         = 0;
 	char * p             = NULL;
 	cJSON *pdu_json      = NULL;
 	cJSON *data_json     = NULL;
@@ -60,23 +61,26 @@ int ap_cfg_router(cJSON* data, sqlite3* db)
 
     M1_LOG_DEBUG("string:%s\n",p);
 
+    /*写入数据库*/
+    if( pdu_type_json->valueint == TYPE_AP_REPORT_AP_ROUTER)
+    {
+        ret = ap_cfg_sql_opt(db, ap_id_json->valuestring, p, NULL);
+    }
+    else if(pdu_type_json->valueint == TYPE_AP_REPORT_ZIGBEE)
+    {
+        ret = ap_cfg_sql_opt(db, ap_id_json->valuestring, NULL, p);
+    }
+
    	/*发给AP*/
    	if(pdu_type_json->valueint == TYPE_APP_CFG_AP_ROUTER  || pdu_type_json->valueint == TYPE_APP_CFG_AP_ZIGBEE)
    	{
+        sql_flag = 1;
    		ret = ap_cfg_send_to_ap(db, ap_id_json->valuestring, p);
-   	}
-   	/*写入数据库*/
-   	if( pdu_type_json->valueint == TYPE_AP_REPORT_AP_ROUTER)
-   	{
-   		ret = ap_cfg_sql_opt(db, ap_id_json->valuestring, p, NULL);
-   	}
-   	else if(pdu_type_json->valueint == TYPE_AP_REPORT_ZIGBEE)
-   	{
-   		ret = ap_cfg_sql_opt(db, ap_id_json->valuestring, NULL, p);
    	}
     
    	Finish:
-
+    if(!sql_flag)
+        sql_close();
    	return ret;
 }
 
@@ -117,11 +121,14 @@ static int ap_cfg_send_to_ap(sqlite3* db, char* ap_id, char* p)
         goto Finish;
     }
 
-    socketSeverSend((uint8*)p, strlen(p), clientFd);
-
     Finish:
     if(stmt)
     	sqlite3_finalize(stmt);
+
+    sql_close();
+
+    if(clientFd != 0)
+        socketSeverSend((uint8*)p, strlen(p), clientFd);
 
     return ret;
 }
@@ -248,6 +255,8 @@ static int ap_cfg_sql_opt(sqlite3* db, char* ap_id, char* p_router, char* p_chan
     if(stmt_2)
     	sqlite3_finalize(stmt_2);
 
+    sql_close();
+
     return ret;
 }
 
@@ -306,11 +315,15 @@ int app_read_ap_router_cfg(payload_t data)
     }
 
     printf("string:%s\n",p);
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
 
     Finish:
     if(stmt)
     	sqlite3_finalize(stmt);
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
 
     return ret;
 }
@@ -379,11 +392,15 @@ int app_read_ap_zigbee_cfg(payload_t data)
     }
 
     printf("string:%s\n",p);
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
 
     Finish:
     if(stmt)
     	sqlite3_finalize(stmt);
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
 
     return ret;
 }

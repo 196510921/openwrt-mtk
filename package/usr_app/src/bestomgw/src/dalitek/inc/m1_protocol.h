@@ -257,6 +257,24 @@ void m1_error_handle(void);
 #define ON_OFF_OFF                               0x00     //关
 #define ON_OFF_ON                                0x01     //开
 #define ON_OFF_RETURN                            0x02     //翻转
+/*PIR-S10参数*/
+#define DEV_PIR_MOVE                             0x4001   //人体移动
+#define DEV_PIR_ILUMINATION                      0x4008   //照度
+/*门磁-S2*/
+#define DEV_DOOR_MAGNATE_STATE                   0x4005   //门磁开关
+/*按键-S3*/
+#define DEV_BUTTON_1                             0x4009   //按键1
+#define DEV_BUTTON_2                             0x400A   //按键2
+#define DEV_BUTTON_3                             0x400B   //按键3
+#define DEV_BUTTON_4                             0x400C   //按键4
+/*温湿度-S4*/
+#define DEV_TEMP_HUMI_TEMP                       0x4006   //温度
+#define DEV_TEMP_HUMI_HUMI                       0x4007   //湿度
+/*空气质量-S8*/
+#define DEV_AIR_PM2_5                            0x4017   //PM2.5
+#define DEV_AIR_CO_2                             0x4018   //二氧化碳
+#define DEV_AIR_HCHO                             0x4019   //甲醛
+
 /*空调执行器S10*/
 #define DEV_POWER_EXEC_S10                       0xA0C5   //(常供电、执行类)空调执行器S10
 #define DEV_CONDITIONER_MODE                     0x801B   //空调模式(制冷、制暖、通风、切换)
@@ -274,6 +292,7 @@ void m1_error_handle(void);
 #define CONDITIONER_SPEED_MID                    0x01     //中
 #define CONDITIONER_SPEED_HIGH                   0x02     //高
 #define CONDITIONER_SPEED_RETURN                 0x03     //切换
+
 
 
 

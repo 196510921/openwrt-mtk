@@ -22,6 +22,7 @@ int app_get_project_info(payload_t data)
     cJSON *devDataObject = NULL;
     sqlite3 *db          = NULL;
     sqlite3_stmt *stmt   = NULL;
+    char* p              = NULL;
 
     db = data.db;
     /*get sql data json*/
@@ -104,7 +105,7 @@ int app_get_project_info(payload_t data)
     cJSON_AddStringToObject(devDataObject, "proId", pNumber);
     cJSON_AddStringToObject(devDataObject, "proName", pName);
 
-    char* p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -113,11 +114,16 @@ int app_get_project_info(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
 	Finish:
     if(stmt)
         sqlite3_finalize(stmt);
+
+    sql_close();
+    
+    if(p)
+        socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
+
     cJSON_Delete(pJsonRoot);
 
     return ret;
@@ -196,6 +202,8 @@ int app_confirm_project(payload_t data)
     if(stmt)
  	  sqlite3_finalize(stmt);
 
+    sql_close();
+    
     return ret;
 }
 
@@ -388,6 +396,7 @@ int app_get_project_config(payload_t data)
     char *sql = NULL;
     sqlite3* db = NULL;
     sqlite3_stmt* stmt = NULL;
+    char* p            = NULL;
 
     db = data.db;
     /*get sql data json*/
@@ -468,7 +477,7 @@ int app_get_project_config(payload_t data)
     cJSON_AddStringToObject(devDataObject, "pEditor", pEditor);
     cJSON_AddStringToObject(devDataObject, "pEditTime", pEditTime);
 
-    char* p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -477,11 +486,15 @@ int app_get_project_config(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     Finish:
     sqlite3_finalize(stmt);
     cJSON_Delete(pJsonRoot);
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
 
     return ret;
 }

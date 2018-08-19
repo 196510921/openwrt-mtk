@@ -23,6 +23,8 @@ int scenario_exec(char* data, sqlite3* db)
     cJSON *devDataObject    = NULL;
     cJSON *paramArray       = NULL;
     cJSON *paramObject      = NULL;
+    cJSON *p_dup[50]        = {0};
+    int p_num               = 0;
     char *p                 = NULL;
 	char *ap_id             = NULL;
 	char *dev_id            = NULL;
@@ -43,7 +45,8 @@ int scenario_exec(char* data, sqlite3* db)
  
  	M1_LOG_DEBUG("scenario_exec\n");
     int rc,ret = M1_PROTOCOL_OK;
-    int clientFd;
+    int i = 0;
+    int clientFd[50];
     int pduType = TYPE_DEV_WRITE;
 
     pJsonRoot = cJSON_CreateObject();
@@ -227,15 +230,16 @@ int scenario_exec(char* data, sqlite3* db)
 		            cJSON_AddNumberToObject(paramObject, "value", value);
 	        	}
 	        	
-	         	p = cJSON_PrintUnformatted(pJsonRoot);
-  			 	if(NULL == p)
-  			 	{    
-  			 		M1_LOG_ERROR("p NULL\n");
-  			     	cJSON_Delete(pJsonRoot);
-  			     	ret = M1_PROTOCOL_FAILED;
-        			goto Finish;
-  			 	}
-  			 	M1_LOG_INFO("p:%s\n",p);
+	        	//p = cJSON_PrintUnformatted(pJsonRoot);
+  	            // if(NULL == p)
+  	            // {    
+  	            	// M1_LOG_ERROR("p NULL\n");
+  	                // cJSON_Delete(pJsonRoot);
+  	                // ret = M1_PROTOCOL_FAILED;
+                  	// goto Finish;
+  	            // }
+  	            // M1_LOG_INFO("p:%s\n",p);
+  			 	
 		    	/*get clientfd*/
 		    	sqlite3_bind_text(stmt_4, 1, ap_id, -1, NULL);
 		    	rc = sqlite3_step(stmt_4);    
@@ -247,12 +251,26 @@ int scenario_exec(char* data, sqlite3* db)
             	}
 		    	if(rc == SQLITE_ROW)
 		    	{
-					clientFd = sqlite3_column_int(stmt_4,0);
-				}		
+					clientFd[p_num] = sqlite3_column_int(stmt_4,0);
+
+					if(clientFd[p_num] < 500)
+					{
+						p_dup[p_num] = cJSON_Duplicate(pJsonRoot,1);
+		  			 	if(NULL == p_dup[p_num])
+		  			 	{    
+		  			 		M1_LOG_ERROR("p_dup[p_num] NULL\n");
+		  			     	cJSON_Delete(pJsonRoot);
+		  			     	ret = M1_PROTOCOL_FAILED;
+		        			goto Finish;
+		  			 	}
+		  			 	p_num++;
+
+		  			 	M1_LOG_DEBUG("add msg to delay send\n");
+	  			 	}
+  			 	}
 		    	
-		    	M1_LOG_DEBUG("add msg to delay send\n");
-		    	//delay_send(dup_data, delay, clientFd);
-		    	delay_send(p, delay, clientFd);
+
+		    	//delay_send(p, delay, clientFd);
 		    	
 		    	sqlite3_reset(stmt_3);
     			sqlite3_clear_bindings(stmt_3);
@@ -265,6 +283,7 @@ int scenario_exec(char* data, sqlite3* db)
     	sqlite3_reset(stmt_1);
     	sqlite3_clear_bindings(stmt_1);
 	}
+
 	Finish:
 	if(stmt)
 		sqlite3_finalize(stmt);
@@ -276,6 +295,28 @@ int scenario_exec(char* data, sqlite3* db)
    		sqlite3_finalize(stmt_3);
    	if(stmt_4)
    		sqlite3_finalize(stmt_4);
+
+   	sql_close();
+
+   	for(i = 0; i < p_num; i++)
+   	{
+   		if(p_dup[i] == NULL)
+   			continue;
+   		p = cJSON_PrintUnformatted(p_dup[i]);
+	  	if(NULL == p)
+	  	{    
+	  		M1_LOG_ERROR("p NULL\n");
+	  	    cJSON_Delete(p_dup[i]);
+	  	    ret = M1_PROTOCOL_FAILED;
+	      	goto Finish;
+	  	}
+	  	M1_LOG_INFO("p:%s\n",p);
+
+	  	if(p)
+            socketSeverSend((unsigned char*)p, strlen(p), clientFd[i]);
+        
+        cJSON_Delete(p_dup[i]);
+   	}
 
 	cJSON_Delete(pJsonRoot);
 	return ret;
@@ -871,6 +912,7 @@ int app_req_scenario(payload_t data)
     sqlite3_stmt *stmt_5     = NULL;
     sqlite3_stmt *stmt_6     = NULL;
     sqlite3_stmt *stmt_7     = NULL;
+    char * p                 = NULL;
 
     db = data.db;
     pJsonRoot = cJSON_CreateObject();
@@ -1245,7 +1287,7 @@ int app_req_scenario(payload_t data)
 		sqlite3_clear_bindings(stmt_4);
 	}
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1255,9 +1297,7 @@ int app_req_scenario(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
-    
+
     Finish:
     if(stmt)
     	sqlite3_finalize(stmt);
@@ -1275,6 +1315,12 @@ int app_req_scenario(payload_t data)
     	sqlite3_finalize(stmt_6);
     if(stmt_7)
     	sqlite3_finalize(stmt_7);
+
+    sql_close();
+    /*response to client*/
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+    
 
 	cJSON_Delete(pJsonRoot);
 
@@ -1299,6 +1345,7 @@ int app_req_scenario_name(payload_t data)
     cJSON*  devData          = NULL;
     sqlite3* db              = NULL;
     sqlite3_stmt* stmt       = NULL;
+    char * p                 = NULL;
 
     db = data.db;
     pJsonRoot = cJSON_CreateObject();
@@ -1363,7 +1410,7 @@ int app_req_scenario_name(payload_t data)
 		cJSON_AddItemToArray(devDataJsonArray, devData);
 	}
 
-    char * p = cJSON_PrintUnformatted(pJsonRoot);
+    p = cJSON_PrintUnformatted(pJsonRoot);
     
     if(NULL == p)
     {    
@@ -1373,13 +1420,16 @@ int app_req_scenario_name(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    /*response to client*/
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
     
     Finish:
   	if(stmt)
 		sqlite3_finalize(stmt);
 	
+	sql_close();
+    /*response to client*/
+    if(p)
+    	socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     cJSON_Delete(pJsonRoot);
 
     return ret;

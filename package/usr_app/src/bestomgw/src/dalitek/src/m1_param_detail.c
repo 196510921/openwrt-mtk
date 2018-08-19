@@ -204,9 +204,14 @@ int app_read_param_detail(payload_t data)
     }
 
     M1_LOG_DEBUG("string:%s\n",p);
-    socketSeverSend((uint8*)p, strlen(p), data.clientFd);
 
     Finish:
+
+    sql_close();
+
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+
     cJSON_Delete(pJsonRoot);
     return ret;
 }
