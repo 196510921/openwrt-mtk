@@ -470,13 +470,34 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	M1_LOG_DEBUG( "socketSeverSend++\n");
 
 	int rtn;
-	int tick = 0;
-	int bytes_left = 0;
-	uint16_t header = 0xFEFD;
-	uint16_t msg_len = 0;
-	char* send_buf = NULL;
-	char* ptr = NULL;
-	//char send_buf[4096] = {0};
+	int tick          = 0;
+	int fdValid       = 0;
+	int bytes_left    = 0;
+	uint16_t header   = 0xFEFD;
+	uint16_t msg_len  = 0;
+	char* send_buf    = NULL;
+	char* ptr         = NULL;
+
+	/*判断clientFd是否有效*/
+	{
+		socketRecord_t *srchRec;
+		// first client socket
+		srchRec = socketRecordHead->next;
+		// Stop when at the end or max is reached
+		while (srchRec)
+		{
+			if(srchRec->socketFd == fdClient)
+			{
+				fdValid = 1;
+				break;
+			}
+			
+			srchRec = srchRec->next;
+		}
+
+		if(!fdValid)
+			return -1;
+	}
 	M1_LOG_INFO("Tx msg:%s\n",buf);
 
 	/*大端序*/
@@ -484,7 +505,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	msg_len = (((len >> 8) & 0xff) | ((len << 8) & 0xff00)) & 0xffff;
 
 	M1_LOG_DEBUG("len:%05d, Msg len:%05d\n",len, msg_len);
-	if(len > 200*1024 || fdClient > 2000)
+	if(len > 200*1024)
 	{
 		M1_LOG_ERROR("socket write too long!");
 		return -1;
@@ -523,7 +544,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 			{
 				M1_LOG_ERROR("ERROR writing to socket %d, errno:%d:%s\n", fdClient,errno,strerror(errno));
 
-				//delete_socket_clientfd(fdClient);
+				delete_socket_clientfd(fdClient);
 				break;
 			}
 		}

@@ -9,7 +9,8 @@
 #include "m1_common_log.h"
 
 char m1LogBuf[512] = {0};
-m1_log_level_t m1LogLevel = M1_LOG_LEVEL_ERROR;
+//m1_log_level_t m1LogLevel = M1_LOG_LEVEL_ERROR;
+m1_log_level_t m1LogLevel = M1_LOG_LEVEL_DEBUG;
 
 void m1_common_log_set_level(m1_log_level_t m1LogLevel)
 {

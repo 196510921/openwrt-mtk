@@ -267,6 +267,7 @@ int app_read_ap_router_cfg(payload_t data)
 	int rc               = 0;
 	char* dev_id         = NULL;
 	char* p              = NULL;
+    char sendMsg[300]    = {0};
 	char* sql            = NULL;
 	sqlite3 *db          = NULL;
 	sqlite3_stmt* stmt   = NULL;
@@ -314,7 +315,9 @@ int app_read_ap_router_cfg(payload_t data)
     	goto Finish;
     }
 
-    printf("string:%s\n",p);
+    M1_LOG_DEBUG("string:%s\n",p);
+
+    strcpy(sendMsg, p);
 
     Finish:
     if(stmt)
@@ -323,7 +326,9 @@ int app_read_ap_router_cfg(payload_t data)
     sql_close();
 
     if(p)
-        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+    {
+        socketSeverSend((uint8*)sendMsg, strlen(sendMsg), data.clientFd);
+    }
 
     return ret;
 }
@@ -336,6 +341,7 @@ int app_read_ap_zigbee_cfg(payload_t data)
 	int pdu_type         = 0;
 	char* dev_id         = NULL;
 	char* p              = NULL;
+    char sendMsg[300]    = {0};
 	char* sql            = NULL;
 	sqlite3 *db          = NULL;
 	sqlite3_stmt* stmt   = NULL;
@@ -361,7 +367,7 @@ int app_read_ap_zigbee_cfg(payload_t data)
 
    	dev_id = data.pdu->valuestring;
 
-   	sql = "select ZIGBEE from ap_router_cfg_table where DEV_ID = ?;";
+   	sql = "select PARAM from ap_router_cfg_table where DEV_ID = ?;";
    	
    	rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(rc != SQLITE_OK)
@@ -391,7 +397,9 @@ int app_read_ap_zigbee_cfg(payload_t data)
     	goto Finish;
     }
 
-    printf("string:%s\n",p);
+    M1_LOG_DEBUG("string:%s\n",p);
+
+    strcpy(sendMsg,p);
 
     Finish:
     if(stmt)
@@ -400,7 +408,108 @@ int app_read_ap_zigbee_cfg(payload_t data)
     sql_close();
 
     if(p)
-        socketSeverSend((uint8*)p, strlen(p), data.clientFd);
+    {
+        socketSeverSend((uint8*)sendMsg, strlen(sendMsg), data.clientFd);
+    }
 
     return ret;
 }
+
+
+int M1_write_config_to_AP(cJSON* data, sqlite3* db)
+{
+    M1_LOG_DEBUG("M1_write_to_AP\n");
+    int sn                = 2;
+    int clientFd          = 0;
+    int rc                = 0;
+    int ret               = M1_PROTOCOL_OK;
+    /*sql*/
+    char *sql             = NULL;
+    sqlite3_stmt *stmt    = NULL;
+    /*Json*/
+    cJSON* snJson         = NULL;
+    cJSON* pduJson        = NULL;
+    cJSON* devDataJson    = NULL;
+    char * p              = NULL;
+
+    
+    if(data == NULL){
+        M1_LOG_ERROR("data NULL");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;
+    }
+
+    /*更改sn*/
+    snJson = cJSON_GetObjectItem(data, "sn");
+    if(snJson == NULL){
+        M1_LOG_ERROR("snJson NULL");
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;    
+    }
+    cJSON_SetIntValue(snJson, sn);
+    /*获取clientFd*/
+    pduJson       = cJSON_GetObjectItem(data, "pdu");
+    if(pduJson == NULL)
+        goto Finish;
+    devDataJson   = cJSON_GetObjectItem(pduJson, "devData");
+    if(devDataJson == NULL)
+        goto Finish;
+    M1_LOG_DEBUG("devId:%s\n",devDataJson->valuestring);
+   
+    sql = "select a.CLIENT_FD from conn_info as a, all_dev as b where a.AP_ID = b.AP_ID and b.DEV_ID = ? limit 1;";
+    M1_LOG_DEBUG("%s\n", sql);
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql),&stmt, NULL);
+    if(rc != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));  
+        sql_error_set();
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish; 
+    }
+    else
+    {
+        sql_error_clear();
+    }
+    sqlite3_bind_text(stmt, 1, devDataJson->valuestring, -1, NULL);
+    rc = sqlite3_step(stmt);   
+    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+    {
+        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        sql_error_set();
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();
+    }
+    else
+    {
+        sql_error_clear();
+    }
+    if(rc == SQLITE_ROW)
+    {
+        clientFd = sqlite3_column_int(stmt,0);
+        p = cJSON_PrintUnformatted(data);
+        if(NULL == p)
+        {    
+            cJSON_Delete(data);
+            ret = M1_PROTOCOL_FAILED;
+            goto Finish;  
+        }
+
+        M1_LOG_DEBUG("string:%s\n",p);
+    }   
+
+    Finish:
+    if(stmt != NULL)
+        sqlite3_finalize(stmt);
+
+    sql_close();
+    /*response to client*/
+    if(p)
+        socketSeverSend((uint8*)p, strlen(p), clientFd);
+
+    return ret;
+}
+
+
+

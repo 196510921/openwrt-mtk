@@ -17,4 +17,6 @@
 
 int ap_cfg_router(cJSON* data, sqlite3* db);
 int app_read_ap_cfg(cJSON* data, sqlite3* db);
+
+int M1_write_config_to_AP(cJSON* data, sqlite3* db);
 #endif //AP_CONFIG_H

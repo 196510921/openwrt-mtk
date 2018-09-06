@@ -119,6 +119,8 @@ int m1_del_dev_from_ap(sqlite3* db, char* devId)
     if(stmt)
         sqlite3_finalize(stmt);
 
+    if(pJsonRoot)
+        cJSON_Delete(pJsonRoot);
 	return ret;
 }
 
@@ -228,6 +230,8 @@ int m1_del_ap(sqlite3* db, char* apId)
     Finish:
     if(stmt)
         sqlite3_finalize(stmt);
+    if(pJsonRoot)
+        cJSON_Delete(pJsonRoot);
 
 	return ret;
 }

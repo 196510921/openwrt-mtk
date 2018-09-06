@@ -235,7 +235,7 @@ void Init_PQueue(PQueue pQueue)
 {
 	if (NULL == pQueue)
 	return;
-	printf("Init_PQueue\n");
+	//printf("Init_PQueue\n");
 	pQueue->next = NULL;
 }
 

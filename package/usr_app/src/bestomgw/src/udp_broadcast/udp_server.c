@@ -32,18 +32,18 @@ static int broadcast_srv_init(void)
     addr.sin_addr.s_addr = htonl(INADDR_ANY);    
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);    
     if ( sockfd < 0 ){
-        printf(" broadcast socket create fail!\n");
+        //printf(" broadcast socket create fail!\n");
         goto exit;
     }
 
     if (bind (sockfd, (struct sockaddr*)&addr, sizeof (addr)) == -1){            
-        printf("bind error\n");            
+        //printf("bind error\n");            
         goto exit;    
     }    
 
     ret = setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, (char *)&opt, sizeof(opt));      
     if ( ret == -1){
-        printf("setsockopt error !\n" ) ;
+        //printf("setsockopt error !\n" ) ;
         goto  exit ; 
     }       
     return ret; 
@@ -75,7 +75,7 @@ static void* Broadcast_looping(void* param)
 		switch(select(sockfd+1,&watchset,NULL,NULL,NULL))
         {
             case -1:
-            	printf("select error\n");
+            	//printf("select error\n");
                 break;
             case 0:
                 break;
@@ -88,11 +88,11 @@ static void* Broadcast_looping(void* param)
                 {
                     continue;
                 }
-                printf("[recv broadcast msg]:%s\n",in_buf);
+                //printf("[recv broadcast msg]:%s\n",in_buf);
                 if (broadcast_msg_proc(in_buf,out_buf,&size, sockfd) != 0)
                     continue;
                 
-                printf("[send broadcast msg]:%s\n",out_buf);
+                //printf("[send broadcast msg]:%s\n",out_buf);
                 sendto (sockfd, out_buf,size, 0,(struct sockaddr*)&addrcli,addrlen);
                 memset(response,0,512);
                 break;
@@ -108,10 +108,10 @@ int BroadcastModuleInit(void *param)
     broadcast_srv_init();
     running = true;
     if(pthread_create(&looping, NULL, Broadcast_looping, 0) != 0){
-        printf("mqtt thread create failed\n");
+        //printf("mqtt thread create failed\n");
         return -1;
     }
-    printf("[ BroadcastModuleInit success! ]\n");
+    //printf("[ BroadcastModuleInit success! ]\n");
     return 0;
 }
 
@@ -124,7 +124,7 @@ int BroadcastModuleExit(void *param)
     close(sockfd);
         sockfd = -1;
     }
-    printf("[ Broadcast exited! ]\n");	
+    //printf("[ Broadcast exited! ]\n");	
     return 0;
 }
 

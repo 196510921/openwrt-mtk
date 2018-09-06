@@ -123,8 +123,8 @@ int app_get_project_info(payload_t data)
     
     if(p)
         socketSeverSend((unsigned char*)p, strlen(p), data.clientFd);
-
-    cJSON_Delete(pJsonRoot);
+    if(pJsonRoot)
+        cJSON_Delete(pJsonRoot);
 
     return ret;
 }
@@ -489,7 +489,9 @@ int app_get_project_config(payload_t data)
 
     Finish:
     sqlite3_finalize(stmt);
-    cJSON_Delete(pJsonRoot);
+    
+    if(pJsonRoot)
+        cJSON_Delete(pJsonRoot);
 
     sql_close();
 

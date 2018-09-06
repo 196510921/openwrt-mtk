@@ -174,7 +174,8 @@ void data_handle(m1_package_t* package)
         {
             app_read_ap_router_cfg(pdu);
             sql_open();
-            M1_write_to_AP(rootJson, db);
+            //M1_write_to_AP(rootJson, db);
+            M1_write_config_to_AP(rootJson, db);
             rc = M1_PROTOCOL_NO_RSP; 
             break;
         }
@@ -182,7 +183,8 @@ void data_handle(m1_package_t* package)
         {
             app_read_ap_zigbee_cfg(pdu);
             sql_open();
-            M1_write_to_AP(rootJson, db);
+            //M1_write_to_AP(rootJson, db);
+            M1_write_config_to_AP(rootJson, db);
             rc = M1_PROTOCOL_NO_RSP; 
             break;
         }
@@ -342,7 +344,7 @@ void data_handle(m1_package_t* package)
             break;
         }
 
-        default: M1_LOG_ERROR("pdu type not match\n"); rc = M1_PROTOCOL_FAILED;break;
+        default: M1_LOG_ERROR("pdu type not match\n"); sql_close();rc = M1_PROTOCOL_FAILED;break;
     }
 
     if(rc != M1_PROTOCOL_NO_RSP){
@@ -1663,9 +1665,21 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
     cJSON_SetIntValue(snJson, sn);
     /*获取clientFd*/
     pduJson       = cJSON_GetObjectItem(data, "pdu");
+    if(pduJson == NULL)
+        goto Finish;
     devDataJson   = cJSON_GetObjectItem(pduJson, "devData");
+    if(devDataJson == NULL)
+        goto Finish;
     dataArrayJson = cJSON_GetArrayItem(devDataJson, 0);
+    if(dataArrayJson == NULL)
+        goto Finish;
     devIdJson     = cJSON_GetObjectItem(dataArrayJson, "devId");
+    if(devIdJson == NULL)
+    {
+        devIdJson = cJSON_GetObjectItem(dataArrayJson, "apId");
+        if(devIdJson == NULL)
+            goto Finish;
+    }
     M1_LOG_DEBUG("devId:%s\n",devIdJson->valuestring);
     /*485写入检查*/
     {
@@ -1674,7 +1688,10 @@ static int M1_write_to_AP(cJSON* data, sqlite3* db)
         dev485cmd.paramJson = dataArrayJson;
         rc = dev_485_operate(dev485cmd);
         if(rc == M1_PROTOCOL_OK)
+        {
+            sql_close();
             return M1_PROTOCOL_OK;
+        }
     }
     
     sql = "select a.CLIENT_FD from conn_info as a, all_dev as b where a.AP_ID = b.AP_ID and b.DEV_ID = ? limit 1;";
@@ -2466,7 +2483,7 @@ static int M1_report_ap_info(payload_t data)
 
     /*搜索485设备*/
     ret = app_gw_search();
-    printf("app_gw_search :%d\n",ret);
+    M1_LOG_DEBUG("app_gw_search :%d\n",ret);
 
     //sql = "select a.DEV_ID,a.DEV_NAME,a.PID from all_dev as a,account_info as b where a.DEV_ID = a.AP_ID and a.ACCOUNT = b.ACCOUNT and b.CLIENT_FD = ?;";
     sql = "select DEV_ID,DEV_NAME,PID from all_dev where DEV_ID = AP_ID and ACCOUNT = ?;";
@@ -3756,7 +3773,7 @@ void setLocalTime(char* time)
     day = 31;
     hour = 17; 
     min = 55;
-    printf("setLocalTime,time:%02d-%02d %02d:%02d\n",mon+1,day,hour,min);
+    M1_LOG_DEBUG("setLocalTime,time:%02d-%02d %02d:%02d\n",mon+1,day,hour,min);
     local_tm.tm_year = 2017 - 1900;
     local_tm.tm_mon = mon;
     local_tm.tm_mday = day;

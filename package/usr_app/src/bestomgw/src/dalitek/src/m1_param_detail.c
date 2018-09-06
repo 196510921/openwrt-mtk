@@ -11,6 +11,7 @@ static int param_detail_tb_insert(param_detail_tb_t param_detail, sqlite3* db);
 static int param_detail_tb_update(param_detail_tb_t param_detail, sqlite3* db);
 static int param_detail_tb_delete(param_detail_tb_t param_detail, sqlite3* db);
 static int param_detail_tb_select(char* dev_id, int type, cJSON* param, sqlite3* db);
+static int param_all_dev_tb_select(char* dev_id, cJSON* devDataObject, sqlite3* db);
 
 void app_create_param_detail_table(sqlite3* db)
 {
@@ -76,7 +77,7 @@ int app_write_param_detail(payload_t data)
     M1_LOG_DEBUG("value:%d\n", valueJson->valueint);
     param_detail.value = valueJson->valueint;
 
-	descripJson = cJSON_GetObjectItem(data.pdu, "description");
+	descripJson = cJSON_GetObjectItem(data.pdu, "descrip");
     if(descripJson == NULL)
     {
         return -1;
@@ -110,6 +111,8 @@ int app_read_param_detail(payload_t data)
     cJSON* pJsonRoot      = NULL;
     cJSON* pduJsonObject  = NULL;
     cJSON* devDataObject  = NULL;
+    cJSON* devName        = NULL;
+    cJSON* pid            = NULL;
     cJSON* devIdJson      = NULL;
     cJSON* typeJson       = NULL; 
     cJSON* paramTypeJson  = NULL;
@@ -179,6 +182,10 @@ int app_read_param_detail(payload_t data)
     }
     cJSON_AddItemToObject(pduJsonObject, "devData", devDataObject);
 
+    cJSON_AddStringToObject(devDataObject, "devId", devId);
+
+    ret = param_all_dev_tb_select(devId, devDataObject, data.db);
+    
     paramArrayJson = cJSON_CreateArray();
     if(NULL == paramArrayJson)
     {
@@ -211,8 +218,8 @@ int app_read_param_detail(payload_t data)
 
     if(p)
         socketSeverSend((uint8*)p, strlen(p), data.clientFd);
-
-    cJSON_Delete(pJsonRoot);
+    if(pJsonRoot)
+        cJSON_Delete(pJsonRoot);
     return ret;
 }
 
@@ -337,8 +344,8 @@ static int param_detail_tb_update(param_detail_tb_t param_detail, sqlite3* db)
 
     sqlite3_bind_text(stmt, 1, param_detail.descrip, -1, NULL);
     sqlite3_bind_text(stmt, 2, param_detail.devId, -1, NULL);
-    sqlite3_bind_text(stmt, 3, param_detail.type, -1, NULL);
-    sqlite3_bind_text(stmt, 4, param_detail.value, -1, NULL);
+    sqlite3_bind_int(stmt, 3, param_detail.type);
+    sqlite3_bind_int(stmt, 4, param_detail.value);
 
     if(sqlite3_exec(db, "BEGIN IMMEDIATE", NULL, NULL, &errorMsg)==SQLITE_OK)
     {
@@ -415,7 +422,7 @@ static int param_detail_tb_select(char* dev_id, int type, cJSON* param, sqlite3*
         cJSON_AddItemToArray(param, devDataObject);
         cJSON_AddNumberToObject(devDataObject, "type", type);
         cJSON_AddNumberToObject(devDataObject, "value", value);
-        cJSON_AddStringToObject(devDataObject, "description", descrip);
+        cJSON_AddStringToObject(devDataObject, "descrip", descrip);
     }
 
     Finish:
@@ -486,11 +493,7 @@ static int param_detail_tb_delete(param_detail_tb_t param_detail, sqlite3* db)
     sqlite3_bind_int(stmt, 2, param_detail.type);
     sqlite3_bind_int(stmt, 3, param_detail.value);
 
-    rc = sqlite3_step(stmt);
-    if(rc != SQLITE_ROW)
-    {
-        ret = -1;
-    }
+    sqlite3_step(stmt);
 
     Finish:
     if(stmt)
@@ -499,3 +502,42 @@ static int param_detail_tb_delete(param_detail_tb_t param_detail, sqlite3* db)
     return ret;
 }
 
+/*select param_detail_table from all_dev*/
+static int param_all_dev_tb_select(char* dev_id, cJSON* devDataObject, sqlite3* db)
+{
+    int ret              = 0;
+    int rc               = 0;
+    char* sql            = NULL;
+    char* dev_name       = NULL;
+    int pid              = 0;
+    sqlite3_stmt* stmt   = NULL;
+
+    sql = "select DEV_NAME, PID from all_dev where DEV_ID = ? limit 1;";
+    M1_LOG_DEBUG("sql:%s\n",sql);
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db));
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();  
+        ret = -1;
+        goto Finish; 
+    }
+
+    sqlite3_bind_text(stmt, 1, dev_id, -1, NULL);
+
+    if(sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        dev_name = sqlite3_column_text(stmt, 0);
+        pid     = sqlite3_column_int(stmt, 1);
+        cJSON_AddStringToObject(devDataObject, "devName", dev_name);
+        cJSON_AddNumberToObject(devDataObject, "pid", pid);
+
+    }
+
+    Finish:
+    if(stmt)
+        sqlite3_finalize(stmt);
+
+    return ret;
+}

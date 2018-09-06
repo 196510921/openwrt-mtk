@@ -53,6 +53,9 @@ int get_local_clientFd(void)
 /*tcp cliemt timeout handle*/
 void tcp_client_timeout_tick(int d)
 {
+	if(get_connect_flag() == TCP_DISCONNECTED)
+		return;
+
 	pthread_mutex_lock(&client_timeout_tick_lock);
 	if(!d) //reset timeout flag
 	{
@@ -98,32 +101,39 @@ int tcp_client_connect(void)
 	struct hostent *host;
 	char* server_ip = SERVER_IP;
 	int i;
+	static int init_flag = 0;
 
-#ifndef LOCAL_IP
-	host = gethostbyname(server_ip);
-	if(NULL == host){
-		perror("can not get host by hostname");
-		set_connect_flag(TCP_DISCONNECTED);
-		return TCP_CLIENT_FAILED;
+	#ifndef LOCAL_IP
+		host = gethostbyname(server_ip);
+		if(NULL == host){
+			M1_LOG_INFO("can not get host by hostname");
+			set_connect_flag(TCP_DISCONNECTED);
+			return TCP_CLIENT_FAILED;
+		}
+
+		server_ip = inet_ntoa(*(struct in_addr*)host->h_addr);
+		M1_LOG_INFO("IP:%s\n", server_ip);	
+	#endif
+
+		bzero(&servaddr,sizeof(servaddr));
+		servaddr.sin_family = AF_INET;
+		servaddr.sin_port = htons(SERV_PORT);
+		inet_pton(AF_INET, server_ip, &servaddr.sin_addr);
+
+	if(init_flag == 0)
+	{
+	   	client_sockfd = socket(AF_INET,SOCK_STREAM,0);
+		init_flag = 1;
 	}
 
-	server_ip = inet_ntoa(*(struct in_addr*)host->h_addr);
-	printf("IP:%s\n", server_ip);	
-#endif
-   	client_sockfd = socket(AF_INET,SOCK_STREAM,0);
-	bzero(&servaddr,sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = htons(SERV_PORT);
-	inet_pton(AF_INET, server_ip, &servaddr.sin_addr);
 	if(connect(client_sockfd,(struct sockaddr*)&servaddr,sizeof(servaddr)) == -1){
-		printf("server connect failed!\n");
+		M1_LOG_INFO("server connect failed!\n");
 		set_connect_flag(TCP_DISCONNECTED);
-		close(client_sockfd);
 		return TCP_CLIENT_FAILED;
 	}
 	else
 	{
-	 	printf("server connect ok\n");
+	 	M1_LOG_INFO("server connect ok\n");
 	 	set_connect_flag(TCP_CONNECTED);
 	 	m1_report_id_to_cloud(client_sockfd);
 	}
@@ -133,18 +143,38 @@ int tcp_client_connect(void)
 
 void* socket_client_poll(void)
 {
+	int i = 0;
+	int j = 0;
+	int recon_interval[8] = {5,10,30,60,600,1800,3600,86400};
 	struct pollfd *pollFds = malloc(sizeof(struct pollfd));
 	
 	while (1)
 	{
 		if(get_connect_flag() == TCP_DISCONNECTED){
-			printf("client reconnect...\n");
-			sleep(5);
+			M1_LOG_INFO("client reconnect...\n");
+			if(j > 7)
+			{
+				sleep(recon_interval[7]);
+			}
+			else
+			{
+				sleep(recon_interval[j]);
+
+				if(i > 60)
+				{
+					i = 0;
+					j++;
+				}
+				i++;
+			}
 			/*reconnect*/ 
 			if(tcp_client_connect() != TCP_CLIENT_SUCCESS)
 				continue;
-			printf("client connected to remote!\n");
+			M1_LOG_INFO("client connected to remote!\n");
 		}
+
+		i = 0;
+		j = 0;
 		
 		pollFds[0].fd = client_sockfd;
 		pollFds[0].events = POLLIN | POLLRDHUP;

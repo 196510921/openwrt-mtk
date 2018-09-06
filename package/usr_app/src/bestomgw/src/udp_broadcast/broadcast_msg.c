@@ -79,7 +79,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
     req_json = cJSON_Parse(msg_in);
     if(NULL == req_json)
     {
-        printf("rootJson null\n");
+        //printf("rootJson null\n");
         ret = -1;
         goto Finish;   
     }
@@ -87,7 +87,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
     req_msg.pdu = cJSON_GetObjectItem(req_json, "pdu");
     if(NULL == req_msg.pdu)
     {
-        printf("pdu null\n");
+        //printf("pdu null\n");
         ret = -1;
         goto Finish;
     }
@@ -95,7 +95,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
     req_pdu.devData = cJSON_GetObjectItem(req_msg.pdu, "devData");
     if(NULL == req_pdu.devData)
     {
-        printf("devData null\n");
+        //printf("devData null\n");
         ret = -1;
         goto Finish;
     }
@@ -103,7 +103,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
     req_data.project = cJSON_GetObjectItem(req_pdu.devData, "project");
     if(NULL == req_data.project)
     {
-        printf("pdu null\n");
+        //printf("pdu null\n");
         ret = -1;
         goto Finish;
     }
@@ -118,7 +118,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
     rsp_json = cJSON_CreateObject();
     if(NULL == rsp_json)
     {
-        printf("rsp_json NULL\n");
+        //printf("rsp_json NULL\n");
         ret = -1;
         goto Finish;
     }
@@ -133,7 +133,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
         rsp_msg.pdu = cJSON_CreateObject();
         if(NULL == rsp_msg.pdu)
         {
-            printf("rsp_msg.pdu NULL\n");
+            //printf("rsp_msg.pdu NULL\n");
             cJSON_Delete(rsp_msg.pdu);
             ret = -1;
             goto Finish;
@@ -144,7 +144,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
         rsp_pdu.devData = cJSON_CreateObject();
         if(NULL == rsp_pdu.devData)
         {
-            printf("rsp_pdu.devData NULL\n");
+            //printf("rsp_pdu.devData NULL\n");
             cJSON_Delete(rsp_pdu.devData);
             ret = -1;
             goto Finish;
@@ -155,7 +155,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
         strcpy(lan_ifr.ifr_name,"br-lan");
         if(ioctl(sockfd,SIOCGIFADDR,&lan_ifr) != 0)
         perror("ioctl");
-        printf("host:%s\n",(char *)inet_ntoa( ((struct sockaddr_in *)&(lan_ifr.ifr_addr))->sin_addr));
+        //printf("host:%s\n",(char *)inet_ntoa( ((struct sockaddr_in *)&(lan_ifr.ifr_addr))->sin_addr));
         rsp_data.lanIp = (char *)inet_ntoa( ((struct sockaddr_in *)&(lan_ifr.ifr_addr))->sin_addr);
         
         cJSON_AddStringToObject(rsp_pdu.devData, "lanIp", rsp_data.lanIp);
@@ -163,7 +163,7 @@ int broadcast_msg_proc(char* msg_in, char* msg_out, int* len, int sockfd)
         strcpy(wan_ifr.ifr_name,"eth0.2");
         if(ioctl(sockfd,SIOCGIFADDR,&wan_ifr) != 0)
         perror("ioctl");
-        printf("host:%s\n",(char *)inet_ntoa( ((struct sockaddr_in *)&(wan_ifr.ifr_addr))->sin_addr));
+        //printf("host:%s\n",(char *)inet_ntoa( ((struct sockaddr_in *)&(wan_ifr.ifr_addr))->sin_addr));
         rsp_data.wanIp = (char *)inet_ntoa( ((struct sockaddr_in *)&(wan_ifr.ifr_addr))->sin_addr);
     
         cJSON_AddStringToObject(rsp_pdu.devData, "wanIp", rsp_data.wanIp);
@@ -207,7 +207,7 @@ static int project_check(char* project)
 
     if(strcmp("DOM100", project) != 0)
     {
-        printf("project:%s not match!\n", project);
+        //printf("project:%s not match!\n", project);
         ret = -1;
     }
 

@@ -264,8 +264,8 @@ static int device_exec(char* data, sqlite3* db)
    		sqlite3_finalize(stmt_2);
    	if(stmt_3)
    		sqlite3_finalize(stmt_3);
-	
-	cJSON_Delete(pJsonRoot);
+	if(pJsonRoot)
+	    cJSON_Delete(pJsonRoot);
 	
 	return ret;
 }
@@ -1714,8 +1714,8 @@ int app_req_linkage(payload_t data)
     /*response to client*/
     if(p)
     	socketSeverSend((uint8*)p, strlen(p), data.clientFd);
- 	
-    cJSON_Delete(pJsonRoot);
+ 	if(pJsonRoot)
+    	cJSON_Delete(pJsonRoot);
 
     return ret;
 }

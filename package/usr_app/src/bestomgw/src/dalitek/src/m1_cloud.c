@@ -68,12 +68,13 @@ void m1_report_id_to_cloud(int clientFd)
     //socketSeverSend((uint8*)p, strlen(p), clientFd);
     socket_client_tx((uint8*)p, strlen(p));
     Finish:
-
+    cJSON_Delete(pJsonRoot);
     return ret;
 }
 
 void m1_heartbeat_to_cloud(void)
 {
+
     M1_LOG_INFO("m1_heartbeat_to_cloud\n");
 
     int sn = 2;
@@ -84,7 +85,10 @@ void m1_heartbeat_to_cloud(void)
     cJSON* pJsonRoot = NULL;
     cJSON* pduJsonObject = NULL;
     cJSON* devDataJson = NULL;
-    
+ 
+    if(get_connect_flag() == TCP_DISCONNECTED)
+        return;
+
     /*get sql data json*/
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
@@ -138,7 +142,7 @@ void m1_heartbeat_to_cloud(void)
     socket_client_tx((uint8*)p, strlen(p));
 
     Finish:
-
+    cJSON_Delete(pJsonRoot);
     return ret;
 }
 

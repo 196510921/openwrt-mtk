@@ -534,8 +534,8 @@ int app_req_district(payload_t data)
     /*response to client*/
     if(p)
         socketSeverSend((uint8*)p, strlen(p), data.clientFd);
-
-    cJSON_Delete(pJsonRoot);
+    if(pJsonRoot)
+        cJSON_Delete(pJsonRoot);
     return ret;
 
 }
