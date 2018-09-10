@@ -333,7 +333,6 @@ extern int32_t iobuffer_put_iobuffer(iobuffer_t *iobuf,iobuffer_t *src){
 	if (size <= 0)
 		return 0;
 
-
 	memcpy(iobuf->buf + iobuf->position, src->buf+src->position, size);
 	iobuf->position += size;
 	if (iobuf->position > iobuf->limit) {

@@ -275,7 +275,8 @@ void m1_error_handle(void);
 #define DEV_AIR_CO_2                             0x4018   //二氧化碳
 #define DEV_AIR_HCHO                             0x4019   //甲醛
 
-/*空调执行器S10*/
+/*VRV空调执行器S10*/
+#define DEV_VRV_GW                               0x00FC   //VRV空调网关
 #define DEV_POWER_EXEC_S10                       0xA0C5   //(常供电、执行类)空调执行器S10
 #define DEV_CONDITIONER_MODE                     0x801B   //空调模式(制冷、制暖、通风、切换)
 #define DEV_CONDITIONER_SPEED_1                  0x801C   //风速档类型1(低、中、高)

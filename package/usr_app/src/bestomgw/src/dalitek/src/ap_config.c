@@ -267,7 +267,7 @@ int app_read_ap_router_cfg(payload_t data)
 	int rc               = 0;
 	char* dev_id         = NULL;
 	char* p              = NULL;
-    char sendMsg[300]    = {0};
+    char sendMsg[500]    = {0};
 	char* sql            = NULL;
 	sqlite3 *db          = NULL;
 	sqlite3_stmt* stmt   = NULL;
@@ -367,7 +367,7 @@ int app_read_ap_zigbee_cfg(payload_t data)
 
    	dev_id = data.pdu->valuestring;
 
-   	sql = "select PARAM from ap_router_cfg_table where DEV_ID = ?;";
+   	sql = "select ZIGBEE from ap_router_cfg_table where DEV_ID = ?;";
    	
    	rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
     if(rc != SQLITE_OK)

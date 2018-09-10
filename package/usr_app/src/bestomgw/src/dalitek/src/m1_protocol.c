@@ -2576,6 +2576,15 @@ static int M1_report_dev_info(payload_t data)
     db = data.db;
     apId = data.pdu->valuestring;
 
+    /*搜索485空调设备在线状态*/
+    {
+        dev485Opt_t dev485cmd;
+        
+        dev485cmd.devId   = apId;
+        dev485cmd.cmdType = DEV_READ_ONLINE;
+        rc = dev_485_operate(dev485cmd);
+    }
+
     pJsonRoot = cJSON_CreateObject();
     if(NULL == pJsonRoot)
     {
@@ -3996,10 +4005,31 @@ static int create_sql_table(void)
             );";
         M1_LOG_DEBUG("%s:\n",sql);
         rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK){
+        if(rc != SQLITE_OK)
+        {
             M1_LOG_WARN("account_table already exit: %s\n",errmsg);
+            sqlite3_free(errmsg);
         }
-        sqlite3_free(errmsg);
+        else
+        {
+            /*插入Dalitek账户*/
+            // sql = "delete from account_table where ACCOUNT = \"Dalitek\";";
+            // rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+            // if(rc != SQLITE_OK)
+            // {
+            //     M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
+            //     sqlite3_free(errmsg);
+            // }
+
+            sql = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(\"Dalitek\",\"root\",\"on\",\"on\");";
+            rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
+            if(rc != SQLITE_OK)
+            {
+                M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
+                sqlite3_free(errmsg);
+            } 
+        
+        }
     }
     /*all_dev*/
     { 
@@ -4316,25 +4346,6 @@ static int create_sql_table(void)
             sqlite3_free(errmsg);
             M1_LOG_WARN("ap_router_cfg_table already exit: %s\n",errmsg);
         }
-    }
-
-    /*插入Dalitek账户*/
-    {
-        sql = "delete from account_table where ACCOUNT = \"Dalitek\";";
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
-            sqlite3_free(errmsg);
-        }
-
-        sql = "insert into account_table(ACCOUNT, KEY, KEY_AUTH, REMOTE_AUTH)values(\"Dalitek\",\"root\",\"on\",\"on\");";
-        rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-        if(rc != SQLITE_OK)
-        {
-            M1_LOG_WARN("insert into account_table fail: %s\n",errmsg);
-            sqlite3_free(errmsg);
-        } 
     }
 
     Finish:

@@ -3,6 +3,7 @@
 #include "dev_zh.h"
 #include "sqlite3.h"
 #include "m1_protocol.h"
+#include "m1_device.h"
 #include "m1_common_log.h"
 
 /*获取操作接口*/
@@ -236,7 +237,7 @@ devErr app_gw_search(void)
 	}
 
 	dev_485_db_init();
-	
+
 	Finish:
 	free(userData);
 	return ret;
@@ -681,8 +682,9 @@ static void dev_485_db_init(void)
 	int rc                 = 0;
 	int ret                = DEV_OK;
 	char* gwId             = "01";
-	char* dAddr            = "01FFFF";
-	int pId                = DEV_POWER_EXEC_S10;
+	char* dAddr            = "01ffff";
+	int gw_pId             = DEV_VRV_GW;
+	int dev_pId            = DEV_POWER_EXEC_S10;
 	char* errorMsg         = NULL;
 	char* sql_1            = NULL;
 	char* sql_1_1          = NULL;
@@ -741,7 +743,7 @@ static void dev_485_db_init(void)
 		sqlite3_bind_text(stmt_1_1, 1, gwId, -1, NULL);//用设备地址做设备名
 		sqlite3_bind_text(stmt_1_1, 2, gwId, -1, NULL);
 		sqlite3_bind_text(stmt_1_1, 3, gwId, -1, NULL);
-		sqlite3_bind_int(stmt_1_1, 4, pId);
+		sqlite3_bind_int(stmt_1_1, 4, gw_pId);
 		sqlite3_bind_int(stmt_1_1, 5, 0);
 		sqlite3_bind_int(stmt_1_1, 6, 1);
 		sqlite3_bind_text(stmt_1_1, 7,"ON", -1, NULL);
@@ -770,7 +772,7 @@ static void dev_485_db_init(void)
 		sqlite3_bind_text(stmt_1_1, 1, dAddr, -1, NULL);//用设备地址做设备名
 		sqlite3_bind_text(stmt_1_1, 2, dAddr, -1, NULL);
 		sqlite3_bind_text(stmt_1_1, 3, gwId, -1, NULL);
-		sqlite3_bind_int(stmt_1_1, 4, pId);
+		sqlite3_bind_int(stmt_1_1, 4, dev_pId);
 		sqlite3_bind_int(stmt_1_1, 5, 0);
 		sqlite3_bind_int(stmt_1_1, 6, 1);
 		sqlite3_bind_text(stmt_1_1, 7,"ON", -1, NULL);
@@ -985,7 +987,7 @@ devErr dev_485_operate(dev485Opt_t cmd)
 		}
 		pId = sqlite3_column_int(stmt, 0);
 		/*判断是否是空调类型*/
-		if(pId != DEV_POWER_EXEC_S10)
+		if(pId != DEV_POWER_EXEC_S10 && pId != DEV_VRV_GW)
 		{
 			sqlite3_finalize(stmt);
 			return DEV_ERROR;
@@ -1037,7 +1039,8 @@ devErr dev_485_operate(dev485Opt_t cmd)
 			{
 				appCmd_t cmd_write;
 				dev485WriteParam_t param;
-				
+				update_param_tb_t updateData;
+
 				param.paramJson = cmd.paramJson;
 				dev_485_write(&param);
 
@@ -1048,13 +1051,49 @@ devErr dev_485_operate(dev485Opt_t cmd)
 				                       ((UINT16)a2x(cmd.devId[3]) << 8) & 0x0F00 |  \
 				                       (a2x(cmd.devId[4]) << 4) & 0x00F0 |         \
 				                       a2x(cmd.devId[5]);//设备地址
+				
+				/*写入数据库*/
+				cJSON* paramDataJson = cJSON_GetObjectItem(param.paramJson, "param");
+                if(paramDataJson == NULL)
+                {
+                    M1_LOG_WARN("paramDataJson NULL \n");
+                    goto Finish;
+                }
+                cJSON* paramArrayJson = cJSON_GetArrayItem(paramDataJson, 0);
+                if(paramArrayJson == NULL)
+                {
+                    M1_LOG_WARN("paramArrayJson NULL \n");
+                    goto Finish;
+                }
+                cJSON* valueTypeJson = cJSON_GetObjectItem(paramArrayJson, "type");
+                if(valueTypeJson == NULL)
+                {
+                    M1_LOG_WARN("valueTypeJson NULL \n");
+                    goto Finish;
+                }
+                M1_LOG_DEBUG("type%d:%d\n",valueTypeJson->valueint);
+                cJSON* valueJson = cJSON_GetObjectItem(paramArrayJson, "value");
+                if(valueJson == NULL)
+                {
+                    M1_LOG_WARN("valueJson NULL \n");
+                    goto Finish;
+                }
+                M1_LOG_DEBUG("value%d:%d\n",valueJson->valueint);
+			
+				//updateData.devId = "01FFFF";
+				updateData.devId = cmd.devId;
+				updateData.type = valueTypeJson->valueint;
+				updateData.value = valueJson->valueint;
+ 				app_param_tb_update_data(updateData, db);
+
 				if(cmd_write.devAddr[0] == 0xffff)
 				{
-					cmd_write.dNum       = 0xff;               //设备数量
+					
+					cmd_write.dNum = 0xff;               //设备数量
 				}
 				else
 				{
-					cmd_write.dNum       = 0x01;               //设备数量
+					cmd_write.dNum = 0x01;               //设备数量
 				}
 				M1_LOG_DEBUG("gwId:%x,gwAddr:%x,devId:%x%x%x%x,devAddr:%x\n",\
 					cmd.devId[1], cmd_write.gwAddr,cmd.devId[2],cmd.devId[3],\
@@ -1071,6 +1110,7 @@ devErr dev_485_operate(dev485Opt_t cmd)
 		break;
 	}
 	
+	Finish:
 	return DEV_OK;
 }
 

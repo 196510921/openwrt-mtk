@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
 	int retval = 0;
 	pthread_t t1,t2,t3,t4,t5;
 
-	M1_LOG_ERROR("error log testing!!!");
+	M1_LOG_FATAL("Note: Version:V1.10.6.1,Time:2018-09-11");
 	SRPC_Init();
 #if TCP_CLIENT_ENABLE
 	tcp_client_connect();

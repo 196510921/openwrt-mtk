@@ -602,6 +602,44 @@ void app_update_param_table(update_param_tb_t data, sqlite3* db)
         sqlite3_finalize(stmt_1_2);
 }
 
+/*更新参数表中设备启停信息*/
+void app_param_tb_update_data(update_param_tb_t data, sqlite3* db)
+{
+    M1_LOG_DEBUG("app_update_param_table\n");
+    
+    int rc                 = 0;
+    char* errorMsg         = NULL;
+    char* sql              = NULL;
+    sqlite3_stmt* stmt     = NULL;
+   
+    sql = "update param_table set VALUE = ?,TIME = datetime('now') where DEV_ID = ? and TYPE = ?;";
+    M1_LOG_DEBUG("%s\n",sql);
+    rc = sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    if(rc != SQLITE_OK)
+    {
+        M1_LOG_ERROR( "sqlite3_prepare_v2:error %s\n", sqlite3_errmsg(db)); 
+        if(rc == SQLITE_CORRUPT)
+            m1_error_handle();  
+        goto Finish; 
+    }
+    M1_LOG_DEBUG("devId:%s, value:%x, type:%x\n",data.devId,data.value,data.type);
+    /*先检查*/
+    sqlite3_bind_int(stmt, 1, data.value);
+    sqlite3_bind_text(stmt, 2, data.devId, -1, NULL);
+    sqlite3_bind_int(stmt, 3, data.type);
+    rc = sqlite3_step(stmt);   
+    if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
+    {
+        M1_LOG_ERROR("step() return %s, number:%03d\n", "SQLITE_ERROR",rc);
+        if(rc == SQLITE_CORRUPT || rc == SQLITE_NOTADB)
+            m1_error_handle();
+    }
+
+    Finish:
+    if(stmt)
+        sqlite3_finalize(stmt);
+}
+
 /*删除AP下子设备联动业务*/
 void clear_ap_related_linkage(char* ap_id, sqlite3* db)
 {

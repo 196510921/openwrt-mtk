@@ -604,7 +604,6 @@ int app_account_config_handle(payload_t data)
         {
             if(strcmp(accountJson->valuestring,"Dalitek") == 0)
             {
-                ret = M1_PROTOCOL_FAILED;
                 goto Finish;   
             }
          

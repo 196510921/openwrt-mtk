@@ -122,9 +122,9 @@ void SRPC_Init(void)
  ***************************************************************************************************/
 void SRPC_ConnectCB(int clientFd)
 {
-	printf("SRPC_ConnectCB++ \n");
+	M1_LOG_INFO("SRPC_ConnectCB++ \n");
 
-	printf("connected success !\n");
+	M1_LOG_INFO("connected success !\n");
 }
 
 

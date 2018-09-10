@@ -14,8 +14,22 @@
 
 static void messageReceived(iosession_t *session,iobuffer_t *buf){
 	//dzlog_info("接收到一行,size:%d",iobuffer_remaining(buf));
-	printf("接收到一行,size:%d",iobuffer_remaining(buf));
+	printf("接收到一行,size:%d,buf:%s\n",iobuffer_remaining(buf),buf->buf);
+	printf("session->connfd:%d,session->readBuf->buf:%s, session->readBuf->position:%d\n",\
+											                              session->connfd,\
+		                                                                  session->readBuf->buf,\
+		                                                                  session->readBuf->position);
+
+	if(strcmp(session->readBuf->buf,"Test") != 0)
+	{
+		printf("not match\n");
+		return;
+	}
+
+	session->readBuf->position += buf->capacity;
+
 	int32_t remaining = iobuffer_remaining(buf);
+	printf("remaining:%d,buf->buf:%s\n",remaining,buf->buf);
 	if(remaining>0){
 		iobuffer_t *rbuf = iobuffer_create(remaining);
 		iobuffer_compact(rbuf);
@@ -24,6 +38,7 @@ static void messageReceived(iosession_t *session,iobuffer_t *buf){
 		iosession_write(session,rbuf);
 		iobuffer_destroy(rbuf);
 	}
+
 }
 
 static void messageSent(iosession_t *session,iobuffer_t *buf){
