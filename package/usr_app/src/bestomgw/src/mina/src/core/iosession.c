@@ -149,7 +149,7 @@ extern int iosession_write(iosession_t *session, iobuffer_t *buf){
 	if(session->closed) return -1;
 	int remaining = iobuffer_remaining(buf);
 	if (remaining <= 0)  return remaining;
-
+	printf("0\n");
 	int ret = 0;
 	pthread_mutex_lock(session->writeLock);
 	pthread_mutex_lock(session->writeBufLock);
@@ -161,12 +161,12 @@ extern int iosession_write(iosession_t *session, iobuffer_t *buf){
 			return ret;
 		}
 	}
-
+	printf("1\n");
 	iobuffer_compact(session->writeBuf);
 	ret += iobuffer_put_iobuffer(session->writeBuf, buf);
 	iobuffer_flip(session->writeBuf);
 	if (iobuffer_remaining(session->writeBuf) && session->writeEvent != NULL) iosession_add_write_event(session);
-
+	printf("2\n");
 	pthread_mutex_unlock(session->writeBufLock);
 	pthread_mutex_unlock(session->writeLock);
 

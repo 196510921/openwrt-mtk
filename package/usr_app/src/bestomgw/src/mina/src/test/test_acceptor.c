@@ -20,20 +20,14 @@ static void messageReceived(iosession_t *session,iobuffer_t *buf){
 		                                                                  session->readBuf->buf,\
 		                                                                  session->readBuf->position);
 
-	if(strcmp(session->readBuf->buf,"Test") != 0)
-	{
-		printf("not match\n");
-		return;
-	}
-
-	session->readBuf->position += buf->capacity;
-
 	int32_t remaining = iobuffer_remaining(buf);
 	printf("remaining:%d,buf->buf:%s\n",remaining,buf->buf);
 	if(remaining>0){
 		iobuffer_t *rbuf = iobuffer_create(remaining);
 		iobuffer_compact(rbuf);
-		iobuffer_put_iobuffer(rbuf,buf);
+		//iobuffer_put_iobuffer(rbuf,buf);
+		buf->position+=4;
+		iobuffer_put(rbuf,"Test",4);
 		iobuffer_flip(rbuf);
 		iosession_write(session,rbuf);
 		iobuffer_destroy(rbuf);
@@ -88,3 +82,4 @@ extern void test_acceptor(){
 
 	mina_socket_acceptor_bind(acceptor,&servaddr);
 }
+

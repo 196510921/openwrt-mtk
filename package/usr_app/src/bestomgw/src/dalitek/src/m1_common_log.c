@@ -47,7 +47,6 @@ void debug_switch(char* input_info)
 		M1_LOG_ERROR( " ---------OUTPUT  SWITCH TO ERROR MODE-------------\n");
 	}
 
-	
 }
 
 /*****************************************************************************

@@ -21,8 +21,8 @@
 #ifdef LOCAL_IP
 	#define SERVER_IP  "101.132.91.12"
 	#define SERV_PORT 14010
-	// #define SERVER_IP  "192.168.100.124"
-	// #define SERV_PORT 14010
+	// #define SERVER_IP  "192.168.1.220"
+	// #define SERV_PORT 6666
 #else
 	#define SERVER_IP  "server.natappfree.cc"
 	#define SERV_PORT 36200
@@ -247,7 +247,7 @@ static void client_rx_cb(int clientFd)
 	static int len = 0;
 	static uint16_t exLen = 0;
 
-	client_block_t* client_block = NULL;
+	m1_package_t msg;
 
 	M1_LOG_DEBUG("SRPC_RxCB++[%x]\n", clientFd);
 
@@ -287,22 +287,16 @@ static void client_rx_cb(int clientFd)
 		return;
 	}
 	
-	exLen = 0;
-	client_block = client_stack_block_req(clientFd);
-	if(NULL == client_block){
-		M1_LOG_ERROR( "client_block null\n");
-		return;
-	}
-	
-	M1_LOG_INFO("rx len:%05d, rx data:%s\n",len, clientTcpRxBuf+4);
-	rc = client_write(&client_block->stack_block, clientTcpRxBuf, len);
-	if(rc != TCP_SERVER_SUCCESS)
-		M1_LOG_ERROR("client_write failed\n");
-	
+	msg.clientFd = clientFd;
+	msg.len = len;
+	msg.data = &clientTcpRxBuf[4];
+
+	data_handle(&msg);
+
 	Finish:
 	len = 0;
+	exLen = 0;
 	memset(clientTcpRxBuf, 0, 1024*60);
-	M1_LOG_DEBUG("SRPC_RxCB--\n");
 
 	return;
 }

@@ -2232,11 +2232,22 @@ int app_change_user_key(payload_t data)
     sqlite3_stmt *stmt_1  = NULL;
     sqlite3_stmt *stmt_2  = NULL;
     /*Json*/
+    cJSON *accountJson    = NULL;
     cJSON *KeyJson        = NULL;
     cJSON *newKeyJson     = NULL;
     cJSON *confirmKeyJson = NULL;
     
     clientFd = data.clientFd;
+
+    accountJson = cJSON_GetObjectItem(data.pdu, "account");
+    if(accountJson == NULL)
+    {
+        ret = M1_PROTOCOL_FAILED;
+        goto Finish;   
+    }
+    account = accountJson->valuestring;
+    M1_LOG_DEBUG("account:%s\n",accountJson->valuestring);
+
     KeyJson = cJSON_GetObjectItem(data.pdu, "Key");
     if(KeyJson == NULL)
     {
@@ -2265,6 +2276,7 @@ int app_change_user_key(payload_t data)
     }
     /*获取数据库*/
     db = data.db;
+    #if 0
     /*获取用户登录名称*/
     sql = "select ACCOUNT from account_info where CLIENT_FD = ? order by ID desc limit 1;";
     M1_LOG_DEBUG("sql:%s\n", sql);
@@ -2297,6 +2309,7 @@ int app_change_user_key(payload_t data)
         ret = M1_PROTOCOL_FAILED;
         goto Finish;
     }
+    #endif
     /*获取账户信息*/
     sql_1 = "select KEY, KEY_AUTH from account_table where account = ? order by ID desc limit 1;";
     M1_LOG_DEBUG( "sql_1:%s\n", sql_1);

@@ -379,7 +379,8 @@ int app_read_ap_zigbee_cfg(payload_t data)
         goto Finish; 
     }
 
-    M1_LOG_DEBUG("%s\n",sql);
+    //M1_LOG_DEBUG("%s\n",sql);
+    printf("%s\n",sql);
     sqlite3_bind_text(stmt, 1, dev_id, -1, NULL);
     rc = sqlite3_step(stmt);   
     if((rc != SQLITE_ROW) && (rc != SQLITE_DONE) && (rc != SQLITE_OK))
@@ -397,19 +398,21 @@ int app_read_ap_zigbee_cfg(payload_t data)
     	goto Finish;
     }
 
-    M1_LOG_DEBUG("string:%s\n",p);
-
+    //M1_LOG_DEBUG("string:%s\n",p);
+    printf("string:%s\n",p);
     strcpy(sendMsg,p);
-
+    
     Finish:
     if(stmt)
     	sqlite3_finalize(stmt);
-
+    
     sql_close();
-
+    
     if(p)
     {
+        
         socketSeverSend((uint8*)sendMsg, strlen(sendMsg), data.clientFd);
+        
     }
 
     return ret;

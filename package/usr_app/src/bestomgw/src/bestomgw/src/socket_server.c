@@ -63,6 +63,7 @@
 #include "socket_server.h"
 #include "m1_protocol.h"
 #include "buf_manage.h"
+#include "tcp_client.h"
 
 #define MAX_CLIENTS 50
 
@@ -470,13 +471,14 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	M1_LOG_DEBUG( "socketSeverSend++\n");
 
 	int rtn;
-	int tick          = 0;
-	int fdValid       = 0;
-	int bytes_left    = 0;
-	uint16_t header   = 0xFEFD;
-	uint16_t msg_len  = 0;
-	char* send_buf    = NULL;
-	char* ptr         = NULL;
+	int tick            = 0;
+	int fdValid         = 0;
+	int bytes_left      = 0;
+	int client_fdClient = 0;
+	uint16_t header     = 0xFEFD;
+	uint16_t msg_len    = 0;
+	char* send_buf      = NULL;
+	char* ptr           = NULL;
 
 	/*判断clientFd是否有效*/
 	{
@@ -496,7 +498,11 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 		}
 
 		if(!fdValid)
-			return -1;
+		{
+			client_fdClient = get_local_clientFd();
+			if(fdClient != client_fdClient)
+				return -1;
+		}
 	}
 	M1_LOG_INFO("Tx msg:%s\n",buf);
 
@@ -556,7 +562,7 @@ int32 socketSeverSend(uint8* buf, uint32 len, int32 fdClient)
 	}
 
 	free(send_buf);
-	free(buf);
+	//free(buf);
 	M1_LOG_DEBUG( "socketSeverSend--\n");
 	return 0;
 }
