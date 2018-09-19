@@ -21,14 +21,15 @@
 #ifdef LOCAL_IP
 	#define SERVER_IP  "101.132.91.12"
 	#define SERV_PORT 14010
-	// #define SERVER_IP  "192.168.1.220"
-	// #define SERV_PORT 6666
+	//#define SERVER_IP  "192.168.100.220"
+	//#define SERV_PORT 6666
 #else
 	#define SERVER_IP  "server.natappfree.cc"
 	#define SERV_PORT 36200
 #endif
 extern pthread_mutex_t client_timeout_tick_lock;
 static int conn_flag = TCP_DISCONNECTED;
+static int init_flag = 0;
 static int client_sockfd = 0;
 static char clientTcpRxBuf[1024*60] = {0};
 static int client_timeout_tick = 0;
@@ -73,7 +74,8 @@ void tcp_client_timeout_tick(int d)
 		/*断开client连接*/
 		M1_LOG_INFO("connection timeout ,disconnect !");
 		//close(client_sockfd);
-		set_connect_flag(TCP_DISCONNECTED);
+		//set_connect_flag(TCP_DISCONNECTED);
+		tcp_client_disconnect_cb(client_sockfd);
 	}
 }
 
@@ -89,9 +91,11 @@ void tcp_client_timeout_reset(int pdutype)
 void tcp_client_disconnect_cb(int sockfd)
 {
 	if(sockfd == client_sockfd){
+		init_flag = 0;
 		set_connect_flag(TCP_DISCONNECTED);
-		delete_account_conn_info(sockfd);
-		client_block_destory(sockfd);
+		close(client_sockfd);
+		// delete_account_conn_info(sockfd);
+		// client_block_destory(sockfd);
 	}
 }
 
@@ -101,7 +105,6 @@ int tcp_client_connect(void)
 	struct hostent *host;
 	char* server_ip = SERVER_IP;
 	int i;
-	static int init_flag = 0;
 
 	#ifndef LOCAL_IP
 		host = gethostbyname(server_ip);
